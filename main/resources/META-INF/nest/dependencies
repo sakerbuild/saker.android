@@ -1,2 +1,6 @@
 saker.android-api
 	classpath: [0)
+saker.compiler.utils
+	classpath: [0)
+saker.sdk.support
+	classpath: [0)

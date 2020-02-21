@@ -1,5 +1,7 @@
 global(VERSION_saker.android) = "0.8.0"
 global(DEPENDENCIES_saker.android) = [
+	saker.sdk.support,
+	saker.compiler.utils,
 ]
 
 static(VERSION_saker.build) = nest.dependency.resolve(
@@ -19,20 +21,36 @@ compile(
 		global(DEPENDENCIES_saker.android),
 		Filters: nest.dependency.filter.compile(CompileTransitive: false)
 	)
+	# the base classpath input for the package
+	# the d8 API JAR from android build tools is added to the compilation 
+	# when the task is called
+	# the compilation is done with the API from version 28.x.y, to ensure compatibility
+	$basecp = [
+		saker.java.classpath.bundle([
+			"saker.nest-api-v{ static(VERSION_saker.nest) }",
+		]),
+		saker.java.classpath.bundle($resolveddependencies),
+		$testapicompile[javac],
+	]
+	
 	$javac = saker.java.compile(
 		SourceDirectories: [
 			main/src/,
 			api/src/,
 			impl/src/,
 		],
-		ClassPath: [
-			saker.java.classpath.bundle([
-				"saker.nest-api-v{ static(VERSION_saker.nest) }",
-			]),
-			#saker.java.classpath.bundle($resolveddependencies),
-			$testapicompile[javac],
-		],
+		ClassPath: $basecp + [lib/d8_api_29.jar],
 		Identifier: "saker.android",	
+	)
+	
+	saker.java.compile(
+		SourceDirectories: [
+			main/src/,
+			api/src/,
+			impl/src/,
+		],
+		ClassPath: $basecp + [lib/d8_api_28.jar],
+		Identifier: "saker.android-d8_28_compat",	
 	)
 }
 export(
@@ -98,6 +116,11 @@ export(
 				Resources: saker/android/impl/**,
 			},
 			{
+				Directory: $compile[javac][ClassDirectory],
+				Resources: saker/android/d8support/**,
+				TargetDirectory: d8support,
+			},
+			{
 				Directory: impl/resources/,
 				Resources: **,
 			},
@@ -133,6 +156,10 @@ export(
 			},
 		},
 	)
+}
+install() {
+	$export = include(export)
+	nest.local.install($export[bundlepaths])
 }
 
 _testapicompile(
