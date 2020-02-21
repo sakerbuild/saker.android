@@ -1,0 +1,164 @@
+global(VERSION_saker.android) = "0.8.0"
+global(DEPENDENCIES_saker.android) = [
+]
+
+static(VERSION_saker.build) = nest.dependency.resolve(
+	saker.build,
+	Filters: nest.dependency.filter.kind([]),
+)[Bundles][0][BundleIdentifier][VersionNumber]
+static(VERSION_saker.nest) = nest.dependency.resolve(
+	saker.nest,
+	Filters: nest.dependency.filter.kind([]),
+)[Bundles][0][BundleIdentifier][VersionNumber]
+
+compile(
+	in testapicompile = include(_testapicompile),
+	out javac,
+) {
+	$resolveddependencies = nest.dependency.resolve(
+		global(DEPENDENCIES_saker.android),
+		Filters: nest.dependency.filter.compile(CompileTransitive: false)
+	)
+	$javac = saker.java.compile(
+		SourceDirectories: [
+			main/src/,
+			api/src/,
+			impl/src/,
+		],
+		ClassPath: [
+			saker.java.classpath.bundle([
+				"saker.nest-api-v{ static(VERSION_saker.nest) }",
+			]),
+			#saker.java.classpath.bundle($resolveddependencies),
+			$testapicompile[javac],
+		],
+		Identifier: "saker.android",	
+	)
+}
+export(
+	in compile = include(compile),
+	out compile,
+	out mainjar,
+	out apijar,
+	out impljar,
+	out sourcejar,
+	
+	out bundlepaths = [
+		$mainjar[Path],
+		$apijar[Path],
+		$impljar[Path],
+		$sourcejar[Path],
+	]
+) {
+	$mainjar = saker.jar.create(
+		Output: saker.android.jar,
+		Resources: [
+			{
+				Directory: $compile[javac][ClassDirectory],
+				Resources: saker/android/main/**,
+			},
+			{
+				Directory: main/resources/,
+				Resources: **,
+			},
+		],
+		Manifest: {
+			MainAttributes: {
+				Nest-Bundle-Format-Version: 1,
+				Nest-Bundle-Identifier: "saker.android-v{ global(VERSION_saker.android) }",
+				Nest-Bundle-Source: "saker.android-sources-v{ global(VERSION_saker.android) }",
+			},
+		},
+	)
+	$apijar = saker.jar.create(
+		Output: saker.android-api.jar,
+		Resources: [
+			{
+				Directory: $compile[javac][ClassDirectory],
+				Resources: saker/android/api/**,
+			},
+			{
+				Directory: api/resources/,
+				Resources: **,
+			},
+		],
+		Manifest: {
+			MainAttributes: {
+				Nest-Bundle-Format-Version: 1,
+				Nest-Bundle-Identifier: "saker.android-api-v{ global(VERSION_saker.android) }",
+				Nest-Bundle-Source: "saker.android-sources-v{ global(VERSION_saker.android) }",
+			},
+		},
+	)
+	$impljar = saker.jar.create(
+		Output: saker.android-impl.jar,
+		Resources: [
+			{
+				Directory: $compile[javac][ClassDirectory],
+				Resources: saker/android/impl/**,
+			},
+			{
+				Directory: impl/resources/,
+				Resources: **,
+			},
+			{
+				Files: LICENSE,
+				TargetDirectory: META-INF,
+			},
+		],
+		Manifest: {
+			MainAttributes: {
+				Nest-Bundle-Format-Version: 1,
+				Nest-Bundle-Identifier: "saker.android-impl-v{ global(VERSION_saker.android) }",
+				Nest-Bundle-Source: "saker.android-sources-v{ global(VERSION_saker.android) }",
+			},
+		},
+	)
+	$sourcejar = saker.jar.create(
+		Output: saker.android-sources.jar,
+		Resources: [
+			{
+				Directory: [main/src/, api/src/, impl/src/],
+				Resources: [**/*.java],
+			},
+			{
+				Files: LICENSE,
+				TargetDirectory: META-INF,
+			},
+		],
+		Manifest: {
+			MainAttributes: {
+				Nest-Bundle-Format-Version: 1,
+				Nest-Bundle-Identifier: "saker.android-sources-v{ global(VERSION_saker.android) }",
+			},
+		},
+	)
+}
+
+_testapicompile(
+	in enabled = false,
+	out enabled,
+	out javac,
+	out instrumentedjar,
+){
+	if $enabled {
+		$instrumentedjar = nest.test.instrument(
+			nest.bundle.download("saker.build-test-v{ static(VERSION_saker.build) }")[BundlePaths][0],
+			NestVersion: static(VERSION_saker.nest),
+		)
+		$sakerbuildcp = $instrumentedjar
+	} else {
+		$instrumentedjar = null
+		$sakerbuildcp = saker.java.classpath.bundle("saker.build-api-v{ static(VERSION_saker.build) }")
+	}
+	$javac = saker.java.compile(
+		SourceDirectories: [
+			test/testapi/common/,
+			$enabled ? test/testapi/enabled/ : test/testapi/disabled/,
+		],
+		ClassPath: [
+			$sakerbuildcp,
+		],
+		Identifier: "testapi-{ $enabled ? enabled : disabled }",
+	)
+}

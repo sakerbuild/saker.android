@@ -1,0 +1,2 @@
+saker.android-impl
+	classpath: [this]
