@@ -26,6 +26,8 @@ import saker.build.file.path.ProviderHolderPathKey;
 import saker.build.file.path.SakerPath;
 import saker.build.file.provider.LocalFileProvider;
 import saker.build.file.provider.SakerPathFiles;
+import saker.build.runtime.environment.EnvironmentProperty;
+import saker.build.runtime.environment.SakerEnvironment;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.Task;
 import saker.build.task.TaskContext;
@@ -126,11 +128,11 @@ public class AAPT2CompileWorkerTaskFactory
 
 		NavigableMap<String, SDKReference> sdkrefs;
 		//if we have an environment selector then the dependencies are reported during selection
+		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
 		if (remoteDispatchableEnvironmentSelector == null) {
 			sdkrefs = SDKSupportUtils.resolveSDKReferences(taskcontext, this.sdkDescriptions);
 		} else {
-			sdkrefs = SDKSupportUtils.resolveSDKReferences(taskcontext.getExecutionContext().getEnvironment(),
-					this.sdkDescriptions);
+			sdkrefs = SDKSupportUtils.resolveSDKReferences(environment, this.sdkDescriptions);
 		}
 		SDKReference buildtoolssdkref = sdkrefs.get(AndroidBuildToolsSDKReference.SDK_NAME);
 		if (buildtoolssdkref == null) {
@@ -183,23 +185,22 @@ public class AAPT2CompileWorkerTaskFactory
 					new OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate());
 
 			System.out.println("AAPT2CompileWorkerTaskFactory.run() " + in.resourcePath);
-			ProcessBuilder pb = new ProcessBuilder(exepath.toString(), "compile", "-o", outputdirlocalpath.toString(),
-					taskcontext.mirror(file).toString());
-			pb.redirectErrorStream(true);
-			Process proc = pb.start();
+			String[] cmd = new String[] { "compile", "-o", outputdirlocalpath.toString(),
+					taskcontext.mirror(file).toString() };
+
 			UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
 			int res;
 			try {
-				StreamUtils.copyStream(proc.getInputStream(), procout);
-				res = proc.waitFor();
+				res = AAPT2Utils.invokeAAPT2WithArguments(environment, exepath, cmd, procout);
 			} finally {
 				if (!procout.isEmpty()) {
 					procout.writeTo(taskcontext.getStandardOut());
 				}
 			}
 			if (res != 0) {
-				throw new IOException("aapt2 compilation failed: " + pb.command());
+				throw new IOException("aapt2 compilation failed.");
 			}
+
 			for (String fname : fp.getDirectoryEntries(outputdirlocalpath).keySet()) {
 				ProviderHolderPathKey outpathkey = fp.getPathKey(outputdirlocalpath.resolve(fname));
 

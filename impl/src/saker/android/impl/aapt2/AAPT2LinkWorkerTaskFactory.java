@@ -25,6 +25,7 @@ import saker.build.file.path.SakerPath;
 import saker.build.file.provider.FileEntry;
 import saker.build.file.provider.LocalFileProvider;
 import saker.build.file.provider.SakerPathFiles;
+import saker.build.runtime.environment.SakerEnvironment;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.Task;
 import saker.build.task.TaskContext;
@@ -35,7 +36,6 @@ import saker.build.task.TaskFactory;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
-import saker.build.thirdparty.saker.util.io.StreamUtils;
 import saker.build.thirdparty.saker.util.io.UnsyncByteArrayOutputStream;
 import saker.build.trace.BuildTrace;
 import saker.compiler.utils.api.CompilationIdentifier;
@@ -125,13 +125,14 @@ public class AAPT2LinkWorkerTaskFactory
 
 		inputFiles.forEach(System.out::println);
 
+		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
+
 		NavigableMap<String, SDKReference> sdkrefs;
 		//if we have an environment selector then the dependencies are reported during selection
 		if (remoteDispatchableEnvironmentSelector == null) {
 			sdkrefs = SDKSupportUtils.resolveSDKReferences(taskcontext, this.sdkDescriptions);
 		} else {
-			sdkrefs = SDKSupportUtils.resolveSDKReferences(taskcontext.getExecutionContext().getEnvironment(),
-					this.sdkDescriptions);
+			sdkrefs = SDKSupportUtils.resolveSDKReferences(environment, this.sdkDescriptions);
 		}
 		SDKReference buildtoolssdkref = sdkrefs.get(AndroidBuildToolsSDKReference.SDK_NAME);
 		if (buildtoolssdkref == null) {
@@ -157,7 +158,6 @@ public class AAPT2LinkWorkerTaskFactory
 		Path javaoutputdirpath = taskcontext.mirror(javaoutdir);
 
 		ArrayList<String> cmd = new ArrayList<>();
-		cmd.add(exepath.toString());
 		cmd.add("link");
 		//TODO parallelize if necessary
 		for (SakerPath inpath : inputFiles) {
@@ -185,22 +185,18 @@ public class AAPT2LinkWorkerTaskFactory
 			}
 		}
 
-		ProcessBuilder pb = new ProcessBuilder(cmd);
-		pb.redirectErrorStream(true);
-
-		Process proc = pb.start();
 		UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
+
 		int res;
 		try {
-			StreamUtils.copyStream(proc.getInputStream(), procout);
-			res = proc.waitFor();
+			res = AAPT2Utils.invokeAAPT2WithArguments(environment, exepath, cmd, procout);
 		} finally {
 			if (!procout.isEmpty()) {
 				procout.writeTo(taskcontext.getStandardOut());
 			}
 		}
 		if (res != 0) {
-			throw new IOException("aapt2 linking failed: " + pb.command());
+			throw new IOException("aapt2 linking failed.");
 		}
 
 		TreeMap<SakerPath, ContentDescriptor> outputfilecontents = new TreeMap<>();

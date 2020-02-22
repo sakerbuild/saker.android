@@ -65,7 +65,7 @@ public class AndroidJarDescriptorsCacheKey implements CacheKey<AndroidJarDescrip
 
 	@Override
 	public long getExpiry() {
-		return 5 * DateUtils.MS_PER_SECOND;
+		return 5 * DateUtils.MS_PER_MINUTE;
 	}
 
 	@Override
