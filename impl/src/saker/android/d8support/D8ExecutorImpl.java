@@ -191,7 +191,7 @@ public class D8ExecutorImpl implements D8Executor {
 				String cdescriptor = D8ExecutorImpl
 						.getDescriptorFromClassFileRelativePath(classdirectory.relativize(filepath));
 
-				nstate.putInput(new InputFileInformation(file.getContentDescriptor(), filepath, cdescriptor));
+				nstate.putInput(new InputFileInformation(filepath, cdescriptor));
 				intermediateprogramresources.add(new SakerClassFileProgramResource(filepath, file,
 						ImmutableUtils.singletonNavigableSet(cdescriptor)));
 			}

@@ -187,16 +187,15 @@ public class AAPT2LinkWorkerTaskFactory
 
 		UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
 
-		int res;
 		try {
-			res = AAPT2Utils.invokeAAPT2WithArguments(environment, exepath, cmd, procout);
+			int res = AAPT2Utils.invokeAAPT2WithArguments(environment, exepath, cmd, procout);
+			if (res != 0) {
+				throw new IOException("aapt2 linking failed.");
+			}
 		} finally {
 			if (!procout.isEmpty()) {
 				procout.writeTo(taskcontext.getStandardOut());
 			}
-		}
-		if (res != 0) {
-			throw new IOException("aapt2 linking failed.");
 		}
 
 		TreeMap<SakerPath, ContentDescriptor> outputfilecontents = new TreeMap<>();

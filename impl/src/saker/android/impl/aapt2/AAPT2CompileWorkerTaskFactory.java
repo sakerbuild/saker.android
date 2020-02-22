@@ -14,6 +14,7 @@ import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
@@ -26,18 +27,18 @@ import saker.build.file.path.ProviderHolderPathKey;
 import saker.build.file.path.SakerPath;
 import saker.build.file.provider.LocalFileProvider;
 import saker.build.file.provider.SakerPathFiles;
-import saker.build.runtime.environment.EnvironmentProperty;
 import saker.build.runtime.environment.SakerEnvironment;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.Task;
 import saker.build.task.TaskContext;
 import saker.build.task.TaskExecutionEnvironmentSelector;
 import saker.build.task.TaskFactory;
+import saker.build.task.delta.DeltaType;
+import saker.build.task.utils.TaskUtils;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.function.Functionals;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
-import saker.build.thirdparty.saker.util.io.StreamUtils;
 import saker.build.thirdparty.saker.util.io.UnsyncByteArrayOutputStream;
 import saker.build.thirdparty.saker.util.thread.ThreadUtils;
 import saker.build.trace.BuildTrace;
@@ -117,6 +118,8 @@ public class AAPT2CompileWorkerTaskFactory
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 		}
 
+		CompileState prevstate = taskcontext.getPreviousTaskOutput(CompileState.class, CompileState.class);
+
 		AAPT2CompileWorkerTaskIdentifier taskid = (AAPT2CompileWorkerTaskIdentifier) taskcontext.getTaskId();
 
 		CompilationIdentifier compilationid = taskid.getCompilationIdentifier();
@@ -125,6 +128,8 @@ public class AAPT2CompileWorkerTaskFactory
 		SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
 		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtPathCreate(builddir,
 				SakerPath.valueOf(AAPT2CompileTaskFactory.TASK_NAME + "/" + compilationid));
+
+		SakerPath outputdirpath = outputdir.getSakerPath();
 
 		NavigableMap<String, SDKReference> sdkrefs;
 		//if we have an environment selector then the dependencies are reported during selection
@@ -143,82 +148,155 @@ public class AAPT2CompileWorkerTaskFactory
 			throw new SDKPathNotFoundException("aapt2 executable not found in " + buildtoolssdkref);
 		}
 
-		NavigableMap<SakerPath, SakerFile> resfiles = taskcontext.getTaskUtilities()
-				.collectFilesReportInputFileAndAdditionDependency(null,
+		NavigableMap<SakerPath, SakerFile> collectedfiles = taskcontext.getTaskUtilities()
+				.collectFilesReportInputFileAndAdditionDependency(AAPT2TaskTags.INPUT_RESOURCE,
 						new AndroidResourcesFileCollectionStrategy(resourceDirectory));
 
-		System.out.println("AAPT2CompileWorkerTaskFactory.run() " + exepath);
-
-		outputdir.clear();
-
-		Map<String, Map<String, InputFileConfig>> resdirinputfiles = new TreeMap<>();
-
-		Collection<InputFileConfig> inputs = new ArrayList<>();
-
-		for (Entry<SakerPath, SakerFile> entry : resfiles.entrySet()) {
-			SakerPath respath = entry.getKey();
-			String parentfname = respath.getParent().getFileName();
-			Map<String, InputFileConfig> filenameconfigs = resdirinputfiles.computeIfAbsent(parentfname,
-					Functionals.treeMapComputer());
-
-			InputFileConfig fileconfig = new InputFileConfig(respath, parentfname, entry.getValue());
-			InputFileConfig prev = filenameconfigs.put(respath.getFileName(), fileconfig);
-			if (prev != null) {
-				throw new IllegalArgumentException(
-						"Name conflict: " + respath.getFileName() + " with " + respath + " and " + prev.resourcePath);
+		if (prevstate != null) {
+			if (!prevstate.sdkReferences.equals(sdkrefs)) {
+				prevstate = null;
 			}
-			inputs.add(fileconfig);
 		}
-
-		LocalFileProvider fp = LocalFileProvider.getInstance();
 
 		NavigableMap<SakerPath, ContentDescriptor> outputfilecontents = new ConcurrentSkipListMap<>();
 
-		//XXX make more build cluster RMI performant
-		ThreadUtils.runParallelItems(inputs, in -> {
-			SakerFile file = in.file;
+		NavigableMap<SakerPath, SakerFile> inputfiles;
 
-			SakerDirectory outdir = outputdir.getDirectoryCreate(in.parentDirectoryName)
-					.getDirectoryCreate(file.getName());
-			outdir.clear();
-			Path outputdirlocalpath = taskcontext.mirror(outdir,
-					new OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate());
+		CompileState nstate;
+		if (prevstate != null) {
+			nstate = new CompileState(prevstate);
 
-			System.out.println("AAPT2CompileWorkerTaskFactory.run() " + in.resourcePath);
-			String[] cmd = new String[] { "compile", "-o", outputdirlocalpath.toString(),
-					taskcontext.mirror(file).toString() };
+			NavigableMap<SakerPath, SakerFile> changedinputfiles = TaskUtils.collectFilesForTag(
+					taskcontext.getFileDeltas(DeltaType.INPUT_FILE_CHANGE), AAPT2TaskTags.INPUT_RESOURCE);
+			NavigableMap<SakerPath, SakerFile> changedoutputfiles = TaskUtils.collectFilesForTag(
+					taskcontext.getFileDeltas(DeltaType.OUTPUT_FILE_CHANGE), AAPT2TaskTags.OUTPUT_COMPILED);
 
-			UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
-			int res;
-			try {
-				res = AAPT2Utils.invokeAAPT2WithArguments(environment, exepath, cmd, procout);
-			} finally {
-				if (!procout.isEmpty()) {
-					procout.writeTo(taskcontext.getStandardOut());
+			System.out.println("Changed outputs");
+			changedoutputfiles.keySet().forEach(System.out::println);
+			System.out.println("Changed inputs");
+			changedinputfiles.keySet().forEach(System.out::println);
+
+			inputfiles = new TreeMap<>();
+
+			ObjectUtils.iterateSortedMapEntriesDual(prevstate.pathOutputFiles, changedoutputfiles,
+					(filepath, prevoutput, file) -> {
+						InputFileState instate = deleteOutputDirectoryForInputPath(taskcontext, outputdir, nstate,
+								prevoutput.inputFilePath);
+						if (instate != null) {
+							SakerFile infile = collectedfiles.get(instate.path);
+							if (infile != null) {
+								inputfiles.put(instate.path, infile);
+							}
+						}
+					});
+			ObjectUtils.iterateSortedMapEntries(prevstate.pathInputFiles, collectedfiles,
+					(filepath, previnput, file) -> {
+						if (file != null) {
+							if (previnput == null) {
+								//an input file was added
+							} else if (changedinputfiles.containsKey(filepath)) {
+								//an input file was changed
+							} else {
+								//unchanged input
+								return;
+							}
+						} else {
+							//an input file was removed
+						}
+
+						deleteOutputDirectoryForInputPath(taskcontext, outputdir, nstate, filepath);
+						if (file != null) {
+							//add the file as input
+							inputfiles.put(filepath, file);
+						}
+					});
+
+			//XXX make more efficient
+			for (Entry<SakerPath, OutputFileState> entry : nstate.pathOutputFiles.entrySet()) {
+				outputfilecontents.put(entry.getKey(), entry.getValue().content);
+			}
+		} else {
+			nstate = new CompileState();
+			nstate.pathInputFiles = new ConcurrentSkipListMap<>();
+			nstate.pathOutputFiles = new ConcurrentSkipListMap<>();
+
+			outputdir.clear();
+			inputfiles = collectedfiles;
+		}
+
+		nstate.sdkReferences = sdkrefs;
+
+		if (!inputfiles.isEmpty()) {
+			Map<String, Map<String, InputFileConfig>> resdirinputfiles = new TreeMap<>();
+
+			Collection<InputFileConfig> inputs = new ArrayList<>();
+
+			for (Entry<SakerPath, SakerFile> entry : inputfiles.entrySet()) {
+				SakerPath resourcepath = entry.getKey();
+				System.out.println("In: " + resourcepath);
+				String parentfname = resourcepath.getParent().getFileName();
+				Map<String, InputFileConfig> filenameconfigs = resdirinputfiles.computeIfAbsent(parentfname,
+						Functionals.treeMapComputer());
+
+				InputFileState inputstate = new InputFileState(resourcepath,
+						SakerPath.valueOf(parentfname).resolve(resourcepath.getFileName()));
+
+				InputFileConfig fileconfig = new InputFileConfig(inputstate, entry.getValue());
+				InputFileConfig prev = filenameconfigs.put(resourcepath.getFileName(), fileconfig);
+				if (prev != null) {
+					throw new IllegalArgumentException("Name conflict: " + resourcepath.getFileName() + " with "
+							+ resourcepath + " and " + prev.input.path);
 				}
-			}
-			if (res != 0) {
-				throw new IOException("aapt2 compilation failed.");
+				inputs.add(fileconfig);
 			}
 
-			for (String fname : fp.getDirectoryEntries(outputdirlocalpath).keySet()) {
-				ProviderHolderPathKey outpathkey = fp.getPathKey(outputdirlocalpath.resolve(fname));
+			LocalFileProvider fp = LocalFileProvider.getInstance();
 
-				ContentDescriptor outputfilecontent = taskcontext.invalidateGetContentDescriptor(outpathkey);
-				SakerFile outfile = taskcontext.getTaskUtilities().createProviderPathFile(fname, outpathkey);
-				outdir.add(outfile);
-				SakerPath outfilepath = outfile.getSakerPath();
+			//XXX make more build cluster RMI performant
+			ThreadUtils.runParallelItems(inputs, in -> {
+				SakerFile file = in.file;
 
-				outputfilecontents.put(outfilepath, outputfilecontent);
+				SakerDirectory outdir = taskcontext.getTaskUtilities().resolveDirectoryAtRelativePathCreate(outputdir,
+						in.input.outputDirectoryRelativePath);
 
-			}
-		});
+				outdir.clear();
+				Path outputdirlocalpath = taskcontext.mirror(outdir,
+						new OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate());
+
+				String[] cmd = new String[] { "compile", "-o", outputdirlocalpath.toString(),
+						taskcontext.mirror(file).toString() };
+
+				UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
+				try {
+					int res = AAPT2Utils.invokeAAPT2WithArguments(environment, exepath, cmd, procout);
+					if (res != 0) {
+						throw new IOException("aapt2 compilation failed.");
+					}
+				} finally {
+					if (!procout.isEmpty()) {
+						procout.writeTo(taskcontext.getStandardOut());
+					}
+				}
+
+				for (String fname : fp.getDirectoryEntries(outputdirlocalpath).keySet()) {
+					ProviderHolderPathKey outpathkey = fp.getPathKey(outputdirlocalpath.resolve(fname));
+
+					ContentDescriptor outputfilecontent = taskcontext.invalidateGetContentDescriptor(outpathkey);
+					SakerFile outfile = taskcontext.getTaskUtilities().createProviderPathFile(fname, outpathkey);
+					outdir.add(outfile);
+					SakerPath outfilepath = outfile.getSakerPath();
+
+					outputfilecontents.put(outfilepath, outputfilecontent);
+
+					in.input.outputFiles.add(outfilepath);
+					nstate.pathOutputFiles.put(outfilepath, new OutputFileState(in.input.path, outputfilecontent));
+				}
+				nstate.pathInputFiles.put(in.input.path, in.input);
+			});
+		}
 		outputdir.synchronize();
 
-		System.out.println("Output:");
-		outputfilecontents.keySet().forEach(System.out::println);
-
-		taskcontext.getTaskUtilities().reportOutputFileDependency(null, outputfilecontents);
+		taskcontext.getTaskUtilities().reportOutputFileDependency(AAPT2TaskTags.OUTPUT_COMPILED, outputfilecontents);
 
 		NavigableMap<String, SDKDescription> pinnedsdks = new TreeMap<>(SDKSupportUtils.getSDKNameComparator());
 		for (Entry<String, SDKReference> entry : sdkrefs.entrySet()) {
@@ -230,9 +308,30 @@ public class AAPT2CompileWorkerTaskFactory
 			pinnedsdks.put(sdkname, desc);
 		}
 
-		return new AAPT2CompileTaskOutputImpl(outputdir.getSakerPath(),
+		taskcontext.setTaskOutput(CompileState.class, nstate);
+
+		return new AAPT2CompileTaskOutputImpl(outputdirpath,
 				ImmutableUtils.makeImmutableNavigableSet(outputfilecontents.navigableKeySet()), compilationid,
 				pinnedsdks);
+	}
+
+	private static InputFileState deleteOutputDirectoryForInputPath(TaskContext taskcontext, SakerDirectory outputdir,
+			CompileState nstate, SakerPath inputpath) {
+		InputFileState previnstate = nstate.pathInputFiles.remove(inputpath);
+		if (previnstate != null) {
+			nstate.pathOutputFiles.keySet().removeAll(previnstate.outputFiles);
+			deleteOutputDirectoryForInput(taskcontext, outputdir, previnstate);
+		}
+		return previnstate;
+	}
+
+	private static void deleteOutputDirectoryForInput(TaskContext taskcontext, SakerDirectory outputdir,
+			InputFileState previnstate) {
+		SakerFile outdirfile = taskcontext.getTaskUtilities().resolveAtRelativePath(outputdir,
+				previnstate.outputDirectoryRelativePath);
+		if (outdirfile != null) {
+			outdirfile.remove();
+		}
 	}
 
 	private final class OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate implements DirectoryVisitPredicate {
@@ -258,16 +357,14 @@ public class AAPT2CompileWorkerTaskFactory
 	}
 
 	private static class InputFileConfig {
-
-		protected SakerPath resourcePath;
-		protected String parentDirectoryName;
+		protected InputFileState input;
 		protected SakerFile file;
 
-		public InputFileConfig(SakerPath resourcePath, String parentDirectoryName, SakerFile file) {
-			this.resourcePath = resourcePath;
-			this.parentDirectoryName = parentDirectoryName;
+		public InputFileConfig(InputFileState input, SakerFile file) {
+			this.input = input;
 			this.file = file;
 		}
+
 	}
 
 	@Override
@@ -318,4 +415,102 @@ public class AAPT2CompileWorkerTaskFactory
 		return true;
 	}
 
+	private static class InputFileState implements Externalizable {
+		private static final long serialVersionUID = 1L;
+
+		protected SakerPath path;
+		protected SakerPath outputDirectoryRelativePath;
+		protected NavigableSet<SakerPath> outputFiles;
+
+		/**
+		 * For {@link Externalizable}.
+		 */
+		public InputFileState() {
+		}
+
+		public InputFileState(SakerPath path, SakerPath outputDirectoryRelativePath) {
+			this.path = path;
+			this.outputDirectoryRelativePath = outputDirectoryRelativePath;
+			this.outputFiles = new ConcurrentSkipListSet<>();
+		}
+
+		@Override
+		public void writeExternal(ObjectOutput out) throws IOException {
+			out.writeObject(path);
+			out.writeObject(outputDirectoryRelativePath);
+			SerialUtils.writeExternalCollection(out, outputFiles);
+		}
+
+		@Override
+		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+			path = (SakerPath) in.readObject();
+			outputDirectoryRelativePath = (SakerPath) in.readObject();
+			outputFiles = SerialUtils.readExternalSortedImmutableNavigableSet(in);
+		}
+
+	}
+
+	private static class OutputFileState implements Externalizable {
+		private static final long serialVersionUID = 1L;
+
+		protected SakerPath inputFilePath;
+		protected ContentDescriptor content;
+
+		/**
+		 * For {@link Externalizable}.
+		 */
+		public OutputFileState() {
+		}
+
+		public OutputFileState(SakerPath inputFilePath, ContentDescriptor content) {
+			this.inputFilePath = inputFilePath;
+			this.content = content;
+		}
+
+		@Override
+		public void writeExternal(ObjectOutput out) throws IOException {
+			out.writeObject(inputFilePath);
+			out.writeObject(content);
+		}
+
+		@Override
+		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+			inputFilePath = (SakerPath) in.readObject();
+			content = (ContentDescriptor) in.readObject();
+		}
+
+	}
+
+	private static class CompileState implements Externalizable {
+		private static final long serialVersionUID = 1L;
+
+		protected NavigableMap<String, SDKReference> sdkReferences;
+		protected NavigableMap<SakerPath, InputFileState> pathInputFiles;
+		protected NavigableMap<SakerPath, OutputFileState> pathOutputFiles;
+
+		public CompileState() {
+		}
+
+		public CompileState(CompileState copy) {
+			this.sdkReferences = copy.sdkReferences;
+			this.pathInputFiles = new ConcurrentSkipListMap<>(copy.pathInputFiles);
+			this.pathOutputFiles = new ConcurrentSkipListMap<>(copy.pathOutputFiles);
+		}
+
+		@Override
+		public void writeExternal(ObjectOutput out) throws IOException {
+			SerialUtils.writeExternalMap(out, sdkReferences);
+			SerialUtils.writeExternalMap(out, pathInputFiles);
+			SerialUtils.writeExternalMap(out, pathOutputFiles);
+		}
+
+		@Override
+		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+			sdkReferences = SerialUtils.readExternalSortedImmutableNavigableMap(in,
+					SDKSupportUtils.getSDKNameComparator());
+			pathInputFiles = SerialUtils.readExternalSortedImmutableNavigableMap(in);
+			pathOutputFiles = SerialUtils.readExternalSortedImmutableNavigableMap(in);
+		}
+
+	}
 }
