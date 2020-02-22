@@ -39,6 +39,9 @@ public class AAPT2Utils {
 			}
 		}
 
+		//TODO use @argument-file when input files are too many to fit on the command line
+		//     (not necessary with daemon)
+
 		ArrayList<String> fullcmd = new ArrayList<>(1 + args.size());
 		fullcmd.add(exepath.toString());
 		fullcmd.addAll(args);

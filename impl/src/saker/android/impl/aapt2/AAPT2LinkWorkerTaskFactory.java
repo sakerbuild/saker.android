@@ -20,6 +20,7 @@ import saker.android.main.aapt2.AAPT2LinkTaskFactory;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
 import saker.build.file.content.ContentDescriptor;
+import saker.build.file.content.HashContentDescriptor;
 import saker.build.file.path.ProviderHolderPathKey;
 import saker.build.file.path.SakerPath;
 import saker.build.file.provider.FileEntry;
@@ -35,6 +36,7 @@ import saker.build.task.TaskExecutionUtilities.MirroredFileContents;
 import saker.build.task.TaskFactory;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.thirdparty.saker.util.io.FileUtils;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.thirdparty.saker.util.io.UnsyncByteArrayOutputStream;
 import saker.build.trace.BuildTrace;
@@ -123,8 +125,6 @@ public class AAPT2LinkWorkerTaskFactory
 		SakerDirectory outputdir = taskutils.resolveDirectoryAtPathCreate(builddir,
 				SakerPath.valueOf(AAPT2LinkTaskFactory.TASK_NAME + "/" + compilationid));
 
-		inputFiles.forEach(System.out::println);
-
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
 
 		NavigableMap<String, SDKReference> sdkrefs;
@@ -148,8 +148,6 @@ public class AAPT2LinkWorkerTaskFactory
 		outputdir.clear();
 
 		SakerDirectory javaoutdir = outputdir.getDirectoryCreate("java");
-
-		//TODO use @argument-file when input files are too many to fit on the command line
 
 		String outputapkfilename = "output.apk";
 		Path outputdirmirror = taskcontext.mirror(outputdir);
@@ -214,12 +212,20 @@ public class AAPT2LinkWorkerTaskFactory
 		if (rjavapath != null) {
 			SakerDirectory rjavaparentdir = taskutils.resolveDirectoryAtRelativePathCreate(javaoutdir,
 					rjavapath.getParent());
-			ProviderHolderPathKey rjavapathkey = fp.getPathKey(SakerPath.valueOf(javaoutputdirpath).resolve(rjavapath));
+			SakerPath rjavaabsolutepath = SakerPath.valueOf(javaoutputdirpath).resolve(rjavapath);
+			ProviderHolderPathKey rjavapathkey = fp.getPathKey(rjavaabsolutepath);
 			taskcontext.invalidate(rjavapathkey);
-			SakerFile rjavafile = taskutils.createProviderPathFile(rjavapath.getFileName(), rjavapathkey);
+
+			//create our own content descriptor so the invocation of downstream java compilation tasks can be easily avoided
+			//make it hash based so it depends on the contents
+			ContentDescriptor rjavafilecontents = HashContentDescriptor
+					.createWithHash(fp.hash(rjavaabsolutepath, FileUtils.DEFAULT_FILE_HASH_ALGORITHM));
+
+			SakerFile rjavafile = taskutils.createProviderPathFile(rjavapath.getFileName(), rjavapathkey,
+					rjavafilecontents);
 			rjavaparentdir.add(rjavafile);
 
-			outputfilecontents.put(rjavafile.getSakerPath(), rjavafile.getContentDescriptor());
+			outputfilecontents.put(rjavafile.getSakerPath(), rjavafilecontents);
 		} else {
 			throw new IOException("R.java not found.");
 		}

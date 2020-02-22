@@ -108,11 +108,6 @@ public class D8ExecutorImpl implements D8Executor {
 			NavigableMap<SakerPath, SakerFile> changedoutputfiles = TaskUtils.collectFilesForTag(
 					taskcontext.getFileDeltas(DeltaType.OUTPUT_FILE_CHANGE), D8TaskTags.OUTPUT_INTERMEDIATE_DEX_FILE);
 
-			System.out.println("Changed outputs");
-			changedoutputfiles.keySet().forEach(System.out::println);
-			System.out.println("Changed inputs");
-			changedinputfiles.keySet().forEach(System.out::println);
-
 			inputfiles = new TreeMap<>();
 
 			ObjectUtils.iterateSortedMapEntriesDual(prevstate.outputPathInformations, changedoutputfiles,
@@ -179,14 +174,11 @@ public class D8ExecutorImpl implements D8Executor {
 		}
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
 
-		System.out.println("Inputs: ");
 		if (!inputfiles.isEmpty()) {
 			anychange[0] = true;
 			for (Entry<SakerPath, SakerFile> entry : inputfiles.entrySet()) {
 				SakerPath filepath = entry.getKey();
 				SakerFile file = entry.getValue();
-
-				System.out.println(filepath);
 
 				String cdescriptor = D8ExecutorImpl
 						.getDescriptorFromClassFileRelativePath(classdirectory.relativize(filepath));
@@ -246,9 +238,6 @@ public class D8ExecutorImpl implements D8Executor {
 		if (anychange[0]) {
 			intermediateoutputdir.synchronize();
 		}
-
-		System.out.println("Output dependencies");
-		outputintermediatefiles.keySet().forEach(System.out::println);
 
 		ConcurrentSkipListMap<SakerPath, ContentDescriptor> outputclassesfiles = new ConcurrentSkipListMap<>();
 		d8_classes_runner:

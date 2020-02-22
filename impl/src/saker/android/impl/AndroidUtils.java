@@ -3,6 +3,7 @@ package saker.android.impl;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,9 @@ import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.function.Functionals;
 import saker.nest.bundle.BundleIdentifier;
+import saker.nest.version.BaseVersionVersionRange;
+import saker.nest.version.UnionVersionRange;
+import saker.nest.version.VersionRange;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.api.SDKReference;
 
@@ -47,9 +51,36 @@ public class AndroidUtils {
 		throw new UnsupportedOperationException();
 	}
 
-	public static Predicate<? super String> getSDKVersionsPredicate(Set<String> versions) {
+	public static Predicate<? super String> getSetContainsElseAlwaysPredicate(Set<String> versions) {
 		if (versions == null) {
 			return Functionals.alwaysPredicate();
+		}
+		return versions::contains;
+	}
+
+	public static Predicate<? super String> getSetContainsOrBaseVersionElseAlwaysPredicate(Set<String> versions) {
+		if (versions == null) {
+			return Functionals.alwaysPredicate();
+		}
+		Set<VersionRange> ranges = new HashSet<>();
+		for (String v : versions) {
+			if (BundleIdentifier.isValidVersionNumber(v)) {
+				ranges.add(BaseVersionVersionRange.create(v));
+			}
+		}
+		if (!ranges.isEmpty()) {
+			VersionRange union = UnionVersionRange.create(ranges);
+			return v -> {
+				try {
+					if (union.includes(v)) {
+						return true;
+					}
+				} catch (IllegalArgumentException e) {
+					//not a valid version number or something
+					//ignore, and don't include
+				}
+				return versions.contains(v);
+			};
 		}
 		return versions::contains;
 	}

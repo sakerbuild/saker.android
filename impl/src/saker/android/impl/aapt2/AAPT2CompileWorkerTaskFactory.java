@@ -171,11 +171,6 @@ public class AAPT2CompileWorkerTaskFactory
 			NavigableMap<SakerPath, SakerFile> changedoutputfiles = TaskUtils.collectFilesForTag(
 					taskcontext.getFileDeltas(DeltaType.OUTPUT_FILE_CHANGE), AAPT2TaskTags.OUTPUT_COMPILED);
 
-			System.out.println("Changed outputs");
-			changedoutputfiles.keySet().forEach(System.out::println);
-			System.out.println("Changed inputs");
-			changedinputfiles.keySet().forEach(System.out::println);
-
 			inputfiles = new TreeMap<>();
 
 			ObjectUtils.iterateSortedMapEntriesDual(prevstate.pathOutputFiles, changedoutputfiles,
@@ -233,7 +228,6 @@ public class AAPT2CompileWorkerTaskFactory
 
 			for (Entry<SakerPath, SakerFile> entry : inputfiles.entrySet()) {
 				SakerPath resourcepath = entry.getKey();
-				System.out.println("In: " + resourcepath);
 				String parentfname = resourcepath.getParent().getFileName();
 				Map<String, InputFileConfig> filenameconfigs = resdirinputfiles.computeIfAbsent(parentfname,
 						Functionals.treeMapComputer());
@@ -281,15 +275,21 @@ public class AAPT2CompileWorkerTaskFactory
 				for (String fname : fp.getDirectoryEntries(outputdirlocalpath).keySet()) {
 					ProviderHolderPathKey outpathkey = fp.getPathKey(outputdirlocalpath.resolve(fname));
 
-					ContentDescriptor outputfilecontent = taskcontext.invalidateGetContentDescriptor(outpathkey);
-					SakerFile outfile = taskcontext.getTaskUtilities().createProviderPathFile(fname, outpathkey);
+					//XXX don't call file.getContentDescriptor but store it during file collection
+					CompiledAAPT2FileContentDescriptor outputfilecd = new CompiledAAPT2FileContentDescriptor(
+							file.getContentDescriptor(), in.input.outputDirectoryRelativePath, fname);
+
+					taskcontext.invalidate(outpathkey);
+					//XXX the invalidation and file creation should be 1 call
+					SakerFile outfile = taskcontext.getTaskUtilities().createProviderPathFile(fname, outpathkey,
+							outputfilecd);
 					outdir.add(outfile);
 					SakerPath outfilepath = outfile.getSakerPath();
 
-					outputfilecontents.put(outfilepath, outputfilecontent);
+					outputfilecontents.put(outfilepath, outputfilecd);
 
 					in.input.outputFiles.add(outfilepath);
-					nstate.pathOutputFiles.put(outfilepath, new OutputFileState(in.input.path, outputfilecontent));
+					nstate.pathOutputFiles.put(outfilepath, new OutputFileState(in.input.path, outputfilecd));
 				}
 				nstate.pathInputFiles.put(in.input.path, in.input);
 			});

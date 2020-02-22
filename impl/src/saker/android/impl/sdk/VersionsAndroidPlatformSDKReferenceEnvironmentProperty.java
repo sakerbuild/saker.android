@@ -35,7 +35,7 @@ public class VersionsAndroidPlatformSDKReferenceEnvironmentProperty
 
 	@Override
 	public SDKReference getCurrentValue(SakerEnvironment environment) throws Exception {
-		Predicate<? super String> versionpredicate = AndroidUtils.getSDKVersionsPredicate(versions);
+		Predicate<? super String> versionpredicate = AndroidUtils.getSetContainsElseAlwaysPredicate(versions);
 
 		for (String loc : AndroidUtils.getEnvironmentUserParameterSDKLocations(environment)) {
 			SDKReference foundsdk = tryGetSDKFromInstallLocation(loc, versionpredicate);
