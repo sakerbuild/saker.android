@@ -1,13 +1,13 @@
-package saker.android.main.d8;
+package saker.android.main.aapt2;
 
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.TreeMap;
+import java.util.Map.Entry;
 
 import saker.android.impl.AndroidUtils;
-import saker.android.impl.d8.D8WorkerTaskFactory;
-import saker.android.impl.d8.D8WorkerTaskIdentifier;
+import saker.android.impl.aapt2.AAPT2CompileWorkerTaskFactory;
+import saker.android.impl.aapt2.AAPT2CompileWorkerTaskIdentifier;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.build.file.path.SakerPath;
@@ -27,20 +27,20 @@ import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNameConflictException;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 
-public class D8TaskFactory extends FrontendTaskFactory<Object> {
+public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
-	public static final String TASK_NAME = "saker.android.d8";
+	public static final String TASK_NAME = "saker.android.aapt2.compile";
 
 	@Override
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
 		return new ParameterizableTask<Object>() {
 
-			@SakerInput(value = "Directory", required = true)
-			public SakerPath directory;
+			@SakerInput(value = { "", "Directory" }, required = true)
+			public SakerPath directoryOption;
 
 			@SakerInput("Identifier")
-			public CompilationIdentifierTaskOption identifier;
+			public CompilationIdentifierTaskOption identifierOption;
 
 			@SakerInput(value = { "SDKs" })
 			public Map<String, SDKDescriptionTaskOption> sdksOption;
@@ -50,11 +50,12 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 				if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 					BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 				}
-				CompilationIdentifier compilationid = CompilationIdentifierTaskOption.getIdentifier(identifier);
+				CompilationIdentifier compilationid = CompilationIdentifierTaskOption.getIdentifier(identifierOption);
 				if (compilationid == null) {
 					compilationid = CompilationIdentifier.valueOf("default");
 				}
 
+				//XXX heavily duplicated with other frontend tasks
 				Map<String, SDKDescriptionTaskOption> sdkoptions = new TreeMap<>(
 						SDKSupportUtils.getSDKNameComparator());
 				if (!ObjectUtils.isNullOrEmpty(this.sdksOption)) {
@@ -90,9 +91,9 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 						AndroidUtils.DEFAULT_BUILD_TOOLS_SDK);
 				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);
 
-				D8WorkerTaskIdentifier workertaskid = new D8WorkerTaskIdentifier(compilationid);
-				D8WorkerTaskFactory workertask = new D8WorkerTaskFactory();
-				workertask.setClassDirectory(directory);
+				AAPT2CompileWorkerTaskIdentifier workertaskid = new AAPT2CompileWorkerTaskIdentifier(compilationid);
+				AAPT2CompileWorkerTaskFactory workertask = new AAPT2CompileWorkerTaskFactory();
+				workertask.setResourceDirectory(directoryOption);
 				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);

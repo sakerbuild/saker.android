@@ -45,7 +45,7 @@ public class D8WorkerTaskFactory implements TaskFactory<Object>, Task<Object>, E
 	private boolean noDesugaring;
 	private NavigableSet<String> mainDexClasses;
 
-	private NavigableMap<String, SDKDescription> sdkDescriptions;
+	private NavigableMap<String, ? extends SDKDescription> sdkDescriptions;
 
 	private transient TaskExecutionEnvironmentSelector remoteDispatchableEnvironmentSelector;
 
@@ -79,7 +79,7 @@ public class D8WorkerTaskFactory implements TaskFactory<Object>, Task<Object>, E
 		return mainDexClasses;
 	}
 
-	public void setSDKDescriptions(NavigableMap<String, SDKDescription> sdkdescriptions) {
+	public void setSDKDescriptions(NavigableMap<String, ? extends SDKDescription> sdkdescriptions) {
 		ObjectUtils.requireComparator(sdkdescriptions, SDKSupportUtils.getSDKNameComparator());
 		this.sdkDescriptions = sdkdescriptions;
 		if (sdkdescriptions.get(AndroidBuildToolsSDKReference.SDK_NAME) == null) {
@@ -116,11 +116,19 @@ public class D8WorkerTaskFactory implements TaskFactory<Object>, Task<Object>, E
 	}
 
 	@Override
+	public int getRequestedComputationTokenCount() {
+		return 1;
+	}
+
+	@Override
 	public Object run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 		}
-		taskcontext.setStandardOutDisplayIdentifier(D8TaskFactory.TASK_NAME);
+
+		D8WorkerTaskIdentifier taskid = (D8WorkerTaskIdentifier) taskcontext.getTaskId();
+
+		taskcontext.setStandardOutDisplayIdentifier(D8TaskFactory.TASK_NAME + ":" + taskid.getCompilationIdentifier());
 
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
 		D8Executor executor = environment
@@ -157,7 +165,6 @@ public class D8WorkerTaskFactory implements TaskFactory<Object>, Task<Object>, E
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		// TODO Auto-generated method stub
 		release = in.readBoolean();
 		minApi = in.readInt();
 		noDesugaring = in.readBoolean();

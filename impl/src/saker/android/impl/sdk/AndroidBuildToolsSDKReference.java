@@ -14,9 +14,12 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 
 	public static final String PATH_D8_JAR = "lib.jar.d8";
 
+	public static final String PATH_AAPT2_EXECUTABLE = "exe.aapt2";
+
 	public static final String PROPERTY_VERSION = "version";
 
 	private static final SakerPath LIB_D8JAR_PATH = SakerPath.valueOf("lib/d8.jar");
+	private static final SakerPath EXE_AAPT2_PATH = SakerPath.valueOf("aapt2.exe");
 
 	public static final String SDK_NAME = "AndroidBuildTools";
 
@@ -52,6 +55,10 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 		switch (identifier) {
 			case PATH_D8_JAR: {
 				return basePath.resolve(LIB_D8JAR_PATH);
+			}
+			case PATH_AAPT2_EXECUTABLE: {
+				//TODO FIX ON NON-WINDOWS OPERATING SYSTEMS (no .exe extension)
+				return basePath.resolve(EXE_AAPT2_PATH);
 			}
 			default: {
 				break;

@@ -1,1 +1,3 @@
 saker.android.d8=saker.android.main.d8.D8TaskFactory
+saker.android.aapt2.compile=saker.android.main.aapt2.AAPT2CompileTaskFactory
+saker.android.aapt2.link=saker.android.main.aapt2.AAPT2LinkTaskFactory
