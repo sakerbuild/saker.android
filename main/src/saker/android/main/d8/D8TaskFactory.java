@@ -5,8 +5,11 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
+import saker.android.impl.AndroidUtils;
 import saker.android.impl.d8.D8WorkerTaskFactory;
 import saker.android.impl.d8.D8WorkerTaskIdentifier;
+import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
+import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.ParameterizableTask;
@@ -83,6 +86,9 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 					}
 					sdkdescriptions.putIfAbsent(entry.getKey(), desc[0]);
 				}
+				sdkdescriptions.putIfAbsent(AndroidBuildToolsSDKReference.SDK_NAME,
+						AndroidUtils.DEFAULT_BUILD_TOOLS_SDK);
+				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);
 
 				D8WorkerTaskIdentifier workertaskid = new D8WorkerTaskIdentifier(compilationid);
 				D8WorkerTaskFactory workertask = new D8WorkerTaskFactory();

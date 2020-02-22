@@ -11,7 +11,6 @@ import java.util.zip.ZipEntry;
 import com.android.tools.r8.ClassFileResourceProvider;
 import com.android.tools.r8.ProgramResource;
 import com.android.tools.r8.ResourceException;
-import com.android.tools.r8.ProgramResource.Kind;
 import com.android.tools.r8.origin.ArchiveEntryOrigin;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.origin.PathOrigin;
@@ -19,20 +18,20 @@ import com.android.tools.r8.origin.PathOrigin;
 import saker.android.impl.d8.AndroidJarDescriptorsCacheKey.AndroidJarData;
 
 public final class JarFileClassFileResourceProvider implements ClassFileResourceProvider {
-	private final NavigableMap<String, ZipEntry> descriptorentries;
-	private final AndroidJarData jardata;
+	private final NavigableMap<String, ZipEntry> descriptorEntries;
+	private final AndroidJarData jarData;
 	private final Origin jarOrigin;
 
 	public JarFileClassFileResourceProvider(AndroidJarData jardata) {
 		NavigableMap<String, ZipEntry> descriptorentries = jardata.getDescriptorEntries();
-		this.descriptorentries = descriptorentries;
-		this.jardata = jardata;
+		this.descriptorEntries = descriptorentries;
+		this.jarData = jardata;
 		this.jarOrigin = new PathOrigin(Paths.get(jardata.getJarFile().getName()));
 	}
 
 	@Override
 	public ProgramResource getProgramResource(String descriptor) {
-		ZipEntry entry = descriptorentries.get(descriptor);
+		ZipEntry entry = descriptorEntries.get(descriptor);
 		if (entry == null) {
 			return null;
 		}
@@ -55,7 +54,7 @@ public final class JarFileClassFileResourceProvider implements ClassFileResource
 			@Override
 			public InputStream getByteStream() throws ResourceException {
 				try {
-					return jardata.getJarFile().getInputStream(entry);
+					return jarData.getJarFile().getInputStream(entry);
 				} catch (IOException e) {
 					throw new ResourceException(getOrigin(), e);
 				}
@@ -65,6 +64,6 @@ public final class JarFileClassFileResourceProvider implements ClassFileResource
 
 	@Override
 	public Set<String> getClassDescriptors() {
-		return descriptorentries.navigableKeySet();
+		return descriptorEntries.navigableKeySet();
 	}
 }

@@ -6,7 +6,6 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
-import java.util.Objects;
 import java.util.Set;
 
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
@@ -27,6 +26,7 @@ import saker.build.thirdparty.saker.util.classloader.JarClassLoaderDataFinder;
 import saker.build.thirdparty.saker.util.classloader.MultiDataClassLoader;
 import saker.build.thirdparty.saker.util.classloader.SubDirectoryClassLoaderDataFinder;
 import saker.build.thirdparty.saker.util.io.IOUtils;
+import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.trace.BuildTrace;
 import saker.build.util.cache.CacheKey;
 import saker.sdk.support.api.SDKDescription;
@@ -145,14 +145,74 @@ public class D8WorkerTaskFactory implements TaskFactory<Object>, Task<Object>, E
 
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
-		// TODO Auto-generated method stub
+		out.writeBoolean(release);
+		out.writeInt(minApi);
+		out.writeBoolean(noDesugaring);
+		SerialUtils.writeExternalCollection(out, mainDexClasses);
+		SerialUtils.writeExternalMap(out, sdkDescriptions);
+		out.writeObject(remoteDispatchableEnvironmentSelector);
 
+		out.writeObject(classDirectory);
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		// TODO Auto-generated method stub
+		release = in.readBoolean();
+		minApi = in.readInt();
+		noDesugaring = in.readBoolean();
+		mainDexClasses = SerialUtils.readExternalSortedImmutableNavigableSet(in);
+		sdkDescriptions = SerialUtils.readExternalSortedImmutableNavigableMap(in,
+				SDKSupportUtils.getSDKNameComparator());
+		remoteDispatchableEnvironmentSelector = (TaskExecutionEnvironmentSelector) in.readObject();
 
+		classDirectory = (SakerPath) in.readObject();
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((classDirectory == null) ? 0 : classDirectory.hashCode());
+		result = prime * result + ((mainDexClasses == null) ? 0 : mainDexClasses.hashCode());
+		result = prime * result + minApi;
+		result = prime * result + (noDesugaring ? 1231 : 1237);
+		result = prime * result + (release ? 1231 : 1237);
+		result = prime * result + ((sdkDescriptions == null) ? 0 : sdkDescriptions.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		D8WorkerTaskFactory other = (D8WorkerTaskFactory) obj;
+		if (classDirectory == null) {
+			if (other.classDirectory != null)
+				return false;
+		} else if (!classDirectory.equals(other.classDirectory))
+			return false;
+		if (mainDexClasses == null) {
+			if (other.mainDexClasses != null)
+				return false;
+		} else if (!mainDexClasses.equals(other.mainDexClasses))
+			return false;
+		if (minApi != other.minApi)
+			return false;
+		if (noDesugaring != other.noDesugaring)
+			return false;
+		if (release != other.release)
+			return false;
+		if (sdkDescriptions == null) {
+			if (other.sdkDescriptions != null)
+				return false;
+		} else if (!sdkDescriptions.equals(other.sdkDescriptions))
+			return false;
+		return true;
 	}
 
 	private static class D8ExecutorCacheKey implements CacheKey<D8Executor, MultiDataClassLoader> {

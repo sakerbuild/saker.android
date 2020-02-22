@@ -40,6 +40,10 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 		this.basePath = basePath;
 	}
 
+	public String getVersion() {
+		return version;
+	}
+
 	@Override
 	public SakerPath getPath(String identifier) throws Exception {
 		if (identifier == null) {
