@@ -3,6 +3,18 @@ global(DEPENDENCIES_saker.android) = [
 	saker.sdk.support,
 	saker.compiler.utils,
 ]
+global(saker.android.COMPILER_OPTIONS) = [
+	###
+	{
+		AddExports: [
+			{
+				Module: java.base,
+				Package: sun.security.x509,
+			}
+		]
+	}
+	###
+]
 
 static(VERSION_saker.build) = nest.dependency.resolve(
 	saker.build,
@@ -39,8 +51,12 @@ compile(
 			api/src/,
 			impl/src/,
 		],
-		ClassPath: $basecp + [lib/d8_api_29.jar],
-		Identifier: "saker.android",	
+		ClassPath: $basecp + [
+			lib/d8_api_29.jar,
+			lib/apksigner_api_29.jar,
+		],
+		Identifier: "saker.android",
+		CompilerOptions: global(saker.android.COMPILER_OPTIONS),
 	)
 	
 	saker.java.compile(
@@ -49,9 +65,28 @@ compile(
 			api/src/,
 			impl/src/,
 		],
-		ClassPath: $basecp + [lib/d8_api_28.jar],
-		Identifier: "saker.android-d8_28_compat",	
+		ClassPath: $basecp + [
+			lib/d8_api_28.jar,
+			lib/apksigner_api_29.jar,
+		],
+		Identifier: "saker.android-d8_28_compat",
+		CompilerOptions: global(saker.android.COMPILER_OPTIONS),
 	)
+	foreach $ver in [24, 25, 26, 27, 28] {
+		saker.java.compile(
+		SourceDirectories: [
+			main/src/,
+			api/src/,
+			impl/src/,
+		],
+		ClassPath: $basecp + [
+			lib/d8_api_29.jar,
+			"lib/apksigner_api_{ $ver }.jar",
+		],
+		Identifier: "saker.android-apksigner_{ $ver }_compat",
+		CompilerOptions: global(saker.android.COMPILER_OPTIONS),
+	)
+	}
 }
 export(
 	in compile = include(compile),
@@ -119,6 +154,11 @@ export(
 				Directory: $compile[javac][ClassDirectory],
 				Resources: saker/android/d8support/**,
 				TargetDirectory: d8support,
+			},
+			{
+				Directory: $compile[javac][ClassDirectory],
+				Resources: saker/android/apksignersupport/**,
+				TargetDirectory: apksignersupport,
 			},
 			{
 				Directory: impl/resources/,

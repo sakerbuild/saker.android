@@ -22,6 +22,7 @@ import saker.build.task.TaskFactory;
 import saker.build.thirdparty.saker.util.DateUtils;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.thirdparty.saker.util.classloader.ClassLoaderDataFinder;
 import saker.build.thirdparty.saker.util.classloader.JarClassLoaderDataFinder;
 import saker.build.thirdparty.saker.util.classloader.MultiDataClassLoader;
 import saker.build.thirdparty.saker.util.classloader.SubDirectoryClassLoaderDataFinder;
@@ -141,9 +142,7 @@ public class D8WorkerTaskFactory implements TaskFactory<Object>, Task<Object>, E
 		} else {
 			sdkrefs = SDKSupportUtils.resolveSDKReferences(environment, this.sdkDescriptions);
 		}
-		executor.run(taskcontext, this, sdkrefs);
-		// TODO Auto-generated method stub
-		return null;
+		return executor.run(taskcontext, this, sdkrefs);
 	}
 
 	@Override
@@ -241,7 +240,7 @@ public class D8WorkerTaskFactory implements TaskFactory<Object>, Task<Object>, E
 			if (d8jarpath == null) {
 				throw new SDKPathNotFoundException("d8.jar not found in Android build tools: " + buildToolsSdk);
 			}
-			JarClassLoaderDataFinder jarcldf;
+			ClassLoaderDataFinder jarcldf;
 			try {
 				jarcldf = new JarClassLoaderDataFinder(LocalFileProvider.toRealPath(d8jarpath));
 			} catch (IOException e) {

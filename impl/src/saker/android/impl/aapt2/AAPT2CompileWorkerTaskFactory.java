@@ -19,7 +19,6 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.main.aapt2.AAPT2CompileTaskFactory;
-import saker.build.file.DirectoryVisitPredicate;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
 import saker.build.file.content.ContentDescriptor;
@@ -255,7 +254,7 @@ public class AAPT2CompileWorkerTaskFactory
 
 				outdir.clear();
 				Path outputdirlocalpath = taskcontext.mirror(outdir,
-						new OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate());
+						OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate.INSTANCE);
 
 				String[] cmd = new String[] { "compile", "-o", outputdirlocalpath.toString(),
 						taskcontext.mirror(file).toString() };
@@ -331,28 +330,6 @@ public class AAPT2CompileWorkerTaskFactory
 				previnstate.outputDirectoryRelativePath);
 		if (outdirfile != null) {
 			outdirfile.remove();
-		}
-	}
-
-	private final class OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate implements DirectoryVisitPredicate {
-		@Override
-		public boolean visitFile(String name, SakerFile file) {
-			return false;
-		}
-
-		@Override
-		public boolean visitDirectory(String name, SakerDirectory directory) {
-			return false;
-		}
-
-		@Override
-		public DirectoryVisitPredicate directoryVisitor(String name, SakerDirectory directory) {
-			return null;
-		}
-
-		@Override
-		public NavigableSet<String> getSynchronizeFilesToKeep() {
-			return null;
 		}
 	}
 

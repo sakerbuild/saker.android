@@ -13,13 +13,17 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 	private static final long serialVersionUID = 1L;
 
 	public static final String PATH_D8_JAR = "lib.jar.d8";
+	public static final String PATH_APKSIGNER_JAR = "lib.jar.apksigner";
 
 	public static final String PATH_AAPT2_EXECUTABLE = "exe.aapt2";
+	public static final String PATH_ZIPALIGN_EXECUTABLE = "exe.zipalign";
 
 	public static final String PROPERTY_VERSION = "version";
 
 	private static final SakerPath LIB_D8JAR_PATH = SakerPath.valueOf("lib/d8.jar");
+	private static final SakerPath LIB_APKSIGNERJAR_PATH = SakerPath.valueOf("lib/apksigner.jar");
 	private static final SakerPath EXE_AAPT2_PATH = SakerPath.valueOf("aapt2.exe");
+	private static final SakerPath EXE_ZIPALIGN_PATH = SakerPath.valueOf("zipalign.exe");
 
 	public static final String SDK_NAME = "AndroidBuildTools";
 
@@ -56,9 +60,16 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 			case PATH_D8_JAR: {
 				return basePath.resolve(LIB_D8JAR_PATH);
 			}
+			case PATH_APKSIGNER_JAR: {
+				return basePath.resolve(LIB_APKSIGNERJAR_PATH);
+			}
 			case PATH_AAPT2_EXECUTABLE: {
 				//TODO FIX ON NON-WINDOWS OPERATING SYSTEMS (no .exe extension)
 				return basePath.resolve(EXE_AAPT2_PATH);
+			}
+			case PATH_ZIPALIGN_EXECUTABLE: {
+				//TODO FIX ON NON-WINDOWS OPERATING SYSTEMS (no .exe extension)
+				return basePath.resolve(EXE_ZIPALIGN_PATH);
 			}
 			default: {
 				break;
