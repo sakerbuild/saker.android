@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.NavigableMap;
 
 import saker.android.impl.AndroidUtils;
+import saker.android.impl.aapt2.AAPT2CompilationConfiguration;
 import saker.android.impl.aapt2.AAPT2CompileWorkerTaskFactory;
 import saker.android.impl.aapt2.AAPT2CompileWorkerTaskIdentifier;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
@@ -41,6 +42,16 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput(value = { "SDKs" })
 			public Map<String, SDKDescriptionTaskOption> sdksOption;
 
+			@SakerInput("Legacy")
+			public boolean legacyOption;
+			@SakerInput("NoCrunch")
+			public boolean noCrunchOption;
+			@SakerInput("PseudoLocalize")
+			public boolean pseudoLocalizeOption;
+			
+			@SakerInput("Verbose")
+			public boolean verboseOption;
+
 			@Override
 			public Object run(TaskContext taskcontext) throws Exception {
 				if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
@@ -57,9 +68,17 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 						AndroidUtils.DEFAULT_BUILD_TOOLS_SDK);
 				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);
 
+				AAPT2CompilationConfiguration config = new AAPT2CompilationConfiguration();
+				config.setLegacy(legacyOption);
+				config.setNoCrunch(noCrunchOption);
+				config.setPseudoLocalize(pseudoLocalizeOption);
+
 				AAPT2CompileWorkerTaskIdentifier workertaskid = new AAPT2CompileWorkerTaskIdentifier(compilationid);
 				AAPT2CompileWorkerTaskFactory workertask = new AAPT2CompileWorkerTaskFactory();
+
 				workertask.setResourceDirectory(directoryOption);
+				workertask.setConfiguration(config);
+				workertask.setVerbose(verboseOption);
 				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);

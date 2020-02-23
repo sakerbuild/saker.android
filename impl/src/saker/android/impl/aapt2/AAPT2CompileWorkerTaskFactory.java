@@ -55,6 +55,10 @@ public class AAPT2CompileWorkerTaskFactory
 
 	@Deprecated
 	private SakerPath resourceDirectory;
+
+	private AAPT2CompilationConfiguration configuration;
+	private transient boolean verbose;
+
 	private NavigableMap<String, ? extends SDKDescription> sdkDescriptions;
 
 	private transient TaskExecutionEnvironmentSelector remoteDispatchableEnvironmentSelector;
@@ -63,6 +67,14 @@ public class AAPT2CompileWorkerTaskFactory
 	 * For {@link Externalizable}.
 	 */
 	public AAPT2CompileWorkerTaskFactory() {
+	}
+
+	public void setConfiguration(AAPT2CompilationConfiguration configuration) {
+		this.configuration = configuration;
+	}
+
+	public void setVerbose(boolean verbose) {
+		this.verbose = verbose;
 	}
 
 	@Deprecated
@@ -151,8 +163,11 @@ public class AAPT2CompileWorkerTaskFactory
 				.collectFilesReportInputFileAndAdditionDependency(AAPT2TaskTags.INPUT_RESOURCE,
 						new AndroidResourcesFileCollectionStrategy(resourceDirectory));
 
+		AAPT2CompilationConfiguration thiscompilationconfig = this.configuration;
+
 		if (prevstate != null) {
-			if (!prevstate.sdkReferences.equals(sdkrefs)) {
+			if (!prevstate.compilationConfig.equals(thiscompilationconfig)
+					|| !prevstate.sdkReferences.equals(sdkrefs)) {
 				prevstate = null;
 			}
 		}
@@ -210,15 +225,13 @@ public class AAPT2CompileWorkerTaskFactory
 				outputfilecontents.put(entry.getKey(), entry.getValue().content);
 			}
 		} else {
-			nstate = new CompileState();
+			nstate = new CompileState(thiscompilationconfig, sdkrefs);
 			nstate.pathInputFiles = new ConcurrentSkipListMap<>();
 			nstate.pathOutputFiles = new ConcurrentSkipListMap<>();
 
 			outputdir.clear();
 			inputfiles = collectedfiles;
 		}
-
-		nstate.sdkReferences = sdkrefs;
 
 		if (!inputfiles.isEmpty()) {
 			Map<String, Map<String, InputFileConfig>> resdirinputfiles = new TreeMap<>();
@@ -256,8 +269,23 @@ public class AAPT2CompileWorkerTaskFactory
 				Path outputdirlocalpath = taskcontext.mirror(outdir,
 						OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate.INSTANCE);
 
-				String[] cmd = new String[] { "compile", "-o", outputdirlocalpath.toString(),
-						taskcontext.mirror(file).toString() };
+				ArrayList<String> cmd = new ArrayList<>();
+				cmd.add("compile");
+				if (thiscompilationconfig.isLegacy()) {
+					cmd.add("--legacy");
+				}
+				if (thiscompilationconfig.isNoCrunch()) {
+					cmd.add("--no-crunch");
+				}
+				if (thiscompilationconfig.isPseudoLocalize()) {
+					cmd.add("--pseudo-localize");
+				}
+				if (verbose) {
+					cmd.add("-v");
+				}
+				cmd.add("-o");
+				cmd.add(outputdirlocalpath.toString());
+				cmd.add(taskcontext.mirror(file).toString());
 
 				UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
 				try {
@@ -346,25 +374,30 @@ public class AAPT2CompileWorkerTaskFactory
 
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
+		out.writeObject(configuration);
 		SerialUtils.writeExternalMap(out, sdkDescriptions);
 		out.writeObject(remoteDispatchableEnvironmentSelector);
 
 		out.writeObject(resourceDirectory);
+		out.writeBoolean(verbose);
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		configuration = SerialUtils.readExternalObject(in);
 		sdkDescriptions = SerialUtils.readExternalSortedImmutableNavigableMap(in,
 				SDKSupportUtils.getSDKNameComparator());
 		remoteDispatchableEnvironmentSelector = (TaskExecutionEnvironmentSelector) in.readObject();
 
 		resourceDirectory = (SakerPath) in.readObject();
+		verbose = in.readBoolean();
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
+		result = prime * result + ((configuration == null) ? 0 : configuration.hashCode());
 		result = prime * result + ((resourceDirectory == null) ? 0 : resourceDirectory.hashCode());
 		result = prime * result + ((sdkDescriptions == null) ? 0 : sdkDescriptions.hashCode());
 		return result;
@@ -379,6 +412,11 @@ public class AAPT2CompileWorkerTaskFactory
 		if (getClass() != obj.getClass())
 			return false;
 		AAPT2CompileWorkerTaskFactory other = (AAPT2CompileWorkerTaskFactory) obj;
+		if (configuration == null) {
+			if (other.configuration != null)
+				return false;
+		} else if (!configuration.equals(other.configuration))
+			return false;
 		if (resourceDirectory == null) {
 			if (other.resourceDirectory != null)
 				return false;
@@ -455,20 +493,30 @@ public class AAPT2CompileWorkerTaskFactory
 			inputFilePath = (SakerPath) in.readObject();
 			content = (ContentDescriptor) in.readObject();
 		}
-
 	}
 
 	private static class CompileState implements Externalizable {
 		private static final long serialVersionUID = 1L;
 
+		protected AAPT2CompilationConfiguration compilationConfig;
 		protected NavigableMap<String, SDKReference> sdkReferences;
 		protected NavigableMap<SakerPath, InputFileState> pathInputFiles;
 		protected NavigableMap<SakerPath, OutputFileState> pathOutputFiles;
 
+		/**
+		 * For {@link Externalizable}.
+		 */
 		public CompileState() {
 		}
 
+		public CompileState(AAPT2CompilationConfiguration compilationConfig,
+				NavigableMap<String, SDKReference> sdkReferences) {
+			this.compilationConfig = compilationConfig;
+			this.sdkReferences = sdkReferences;
+		}
+
 		public CompileState(CompileState copy) {
+			this.compilationConfig = copy.compilationConfig;
 			this.sdkReferences = copy.sdkReferences;
 			this.pathInputFiles = new ConcurrentSkipListMap<>(copy.pathInputFiles);
 			this.pathOutputFiles = new ConcurrentSkipListMap<>(copy.pathOutputFiles);
@@ -476,6 +524,7 @@ public class AAPT2CompileWorkerTaskFactory
 
 		@Override
 		public void writeExternal(ObjectOutput out) throws IOException {
+			out.writeObject(compilationConfig);
 			SerialUtils.writeExternalMap(out, sdkReferences);
 			SerialUtils.writeExternalMap(out, pathInputFiles);
 			SerialUtils.writeExternalMap(out, pathOutputFiles);
@@ -483,6 +532,7 @@ public class AAPT2CompileWorkerTaskFactory
 
 		@Override
 		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+			compilationConfig = SerialUtils.readExternalObject(in);
 			sdkReferences = SerialUtils.readExternalSortedImmutableNavigableMap(in,
 					SDKSupportUtils.getSDKNameComparator());
 			pathInputFiles = SerialUtils.readExternalSortedImmutableNavigableMap(in);

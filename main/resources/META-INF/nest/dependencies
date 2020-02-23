@@ -4,3 +4,5 @@ saker.compiler.utils
 	classpath: [0)
 saker.sdk.support
 	classpath: [0)
+saker.zip-api
+	classpath: [0)
