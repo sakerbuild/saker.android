@@ -67,7 +67,7 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 				SignApkWorkerTaskIdentifier workertaskid = new SignApkWorkerTaskIdentifier(outputpath);
 				SignApkWorkerTaskFactory workertask = new SignApkWorkerTaskFactory();
 				workertask.setInputPath(apkOption);
-				workertask.setOutputPath(outputpath);
+				workertask.setOutputPath(SakerPath.valueOf(TASK_NAME).resolve(outputpath));
 				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);

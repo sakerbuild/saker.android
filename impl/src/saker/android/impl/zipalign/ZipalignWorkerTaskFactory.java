@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.NavigableMap;
 import java.util.Set;
 
+import saker.android.api.zipalign.ZipalignTaskOutput;
 import saker.android.impl.aapt2.OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.main.zipalign.ZipalignTaskFactory;
@@ -41,7 +42,8 @@ import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNotFoundException;
 import saker.sdk.support.api.exc.SDKPathNotFoundException;
 
-public class ZipalignWorkerTaskFactory implements TaskFactory<Object>, Task<Object>, Externalizable {
+public class ZipalignWorkerTaskFactory
+		implements TaskFactory<ZipalignTaskOutput>, Task<ZipalignTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private SakerPath inputPath;
@@ -101,7 +103,7 @@ public class ZipalignWorkerTaskFactory implements TaskFactory<Object>, Task<Obje
 	}
 
 	@Override
-	public Object run(TaskContext taskcontext) throws Exception {
+	public ZipalignTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 		}
@@ -120,8 +122,8 @@ public class ZipalignWorkerTaskFactory implements TaskFactory<Object>, Task<Obje
 		taskcontext.reportInputFileDependency(null, inputPath, mirroredinputfile.getContents());
 
 		SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
-		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtRelativePathCreate(
-				builddir.getDirectoryCreate(ZipalignTaskFactory.TASK_NAME), outputPath.getParent());
+		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtRelativePathCreate(builddir,
+				outputPath.getParent());
 
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
 
@@ -171,14 +173,14 @@ public class ZipalignWorkerTaskFactory implements TaskFactory<Object>, Task<Obje
 
 		outputfile.synchronize();
 
-		taskcontext.reportOutputFileDependency(null, outputfile.getSakerPath(), outputfilecd);
+		SakerPath outputabsolutepath = outputfile.getSakerPath();
+		taskcontext.reportOutputFileDependency(null, outputabsolutepath, outputfilecd);
 
-		// TODO Auto-generated method stub
-		return null;
+		return new ZipalignTaskOutputImpl(outputabsolutepath);
 	}
 
 	@Override
-	public Task<? extends Object> createTask(ExecutionContext executioncontext) {
+	public Task<? extends ZipalignTaskOutput> createTask(ExecutionContext executioncontext) {
 		return this;
 	}
 

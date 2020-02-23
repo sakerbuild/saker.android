@@ -67,7 +67,7 @@ public class ZipalignTaskFactory extends FrontendTaskFactory<Object> {
 				ZipalignWorkerTaskIdentifier workertaskid = new ZipalignWorkerTaskIdentifier(outputpath);
 				ZipalignWorkerTaskFactory workertask = new ZipalignWorkerTaskFactory();
 				workertask.setInputPath(inputOption);
-				workertask.setOutputPath(outputpath);
+				workertask.setOutputPath(SakerPath.valueOf(TASK_NAME).resolve(outputpath));
 				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);

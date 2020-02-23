@@ -19,7 +19,9 @@ import java.util.UUID;
 
 import com.android.apksigner.ApkSignerTool;
 
+import saker.android.api.apk.sign.SignApkTaskOutput;
 import saker.android.impl.apk.sign.ApkSignExecutor;
+import saker.android.impl.apk.sign.SignApkTaskOutputImpl;
 import saker.android.impl.apk.sign.SignApkWorkerTaskFactory;
 import saker.android.impl.support.SupportToolSystemExitError;
 import saker.build.task.TaskContext;
@@ -47,7 +49,7 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 	}
 
 	@Override
-	public Object run(TaskContext taskcontext, SignApkWorkerTaskFactory workertask,
+	public void run(TaskContext taskcontext, SignApkWorkerTaskFactory workertask,
 			NavigableMap<String, SDKReference> sdkrefs, Path inputfilelocalpath, Path outputfilelocalpath)
 			throws Exception {
 		NestBundleClassLoader nestcl = (NestBundleClassLoader) ApkSignExecutor.class.getClassLoader();
@@ -92,9 +94,6 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 		} catch (SupportToolSystemExitError e) {
 			throw new IOException("apksigner execution failed: " + e.getExitCode());
 		}
-
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	private static final String DEBUG_KEY_PASSWORD = "android";

@@ -8,6 +8,7 @@ import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Set;
 
+import saker.android.api.d8.D8TaskOutput;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.d8.D8TaskFactory;
@@ -36,7 +37,7 @@ import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNotFoundException;
 import saker.sdk.support.api.exc.SDKPathNotFoundException;
 
-public class D8WorkerTaskFactory implements TaskFactory<Object>, Task<Object>, Externalizable {
+public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8TaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	@Deprecated
@@ -122,7 +123,7 @@ public class D8WorkerTaskFactory implements TaskFactory<Object>, Task<Object>, E
 	}
 
 	@Override
-	public Object run(TaskContext taskcontext) throws Exception {
+	public D8TaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 		}
@@ -146,7 +147,7 @@ public class D8WorkerTaskFactory implements TaskFactory<Object>, Task<Object>, E
 	}
 
 	@Override
-	public Task<? extends Object> createTask(ExecutionContext executioncontext) {
+	public Task<? extends D8TaskOutput> createTask(ExecutionContext executioncontext) {
 		return this;
 	}
 

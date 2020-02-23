@@ -22,9 +22,11 @@ import com.android.tools.r8.ProgramResourceProvider;
 import com.android.tools.r8.ResourceException;
 import com.android.tools.r8.utils.StringDiagnostic;
 
+import saker.android.api.d8.D8TaskOutput;
 import saker.android.impl.d8.AndroidJarDescriptorsCacheKey;
 import saker.android.impl.d8.AndroidJarDescriptorsCacheKey.AndroidJarData;
 import saker.android.impl.d8.D8Executor;
+import saker.android.impl.d8.D8TaskOutputImpl;
 import saker.android.impl.d8.D8TaskTags;
 import saker.android.impl.d8.D8WorkerTaskFactory;
 import saker.android.impl.d8.D8WorkerTaskIdentifier;
@@ -55,7 +57,7 @@ public class D8ExecutorImpl implements D8Executor {
 	}
 
 	@Override
-	public Object run(TaskContext taskcontext, D8WorkerTaskFactory workertask,
+	public D8TaskOutput run(TaskContext taskcontext, D8WorkerTaskFactory workertask,
 			NavigableMap<String, SDKReference> sdkreferences) throws Exception {
 		IncrementalD8State prevstate = taskcontext.getPreviousTaskOutput(IncrementalD8State.class,
 				IncrementalD8State.class);
@@ -300,7 +302,10 @@ public class D8ExecutorImpl implements D8Executor {
 				outputclassesfiles);
 
 		taskcontext.setTaskOutput(IncrementalD8State.class, nstate);
-		return null;
+
+		NavigableSet<SakerPath> dexfiles = ImmutableUtils
+				.makeImmutableNavigableSet(outputclassesfiles.navigableKeySet());
+		return new D8TaskOutputImpl(dexfiles);
 	}
 
 	private static OutputFileInformation removeOutputFileForDescriptor(TaskContext taskcontext,

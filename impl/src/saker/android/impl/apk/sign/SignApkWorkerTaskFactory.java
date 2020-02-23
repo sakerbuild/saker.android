@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.NavigableMap;
 import java.util.Set;
 
+import saker.android.api.apk.sign.SignApkTaskOutput;
 import saker.android.impl.aapt2.OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.support.InstrumentingJarClassLoaderDataFinder;
@@ -45,7 +46,8 @@ import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNotFoundException;
 import saker.sdk.support.api.exc.SDKPathNotFoundException;
 
-public class SignApkWorkerTaskFactory implements TaskFactory<Object>, Task<Object>, Externalizable {
+public class SignApkWorkerTaskFactory
+		implements TaskFactory<SignApkTaskOutput>, Task<SignApkTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private SakerPath inputPath;
@@ -123,7 +125,7 @@ public class SignApkWorkerTaskFactory implements TaskFactory<Object>, Task<Objec
 	}
 
 	@Override
-	public Object run(TaskContext taskcontext) throws Exception {
+	public SignApkTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 		}
@@ -142,8 +144,8 @@ public class SignApkWorkerTaskFactory implements TaskFactory<Object>, Task<Objec
 		taskcontext.reportInputFileDependency(null, inputPath, mirroredinputfile.getContents());
 
 		SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
-		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtRelativePathCreate(
-				builddir.getDirectoryCreate(SignApkTaskFactory.TASK_NAME), outputPath.getParent());
+		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtRelativePathCreate(builddir,
+				outputPath.getParent());
 
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
 		ApkSignExecutor executor = environment
@@ -162,7 +164,7 @@ public class SignApkWorkerTaskFactory implements TaskFactory<Object>, Task<Objec
 				.mirror(outputdir, OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate.INSTANCE)
 				.resolve(outputPath.getFileName());
 
-		Object result = executor.run(taskcontext, this, sdkrefs, inputfilelocalpath, outputfilelocalpath);
+		executor.run(taskcontext, this, sdkrefs, inputfilelocalpath, outputfilelocalpath);
 
 		ProviderHolderPathKey outputfilepathkey = LocalFileProvider.getInstance().getPathKey(outputfilelocalpath);
 		ContentDescriptor outputfilecd = taskcontext.invalidateGetContentDescriptor(outputfilepathkey);
@@ -172,13 +174,14 @@ public class SignApkWorkerTaskFactory implements TaskFactory<Object>, Task<Objec
 
 		outputfile.synchronize();
 
-		taskcontext.reportOutputFileDependency(null, outputfile.getSakerPath(), outputfilecd);
+		SakerPath outputabsolutepath = outputfile.getSakerPath();
+		taskcontext.reportOutputFileDependency(null, outputabsolutepath, outputfilecd);
 
-		return result;
+		return new SignApkTaskOutputImpl(outputabsolutepath);
 	}
 
 	@Override
-	public Task<? extends Object> createTask(ExecutionContext executioncontext) {
+	public Task<? extends SignApkTaskOutput> createTask(ExecutionContext executioncontext) {
 		return this;
 	}
 
