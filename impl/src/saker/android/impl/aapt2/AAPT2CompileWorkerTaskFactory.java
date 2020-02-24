@@ -271,14 +271,8 @@ public class AAPT2CompileWorkerTaskFactory
 
 				ArrayList<String> cmd = new ArrayList<>();
 				cmd.add("compile");
-				if (thiscompilationconfig.isLegacy()) {
-					cmd.add("--legacy");
-				}
-				if (thiscompilationconfig.isNoCrunch()) {
-					cmd.add("--no-crunch");
-				}
-				if (thiscompilationconfig.isPseudoLocalize()) {
-					cmd.add("--pseudo-localize");
+				for (AAPT2CompilerFlag f : thiscompilationconfig.getFlags()) {
+					cmd.add(f.argument);
 				}
 				if (verbose) {
 					cmd.add("-v");

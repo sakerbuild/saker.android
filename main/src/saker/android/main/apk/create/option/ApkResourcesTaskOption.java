@@ -9,7 +9,7 @@ public abstract class ApkResourcesTaskOption {
 	public abstract void applyTo(ZipCreationTaskBuilder zipbuilder);
 
 	public static ApkResourcesTaskOption valueOf(AAPT2LinkTaskOutput aaptoutput) {
-		SakerPath resapkpath = aaptoutput.getResourceAPK();
+		SakerPath resapkpath = aaptoutput.getAPKPath();
 		return valueOf(resapkpath);
 	}
 

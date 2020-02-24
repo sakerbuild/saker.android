@@ -1,11 +1,15 @@
 package saker.android.impl.aapt2;
 
 import java.io.Externalizable;
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
@@ -36,6 +40,7 @@ import saker.build.task.TaskExecutionUtilities.MirroredFileContents;
 import saker.build.task.TaskFactory;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.thirdparty.saker.util.StringUtils;
 import saker.build.thirdparty.saker.util.io.FileUtils;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.thirdparty.saker.util.io.UnsyncByteArrayOutputStream;
@@ -52,12 +57,52 @@ public class AAPT2LinkWorkerTaskFactory
 	private static final long serialVersionUID = 1L;
 
 	private NavigableSet<SakerPath> inputFiles;
+	private SakerPath manifest;
+	private Set<AAPT2LinkerFlag> flags = Collections.emptySet();
+	private Integer packageId;
+
+	private boolean generateProguardRules;
+	private boolean generateMainDexProguardRules;
+
+	/**
+	 * <code>-c</code> argument.
+	 */
+	private List<String> configurations = Collections.emptyList();
+
+	private String preferredDensity;
+	private List<String> productNames = Collections.emptyList();
+	private Integer minSdkVersion;
+	private Integer targetSdkVersion;
+	private Integer versionCode;
+	private Integer versionCodeMajor;
+	private String versionName;
+	private String compileSdkVersionCode;
+	private String compileSdkVersionName;
+
+	private boolean emitIds;
+	private SakerPath stableIdsFilePath;
+	private String privateSymbols;
+	private String customPackage;
+	private NavigableSet<String> extraPackages = Collections.emptyNavigableSet();
+	private List<String> addJavadocAnnotation = Collections.emptyList();
+	private boolean outputTextSymbols;
+	private String renameManifestPackage;
+	private String renameInstrumentationTargetPackage;
+	private NavigableSet<String> noncompressedExtensions = Collections.emptyNavigableSet();
+	private String noCompressRegex;
+
+	private NavigableSet<String> excludeConfigs = Collections.emptyNavigableSet();
+
+	/**
+	 * Maps user provided ids, to set of configurations
+	 */
+	private NavigableMap<String, NavigableSet<String>> splits = Collections.emptyNavigableMap();
+
+	private transient boolean verbose;
 
 	private NavigableMap<String, ? extends SDKDescription> sdkDescriptions;
 
 	private transient TaskExecutionEnvironmentSelector remoteDispatchableEnvironmentSelector;
-
-	private SakerPath manifest;
 
 	/**
 	 * For {@link Externalizable}.
@@ -73,6 +118,10 @@ public class AAPT2LinkWorkerTaskFactory
 		}
 		remoteDispatchableEnvironmentSelector = SDKSupportUtils
 				.getSDKBasedClusterExecutionEnvironmentSelector(sdkdescriptions.values());
+	}
+
+	public void setFlags(Set<AAPT2LinkerFlag> flags) {
+		this.flags = flags == null ? Collections.emptySet() : flags;
 	}
 
 	public void setInputFiles(NavigableSet<SakerPath> inputFiles) {
@@ -151,28 +200,109 @@ public class AAPT2LinkWorkerTaskFactory
 
 		String outputapkfilename = "output.apk";
 		Path outputdirmirror = taskcontext.mirror(outputdir);
-		Path outputapkfilepath = outputdirmirror.resolve(outputapkfilename);
+		Path outputapkfilelocalpath = outputdirmirror.resolve(outputapkfilename);
+
+		Path outputproguardruleslocalpath = getOutputPathIfEnabledForFileName(outputdirmirror, generateProguardRules,
+				"rules.pro");
+		Path outputmaindexproguardruleslocalpath = getOutputPathIfEnabledForFileName(outputdirmirror,
+				generateMainDexProguardRules, "rules_main.pro");
+		Path outputemitidslocalpath = getOutputPathIfEnabledForFileName(outputdirmirror, emitIds, "emit_ids.txt");
+		Path outputtextsymbolslocalpath = getOutputPathIfEnabledForFileName(outputdirmirror, outputTextSymbols,
+				"text_symbols.txt");
 
 		Path javaoutputdirpath = taskcontext.mirror(javaoutdir);
 
+		NavigableMap<String, Path> splitoutputapkpaths = new TreeMap<>();
+
 		ArrayList<String> cmd = new ArrayList<>();
 		cmd.add("link");
-		//TODO parallelize if necessary
+		//XXX  parallelize if necessary
 		for (SakerPath inpath : inputFiles) {
 			MirroredFileContents filecontents = taskutils.mirrorFileAtPathContents(inpath);
 			cmd.add(filecontents.getPath().toString());
 			inputfilecontents.put(inpath, filecontents.getContents());
 		}
 		cmd.add("-o");
-		cmd.add(outputapkfilepath.toString());
+		cmd.add(outputapkfilelocalpath.toString());
 
 		cmd.add("--manifest");
 		MirroredFileContents manifestcontents = taskutils.mirrorFileAtPathContents(manifest);
 		cmd.add(manifestcontents.getPath().toString());
 		inputfilecontents.put(manifest, manifestcontents.getContents());
 
+		if (stableIdsFilePath != null) {
+			MirroredFileContents stableidscontents = taskutils.mirrorFileAtPathContents(stableIdsFilePath);
+			cmd.add("--stable-ids");
+			cmd.add(stableidscontents.getPath().toString());
+			inputfilecontents.put(stableIdsFilePath, stableidscontents.getContents());
+		}
+
 		cmd.add("--java");
 		cmd.add(javaoutputdirpath.toString());
+
+		addArgumentIfNonNull(cmd, "--preferred-density", preferredDensity);
+		if (!ObjectUtils.isNullOrEmpty(productNames)) {
+			cmd.add("--product");
+			cmd.add(StringUtils.toStringJoin(",", productNames));
+		}
+		if (!ObjectUtils.isNullOrEmpty(configurations)) {
+			cmd.add("-c");
+			cmd.add(StringUtils.toStringJoin(",", configurations));
+		}
+		if (!ObjectUtils.isNullOrEmpty(noncompressedExtensions)) {
+			for (String ext : noncompressedExtensions) {
+				cmd.add("-0");
+				cmd.add(ext);
+			}
+		}
+		if (!ObjectUtils.isNullOrEmpty(extraPackages)) {
+			for (String ep : extraPackages) {
+				cmd.add("--extra-packages");
+				cmd.add(ep);
+			}
+		}
+		if (!ObjectUtils.isNullOrEmpty(excludeConfigs)) {
+			for (String c : excludeConfigs) {
+				cmd.add("--exclude-configs");
+				cmd.add(c);
+			}
+		}
+		if (!ObjectUtils.isNullOrEmpty(splits)) {
+			for (Entry<String, NavigableSet<String>> entry : splits.entrySet()) {
+				if (ObjectUtils.isNullOrEmpty(entry.getValue())) {
+					continue;
+				}
+				Path splitapkoutputlocalpath = outputdirmirror.resolve(entry.getKey() + ".split.apk");
+
+				cmd.add("--split");
+				cmd.add(splitapkoutputlocalpath + File.pathSeparator + StringUtils.toStringJoin(",", entry.getValue()));
+				splitoutputapkpaths.put(entry.getKey(), splitapkoutputlocalpath);
+			}
+		}
+		if (!ObjectUtils.isNullOrEmpty(addJavadocAnnotation)) {
+			for (String annot : addJavadocAnnotation) {
+				cmd.add("--add-javadoc-annotation");
+				cmd.add(annot);
+			}
+		}
+		addArgumentIfNonNull(cmd, "--min-sdk-version", minSdkVersion);
+		addArgumentIfNonNull(cmd, "--target-sdk-version", targetSdkVersion);
+		addArgumentIfNonNull(cmd, "--version-code", versionCode);
+		addArgumentIfNonNull(cmd, "--version-code-major", versionCodeMajor);
+		addArgumentIfNonNull(cmd, "--version-name", versionName);
+		addArgumentIfNonNull(cmd, "--compile-sdk-version-code", compileSdkVersionCode);
+		addArgumentIfNonNull(cmd, "--compile-sdk-version-name", compileSdkVersionName);
+
+		addArgumentIfNonNull(cmd, "--private-symbols", privateSymbols);
+		addArgumentIfNonNull(cmd, "--custom-packag", customPackage);
+		addArgumentIfNonNull(cmd, "--rename-manifest-package", renameManifestPackage);
+		addArgumentIfNonNull(cmd, "--rename-instrumentation-target-package", renameInstrumentationTargetPackage);
+		addArgumentIfNonNull(cmd, "--no-compress-regex", noCompressRegex);
+
+		addArgumentIfNonNull(cmd, "--proguard", outputproguardruleslocalpath);
+		addArgumentIfNonNull(cmd, "--proguard-main-dex", outputmaindexproguardruleslocalpath);
+		addArgumentIfNonNull(cmd, "--emit-ids", outputemitidslocalpath);
+		addArgumentIfNonNull(cmd, "--output-text-symbols", outputtextsymbolslocalpath);
 
 		SDKReference platformsdk = sdkrefs.get(AndroidPlatformSDKReference.SDK_NAME);
 		if (platformsdk != null) {
@@ -181,6 +311,17 @@ public class AAPT2LinkWorkerTaskFactory
 				cmd.add("-I");
 				cmd.add(androidjarpath.toString());
 			}
+		}
+		if (packageId != null) {
+			cmd.add("--package-id");
+			cmd.add("0x" + Integer.toHexString(packageId));
+		}
+
+		for (AAPT2LinkerFlag f : flags) {
+			cmd.add(f.argument);
+		}
+		if (verbose) {
+			cmd.add("-v");
 		}
 
 		UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
@@ -199,15 +340,29 @@ public class AAPT2LinkWorkerTaskFactory
 		TreeMap<SakerPath, ContentDescriptor> outputfilecontents = new TreeMap<>();
 
 		LocalFileProvider fp = LocalFileProvider.getInstance();
-		ProviderHolderPathKey apkpathkey = fp.getPathKey(outputapkfilepath);
-		taskcontext.invalidate(apkpathkey);
+		SakerPath outputapkpath = discoverOutputFile(taskcontext, outputdir, outputapkfilelocalpath, outputfilecontents,
+				fp);
 
-		SakerFile apkoutfile = taskutils.createProviderPathFile(outputapkfilename, apkpathkey);
-		outputdir.add(apkoutfile);
+		SakerPath outputproguardpath = discoverOutputFile(taskcontext, outputdir, outputproguardruleslocalpath,
+				outputfilecontents, fp);
+		SakerPath outputmaindexproguardpath = discoverOutputFile(taskcontext, outputdir,
+				outputmaindexproguardruleslocalpath, outputfilecontents, fp);
 
-		SakerPath outputapkpath = apkoutfile.getSakerPath();
-		outputfilecontents.put(outputapkpath, apkoutfile.getContentDescriptor());
+		SakerPath outputemitidspath = discoverOutputFile(taskcontext, outputdir, outputemitidslocalpath,
+				outputfilecontents, fp);
+		SakerPath outputtextsymbolspath = discoverOutputFile(taskcontext, outputdir, outputtextsymbolslocalpath,
+				outputfilecontents, fp);
 
+		NavigableMap<String, SakerPath> splitoutpaths = new TreeMap<>();
+		if (!ObjectUtils.isNullOrEmpty(splitoutputapkpaths)) {
+			for (Entry<String, Path> entry : splitoutputapkpaths.entrySet()) {
+				SakerPath splitoutputpath = discoverOutputFile(taskcontext, outputdir, entry.getValue(),
+						outputfilecontents, fp);
+				splitoutpaths.put(entry.getKey(), splitoutputpath);
+			}
+		}
+
+		//TODO test with extra packages
 		SakerPath rjavapath = getCreateRJavaFilePathInEntries(fp.getDirectoryEntriesRecursively(javaoutputdirpath));
 		if (rjavapath != null) {
 			SakerDirectory rjavaparentdir = taskutils.resolveDirectoryAtRelativePathCreate(javaoutdir,
@@ -216,7 +371,8 @@ public class AAPT2LinkWorkerTaskFactory
 			ProviderHolderPathKey rjavapathkey = fp.getPathKey(rjavaabsolutepath);
 			taskcontext.invalidate(rjavapathkey);
 
-			//create our own content descriptor so the invocation of downstream java compilation tasks can be easily avoided
+			//create our own content descriptor so the reinvocation of downstream java compilation tasks can be easily avoided 
+			//    if the actual contents didnt change
 			//make it hash based so it depends on the contents
 			ContentDescriptor rjavafilecontents = HashContentDescriptor
 					.createWithHash(fp.hash(rjavaabsolutepath, FileUtils.DEFAULT_FILE_HASH_ALGORITHM));
@@ -237,7 +393,49 @@ public class AAPT2LinkWorkerTaskFactory
 
 		SakerPath rjavasourcedirpath = javaoutdir.getSakerPath();
 
-		return new AAPT2LinkTaskOutputImpl(outputapkpath, rjavasourcedirpath);
+		AAPT2LinkTaskOutputImpl result = new AAPT2LinkTaskOutputImpl(outputapkpath, rjavasourcedirpath);
+		result.setProguardPath(outputproguardpath);
+		result.setProguardMainDexPath(outputmaindexproguardpath);
+		result.setIDMappingsPath(outputemitidspath);
+		result.setTextSymbolsPath(outputtextsymbolspath);
+		result.setSplits(splitoutpaths);
+		return result;
+	}
+
+	private static SakerPath discoverOutputFile(TaskContext taskcontext, SakerDirectory outputdir, Path outputfilepath,
+			Map<SakerPath, ContentDescriptor> outputfilecontents, LocalFileProvider fp) throws IOException {
+		if (outputfilepath == null) {
+			return null;
+		}
+		ProviderHolderPathKey outpathkey = fp.getPathKey(outputfilepath);
+		taskcontext.invalidate(outpathkey);
+
+		SakerFile outfile = taskcontext.getTaskUtilities().createProviderPathFile(outpathkey.getPath().getFileName(),
+				outpathkey);
+		outputdir.add(outfile);
+
+		SakerPath outputpath = outfile.getSakerPath();
+		outputfilecontents.put(outputpath, outfile.getContentDescriptor());
+		return outputpath;
+	}
+
+	private static Path getOutputPathIfEnabledForFileName(Path outputdirmirror, boolean genproguardrules,
+			String fname) {
+		Path outputproguardrulespath;
+		if (genproguardrules) {
+			outputproguardrulespath = outputdirmirror.resolve(fname);
+		} else {
+			outputproguardrulespath = null;
+		}
+		return outputproguardrulespath;
+	}
+
+	private static void addArgumentIfNonNull(ArrayList<String> cmd, String argname, Object arg) {
+		if (arg == null) {
+			return;
+		}
+		cmd.add(argname);
+		cmd.add(arg.toString());
 	}
 
 	private static SakerPath getCreateRJavaFilePathInEntries(NavigableMap<SakerPath, ? extends FileEntry> entries) {
@@ -255,17 +453,79 @@ public class AAPT2LinkWorkerTaskFactory
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
 		SerialUtils.writeExternalCollection(out, inputFiles);
-		SerialUtils.writeExternalMap(out, sdkDescriptions);
 		out.writeObject(manifest);
+		out.writeObject(packageId);
+		SerialUtils.writeExternalCollection(out, flags);
+		out.writeBoolean(generateProguardRules);
+		out.writeBoolean(generateMainDexProguardRules);
+		SerialUtils.writeExternalCollection(out, configurations);
+		out.writeObject(preferredDensity);
+		SerialUtils.writeExternalCollection(out, productNames);
+		out.writeObject(minSdkVersion);
+		out.writeObject(targetSdkVersion);
+		out.writeObject(versionCode);
+		out.writeObject(versionCodeMajor);
+		out.writeObject(versionName);
+		out.writeObject(compileSdkVersionCode);
+		out.writeObject(compileSdkVersionName);
+		out.writeBoolean(emitIds);
+		out.writeObject(stableIdsFilePath);
+		out.writeObject(privateSymbols);
+		out.writeObject(customPackage);
+		SerialUtils.writeExternalCollection(out, extraPackages);
+		SerialUtils.writeExternalCollection(out, addJavadocAnnotation);
+		out.writeBoolean(outputTextSymbols);
+		out.writeObject(renameManifestPackage);
+		out.writeObject(renameInstrumentationTargetPackage);
+		SerialUtils.writeExternalCollection(out, noncompressedExtensions);
+		out.writeObject(noCompressRegex);
+		SerialUtils.writeExternalCollection(out, excludeConfigs);
+		SerialUtils.writeExternalMap(out, splits, SerialUtils::writeExternalObject,
+				SerialUtils::writeExternalCollection);
+		out.writeBoolean(verbose);
+
+		SerialUtils.writeExternalMap(out, sdkDescriptions);
+
 		out.writeObject(remoteDispatchableEnvironmentSelector);
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		inputFiles = SerialUtils.readExternalSortedImmutableNavigableSet(in);
+		manifest = (SakerPath) in.readObject();
+		packageId = SerialUtils.readExternalObject(in);
+		flags = SerialUtils.readExternalEnumSetCollection(AAPT2LinkerFlag.class, in);
+		generateProguardRules = in.readBoolean();
+		generateMainDexProguardRules = in.readBoolean();
+		configurations = SerialUtils.readExternalImmutableList(in);
+		preferredDensity = (String) in.readObject();
+		productNames = SerialUtils.readExternalImmutableList(in);
+		minSdkVersion = (Integer) in.readObject();
+		targetSdkVersion = (Integer) in.readObject();
+		versionCode = (Integer) in.readObject();
+		versionCodeMajor = (Integer) in.readObject();
+		versionName = (String) in.readObject();
+		compileSdkVersionCode = (String) in.readObject();
+		compileSdkVersionName = (String) in.readObject();
+		emitIds = in.readBoolean();
+		stableIdsFilePath = (SakerPath) in.readObject();
+		privateSymbols = (String) in.readObject();
+		customPackage = (String) in.readObject();
+		extraPackages = SerialUtils.readExternalSortedImmutableNavigableSet(in);
+		addJavadocAnnotation = SerialUtils.readExternalImmutableList(in);
+		outputTextSymbols = in.readBoolean();
+		renameManifestPackage = (String) in.readObject();
+		renameInstrumentationTargetPackage = (String) in.readObject();
+		noncompressedExtensions = SerialUtils.readExternalSortedImmutableNavigableSet(in);
+		noCompressRegex = (String) in.readObject();
+		excludeConfigs = SerialUtils.readExternalImmutableNavigableSet(in);
+		splits = SerialUtils.readExternalMap(new TreeMap<>(), in, SerialUtils::readExternalObject,
+				SerialUtils::readExternalImmutableNavigableSet);
+		verbose = in.readBoolean();
+
 		sdkDescriptions = SerialUtils.readExternalSortedImmutableNavigableMap(in,
 				SDKSupportUtils.getSDKNameComparator());
-		manifest = (SakerPath) in.readObject();
+
 		remoteDispatchableEnvironmentSelector = (TaskExecutionEnvironmentSelector) in.readObject();
 	}
 
@@ -273,9 +533,7 @@ public class AAPT2LinkWorkerTaskFactory
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((inputFiles == null) ? 0 : inputFiles.hashCode());
 		result = prime * result + ((manifest == null) ? 0 : manifest.hashCode());
-		result = prime * result + ((sdkDescriptions == null) ? 0 : sdkDescriptions.hashCode());
 		return result;
 	}
 
@@ -288,6 +546,52 @@ public class AAPT2LinkWorkerTaskFactory
 		if (getClass() != obj.getClass())
 			return false;
 		AAPT2LinkWorkerTaskFactory other = (AAPT2LinkWorkerTaskFactory) obj;
+		if (addJavadocAnnotation == null) {
+			if (other.addJavadocAnnotation != null)
+				return false;
+		} else if (!addJavadocAnnotation.equals(other.addJavadocAnnotation))
+			return false;
+		if (compileSdkVersionCode == null) {
+			if (other.compileSdkVersionCode != null)
+				return false;
+		} else if (!compileSdkVersionCode.equals(other.compileSdkVersionCode))
+			return false;
+		if (compileSdkVersionName == null) {
+			if (other.compileSdkVersionName != null)
+				return false;
+		} else if (!compileSdkVersionName.equals(other.compileSdkVersionName))
+			return false;
+		if (configurations == null) {
+			if (other.configurations != null)
+				return false;
+		} else if (!configurations.equals(other.configurations))
+			return false;
+		if (customPackage == null) {
+			if (other.customPackage != null)
+				return false;
+		} else if (!customPackage.equals(other.customPackage))
+			return false;
+		if (emitIds != other.emitIds)
+			return false;
+		if (excludeConfigs == null) {
+			if (other.excludeConfigs != null)
+				return false;
+		} else if (!excludeConfigs.equals(other.excludeConfigs))
+			return false;
+		if (extraPackages == null) {
+			if (other.extraPackages != null)
+				return false;
+		} else if (!extraPackages.equals(other.extraPackages))
+			return false;
+		if (flags == null) {
+			if (other.flags != null)
+				return false;
+		} else if (!flags.equals(other.flags))
+			return false;
+		if (generateMainDexProguardRules != other.generateMainDexProguardRules)
+			return false;
+		if (generateProguardRules != other.generateProguardRules)
+			return false;
 		if (inputFiles == null) {
 			if (other.inputFiles != null)
 				return false;
@@ -298,10 +602,87 @@ public class AAPT2LinkWorkerTaskFactory
 				return false;
 		} else if (!manifest.equals(other.manifest))
 			return false;
+		if (minSdkVersion == null) {
+			if (other.minSdkVersion != null)
+				return false;
+		} else if (!minSdkVersion.equals(other.minSdkVersion))
+			return false;
+		if (noCompressRegex == null) {
+			if (other.noCompressRegex != null)
+				return false;
+		} else if (!noCompressRegex.equals(other.noCompressRegex))
+			return false;
+		if (noncompressedExtensions == null) {
+			if (other.noncompressedExtensions != null)
+				return false;
+		} else if (!noncompressedExtensions.equals(other.noncompressedExtensions))
+			return false;
+		if (outputTextSymbols != other.outputTextSymbols)
+			return false;
+		if (packageId == null) {
+			if (other.packageId != null)
+				return false;
+		} else if (!packageId.equals(other.packageId))
+			return false;
+		if (preferredDensity == null) {
+			if (other.preferredDensity != null)
+				return false;
+		} else if (!preferredDensity.equals(other.preferredDensity))
+			return false;
+		if (privateSymbols == null) {
+			if (other.privateSymbols != null)
+				return false;
+		} else if (!privateSymbols.equals(other.privateSymbols))
+			return false;
+		if (productNames == null) {
+			if (other.productNames != null)
+				return false;
+		} else if (!productNames.equals(other.productNames))
+			return false;
+		if (renameInstrumentationTargetPackage == null) {
+			if (other.renameInstrumentationTargetPackage != null)
+				return false;
+		} else if (!renameInstrumentationTargetPackage.equals(other.renameInstrumentationTargetPackage))
+			return false;
+		if (renameManifestPackage == null) {
+			if (other.renameManifestPackage != null)
+				return false;
+		} else if (!renameManifestPackage.equals(other.renameManifestPackage))
+			return false;
 		if (sdkDescriptions == null) {
 			if (other.sdkDescriptions != null)
 				return false;
 		} else if (!sdkDescriptions.equals(other.sdkDescriptions))
+			return false;
+		if (splits == null) {
+			if (other.splits != null)
+				return false;
+		} else if (!splits.equals(other.splits))
+			return false;
+		if (stableIdsFilePath == null) {
+			if (other.stableIdsFilePath != null)
+				return false;
+		} else if (!stableIdsFilePath.equals(other.stableIdsFilePath))
+			return false;
+		if (targetSdkVersion == null) {
+			if (other.targetSdkVersion != null)
+				return false;
+		} else if (!targetSdkVersion.equals(other.targetSdkVersion))
+			return false;
+		if (versionCode == null) {
+			if (other.versionCode != null)
+				return false;
+		} else if (!versionCode.equals(other.versionCode))
+			return false;
+		if (versionCodeMajor == null) {
+			if (other.versionCodeMajor != null)
+				return false;
+		} else if (!versionCodeMajor.equals(other.versionCodeMajor))
+			return false;
+		if (versionName == null) {
+			if (other.versionName != null)
+				return false;
+		} else if (!versionName.equals(other.versionName))
 			return false;
 		return true;
 	}
