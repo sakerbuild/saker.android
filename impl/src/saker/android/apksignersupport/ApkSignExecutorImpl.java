@@ -19,9 +19,7 @@ import java.util.UUID;
 
 import com.android.apksigner.ApkSignerTool;
 
-import saker.android.api.apk.sign.SignApkTaskOutput;
 import saker.android.impl.apk.sign.ApkSignExecutor;
-import saker.android.impl.apk.sign.SignApkTaskOutputImpl;
 import saker.android.impl.apk.sign.SignApkWorkerTaskFactory;
 import saker.android.impl.support.SupportToolSystemExitError;
 import saker.build.task.TaskContext;

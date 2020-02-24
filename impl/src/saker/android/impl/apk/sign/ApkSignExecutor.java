@@ -3,7 +3,6 @@ package saker.android.impl.apk.sign;
 import java.nio.file.Path;
 import java.util.NavigableMap;
 
-import saker.android.api.apk.sign.SignApkTaskOutput;
 import saker.build.task.TaskContext;
 import saker.sdk.support.api.SDKReference;
 

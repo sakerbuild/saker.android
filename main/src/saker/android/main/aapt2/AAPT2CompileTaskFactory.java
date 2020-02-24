@@ -1,6 +1,8 @@
 package saker.android.main.aapt2;
 
+import java.util.Collection;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
@@ -13,7 +15,6 @@ import saker.android.impl.aapt2.AAPT2CompilerFlag;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.AndroidFrontendUtils;
-import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.ParameterizableTask;
 import saker.build.task.TaskContext;
@@ -26,6 +27,9 @@ import saker.compiler.utils.main.CompilationIdentifierTaskOption;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
+import saker.std.api.file.location.FileLocation;
+import saker.std.main.file.option.MultiFileLocationTaskOption;
+import saker.std.main.file.utils.TaskOptionUtils;
 
 public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
@@ -36,8 +40,8 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
 		return new ParameterizableTask<Object>() {
 
-			@SakerInput(value = { "", "Directory" }, required = true)
-			public SakerPath directoryOption;
+			@SakerInput(value = { "", "Input" }, required = true)
+			public Collection<MultiFileLocationTaskOption> inputOption;
 
 			@SakerInput("Identifier")
 			public CompilationIdentifierTaskOption identifierOption;
@@ -64,6 +68,10 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 				if (compilationid == null) {
 					compilationid = CompilationIdentifier.valueOf("default");
 				}
+				Set<FileLocation> inputs = new LinkedHashSet<>();
+				for (MultiFileLocationTaskOption intaskoption : inputOption) {
+					inputs.addAll(TaskOptionUtils.toFileLocations(intaskoption, taskcontext, null));
+				}
 
 				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
 						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
@@ -80,7 +88,7 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 				AAPT2CompileWorkerTaskIdentifier workertaskid = new AAPT2CompileWorkerTaskIdentifier(compilationid);
 				AAPT2CompileWorkerTaskFactory workertask = new AAPT2CompileWorkerTaskFactory();
 
-				workertask.setResourceDirectory(directoryOption);
+				workertask.setInputs(inputs);
 				workertask.setConfiguration(config);
 				workertask.setVerbose(verboseOption);
 				workertask.setSDKDescriptions(sdkdescriptions);

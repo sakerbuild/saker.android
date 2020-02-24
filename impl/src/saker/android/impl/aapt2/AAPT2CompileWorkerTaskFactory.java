@@ -7,6 +7,7 @@ import java.io.ObjectOutput;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
@@ -33,6 +34,7 @@ import saker.build.task.TaskContext;
 import saker.build.task.TaskExecutionEnvironmentSelector;
 import saker.build.task.TaskFactory;
 import saker.build.task.delta.DeltaType;
+import saker.build.task.dependencies.FileCollectionStrategy;
 import saker.build.task.utils.TaskUtils;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
@@ -48,13 +50,15 @@ import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNotFoundException;
 import saker.sdk.support.api.exc.SDKPathNotFoundException;
+import saker.std.api.file.location.ExecutionFileLocation;
+import saker.std.api.file.location.FileLocation;
+import saker.std.api.file.location.FileLocationVisitor;
 
 public class AAPT2CompileWorkerTaskFactory
 		implements TaskFactory<AAPT2CompileTaskOutput>, Task<AAPT2CompileTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
-	@Deprecated
-	private SakerPath resourceDirectory;
+	private Set<FileLocation> inputs;
 
 	private AAPT2CompilationConfiguration configuration;
 	private transient boolean verbose;
@@ -73,18 +77,12 @@ public class AAPT2CompileWorkerTaskFactory
 		this.configuration = configuration;
 	}
 
+	public void setInputs(Set<FileLocation> inputs) {
+		this.inputs = inputs;
+	}
+
 	public void setVerbose(boolean verbose) {
 		this.verbose = verbose;
-	}
-
-	@Deprecated
-	public SakerPath getResourceDirectory() {
-		return resourceDirectory;
-	}
-
-	@Deprecated
-	public void setResourceDirectory(SakerPath resourceDirectory) {
-		this.resourceDirectory = resourceDirectory;
 	}
 
 	public void setSDKDescriptions(NavigableMap<String, ? extends SDKDescription> sdkdescriptions) {
@@ -159,9 +157,19 @@ public class AAPT2CompileWorkerTaskFactory
 			throw new SDKPathNotFoundException("aapt2 executable not found in " + buildtoolssdkref);
 		}
 
+		LinkedHashSet<FileCollectionStrategy> inputcollectionstrategies = new LinkedHashSet<>();
+		for (FileLocation inputfilelocation : inputs) {
+			inputfilelocation.accept(new FileLocationVisitor() {
+				@Override
+				public void visit(ExecutionFileLocation loc) {
+					inputcollectionstrategies.add(new AndroidResourcesFileCollectionStrategy(loc.getPath()));
+				}
+			});
+		}
+
 		NavigableMap<SakerPath, SakerFile> collectedfiles = taskcontext.getTaskUtilities()
 				.collectFilesReportInputFileAndAdditionDependency(AAPT2TaskTags.INPUT_RESOURCE,
-						new AndroidResourcesFileCollectionStrategy(resourceDirectory));
+						inputcollectionstrategies);
 
 		AAPT2CompilationConfiguration thiscompilationconfig = this.configuration;
 
@@ -368,22 +376,22 @@ public class AAPT2CompileWorkerTaskFactory
 
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
+		SerialUtils.writeExternalCollection(out, inputs);
 		out.writeObject(configuration);
 		SerialUtils.writeExternalMap(out, sdkDescriptions);
 		out.writeObject(remoteDispatchableEnvironmentSelector);
 
-		out.writeObject(resourceDirectory);
 		out.writeBoolean(verbose);
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		inputs = SerialUtils.readExternalImmutableLinkedHashSet(in);
 		configuration = SerialUtils.readExternalObject(in);
 		sdkDescriptions = SerialUtils.readExternalSortedImmutableNavigableMap(in,
 				SDKSupportUtils.getSDKNameComparator());
 		remoteDispatchableEnvironmentSelector = (TaskExecutionEnvironmentSelector) in.readObject();
 
-		resourceDirectory = (SakerPath) in.readObject();
 		verbose = in.readBoolean();
 	}
 
@@ -391,9 +399,7 @@ public class AAPT2CompileWorkerTaskFactory
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((configuration == null) ? 0 : configuration.hashCode());
-		result = prime * result + ((resourceDirectory == null) ? 0 : resourceDirectory.hashCode());
-		result = prime * result + ((sdkDescriptions == null) ? 0 : sdkDescriptions.hashCode());
+		result = prime * result + ((inputs == null) ? 0 : inputs.hashCode());
 		return result;
 	}
 
@@ -411,10 +417,10 @@ public class AAPT2CompileWorkerTaskFactory
 				return false;
 		} else if (!configuration.equals(other.configuration))
 			return false;
-		if (resourceDirectory == null) {
-			if (other.resourceDirectory != null)
+		if (inputs == null) {
+			if (other.inputs != null)
 				return false;
-		} else if (!resourceDirectory.equals(other.resourceDirectory))
+		} else if (!inputs.equals(other.inputs))
 			return false;
 		if (sdkDescriptions == null) {
 			if (other.sdkDescriptions != null)

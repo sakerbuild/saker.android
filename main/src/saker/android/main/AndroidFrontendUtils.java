@@ -1,9 +1,9 @@
 package saker.android.main;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.TreeMap;
-import java.util.Map.Entry;
 
 import saker.build.task.TaskContext;
 import saker.build.thirdparty.saker.util.ObjectUtils;
