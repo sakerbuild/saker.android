@@ -15,6 +15,7 @@ import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
@@ -118,6 +119,118 @@ public class AAPT2LinkWorkerTaskFactory
 		}
 		remoteDispatchableEnvironmentSelector = SDKSupportUtils
 				.getSDKBasedClusterExecutionEnvironmentSelector(sdkdescriptions.values());
+	}
+
+	public void setPackageId(Integer packageId) {
+		this.packageId = packageId;
+	}
+
+	public void setGenerateProguardRules(boolean generateProguardRules) {
+		this.generateProguardRules = generateProguardRules;
+	}
+
+	public void setGenerateMainDexProguardRules(boolean generateMainDexProguardRules) {
+		this.generateMainDexProguardRules = generateMainDexProguardRules;
+	}
+
+	public void setConfigurations(List<String> configurations) {
+		this.configurations = ObjectUtils.isNullOrEmpty(configurations) ? Collections.emptyList() : configurations;
+	}
+
+	public void setPreferredDensity(String preferredDensity) {
+		this.preferredDensity = preferredDensity;
+	}
+
+	public void setProductNames(List<String> productNames) {
+		this.productNames = ObjectUtils.isNullOrEmpty(productNames) ? Collections.emptyList() : productNames;
+	}
+
+	public void setMinSdkVersion(Integer minSdkVersion) {
+		this.minSdkVersion = minSdkVersion;
+	}
+
+	public void setTargetSdkVersion(Integer targetSdkVersion) {
+		this.targetSdkVersion = targetSdkVersion;
+	}
+
+	public void setVersionCode(Integer versionCode) {
+		this.versionCode = versionCode;
+	}
+
+	public void setVersionCodeMajor(Integer versionCodeMajor) {
+		this.versionCodeMajor = versionCodeMajor;
+	}
+
+	public void setVersionName(String versionName) {
+		this.versionName = versionName;
+	}
+
+	public void setCompileSdkVersionCode(String compileSdkVersionCode) {
+		this.compileSdkVersionCode = compileSdkVersionCode;
+	}
+
+	public void setCompileSdkVersionName(String compileSdkVersionName) {
+		this.compileSdkVersionName = compileSdkVersionName;
+	}
+
+	public void setEmitIds(boolean emitIds) {
+		this.emitIds = emitIds;
+	}
+
+	public void setStableIdsFilePath(SakerPath stableIdsFilePath) {
+		this.stableIdsFilePath = stableIdsFilePath;
+	}
+
+	public void setPrivateSymbols(String privateSymbols) {
+		this.privateSymbols = privateSymbols;
+	}
+
+	public void setCustomPackage(String customPackage) {
+		this.customPackage = customPackage;
+	}
+
+	public void setExtraPackages(NavigableSet<String> extraPackages) {
+		this.extraPackages = ObjectUtils.isNullOrEmpty(extraPackages) ? Collections.emptyNavigableSet() : extraPackages;
+	}
+
+	public void setAddJavadocAnnotation(List<String> addJavadocAnnotation) {
+		this.addJavadocAnnotation = ObjectUtils.isNullOrEmpty(addJavadocAnnotation) ? Collections.emptyList()
+				: addJavadocAnnotation;
+	}
+
+	public void setOutputTextSymbols(boolean outputTextSymbols) {
+		this.outputTextSymbols = outputTextSymbols;
+	}
+
+	public void setRenameManifestPackage(String renameManifestPackage) {
+		this.renameManifestPackage = renameManifestPackage;
+	}
+
+	public void setRenameInstrumentationTargetPackage(String renameInstrumentationTargetPackage) {
+		this.renameInstrumentationTargetPackage = renameInstrumentationTargetPackage;
+	}
+
+	public void setNoncompressedExtensions(NavigableSet<String> noncompressedExtensions) {
+		this.noncompressedExtensions = ObjectUtils.isNullOrEmpty(noncompressedExtensions)
+				? Collections.emptyNavigableSet()
+				: noncompressedExtensions;
+	}
+
+	public void setNoCompressRegex(String noCompressRegex) {
+		this.noCompressRegex = noCompressRegex;
+	}
+
+	public void setExcludeConfigs(NavigableSet<String> excludeConfigs) {
+		this.excludeConfigs = ObjectUtils.isNullOrEmpty(excludeConfigs) ? Collections.emptyNavigableSet()
+				: excludeConfigs;
+	}
+
+	public void setSplits(NavigableMap<String, NavigableSet<String>> splits) {
+		this.splits = ObjectUtils.isNullOrEmpty(splits) ? Collections.emptyNavigableMap() : splits;
+	}
+
+	public void setVerbose(boolean verbose) {
+		this.verbose = verbose;
 	}
 
 	public void setFlags(Set<AAPT2LinkerFlag> flags) {
@@ -324,6 +437,8 @@ public class AAPT2LinkWorkerTaskFactory
 			cmd.add("-v");
 		}
 
+		cmd.forEach(System.out::println);
+
 		UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
 
 		try {
@@ -362,9 +477,12 @@ public class AAPT2LinkWorkerTaskFactory
 			}
 		}
 
-		//TODO test with extra packages
-		SakerPath rjavapath = getCreateRJavaFilePathInEntries(fp.getDirectoryEntriesRecursively(javaoutputdirpath));
-		if (rjavapath != null) {
+		Set<SakerPath> rjavaentries = getCreateRJavaFilePathInEntries(
+				fp.getDirectoryEntriesRecursively(javaoutputdirpath));
+		if (ObjectUtils.isNullOrEmpty(rjavaentries)) {
+			throw new IOException("R.java not found.");
+		}
+		for (SakerPath rjavapath : rjavaentries) {
 			SakerDirectory rjavaparentdir = taskutils.resolveDirectoryAtRelativePathCreate(javaoutdir,
 					rjavapath.getParent());
 			SakerPath rjavaabsolutepath = SakerPath.valueOf(javaoutputdirpath).resolve(rjavapath);
@@ -382,8 +500,6 @@ public class AAPT2LinkWorkerTaskFactory
 			rjavaparentdir.add(rjavafile);
 
 			outputfilecontents.put(rjavafile.getSakerPath(), rjavafilecontents);
-		} else {
-			throw new IOException("R.java not found.");
 		}
 
 		outputdir.synchronize();
@@ -438,16 +554,18 @@ public class AAPT2LinkWorkerTaskFactory
 		cmd.add(arg.toString());
 	}
 
-	private static SakerPath getCreateRJavaFilePathInEntries(NavigableMap<SakerPath, ? extends FileEntry> entries) {
+	private static Set<SakerPath> getCreateRJavaFilePathInEntries(
+			NavigableMap<SakerPath, ? extends FileEntry> entries) {
+		TreeSet<SakerPath> result = new TreeSet<>();
 		for (Entry<SakerPath, ? extends FileEntry> entry : entries.entrySet()) {
 			if (!entry.getValue().isRegularFile()) {
 				continue;
 			}
 			if ("R.java".equals(entry.getKey().getFileName())) {
-				return entry.getKey();
+				result.add(entry.getKey());
 			}
 		}
-		return null;
+		return result;
 	}
 
 	@Override
