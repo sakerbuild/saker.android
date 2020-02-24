@@ -437,8 +437,6 @@ public class AAPT2LinkWorkerTaskFactory
 			cmd.add("-v");
 		}
 
-		cmd.forEach(System.out::println);
-
 		UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
 
 		try {

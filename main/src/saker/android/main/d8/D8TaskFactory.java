@@ -1,7 +1,10 @@
 package saker.android.main.d8;
 
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Set;
 
 import saker.android.impl.AndroidUtils;
 import saker.android.impl.d8.D8WorkerTaskFactory;
@@ -9,7 +12,6 @@ import saker.android.impl.d8.D8WorkerTaskIdentifier;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.AndroidFrontendUtils;
-import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.ParameterizableTask;
 import saker.build.task.TaskContext;
@@ -22,6 +24,9 @@ import saker.compiler.utils.main.CompilationIdentifierTaskOption;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
+import saker.std.api.file.location.FileLocation;
+import saker.std.main.file.option.MultiFileLocationTaskOption;
+import saker.std.main.file.utils.TaskOptionUtils;
 
 public class D8TaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
@@ -32,8 +37,8 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
 		return new ParameterizableTask<Object>() {
 
-			@SakerInput(value = "Directory", required = true)
-			public SakerPath directory;
+			@SakerInput(value = { "", "Input" }, required = true)
+			public Collection<MultiFileLocationTaskOption> inputOption;
 
 			@SakerInput("Identifier")
 			public CompilationIdentifierTaskOption identifier;
@@ -50,6 +55,10 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 				if (compilationid == null) {
 					compilationid = CompilationIdentifier.valueOf("default");
 				}
+				Set<FileLocation> inputs = new LinkedHashSet<>();
+				for (MultiFileLocationTaskOption intaskoption : inputOption) {
+					inputs.addAll(TaskOptionUtils.toFileLocations(intaskoption, taskcontext, null));
+				}
 
 				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
 						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
@@ -59,7 +68,7 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 
 				D8WorkerTaskIdentifier workertaskid = new D8WorkerTaskIdentifier(compilationid);
 				D8WorkerTaskFactory workertask = new D8WorkerTaskFactory();
-				workertask.setClassDirectory(directory);
+				workertask.setInputs(inputs);
 				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);

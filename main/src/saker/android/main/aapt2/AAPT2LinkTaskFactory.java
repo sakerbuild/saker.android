@@ -243,12 +243,13 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 				return result;
 			}
 
-			private void addFlagIfSet(Set<AAPT2LinkerFlag> flags, AAPT2LinkerFlag en, boolean flag) {
-				if (flag) {
-					flags.add(en);
-				}
-			}
 		};
+	}
+
+	private static <T> void addFlagIfSet(Set<? super T> flags, T en, boolean flag) {
+		if (flag) {
+			flags.add(en);
+		}
 	}
 
 }

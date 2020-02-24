@@ -17,9 +17,9 @@ public class IncrementalD8State implements Externalizable {
 	//TODO make these private
 	public SDKReference buildToolsSDK;
 	public SDKReference platformsSDK;
-	public NavigableMap<SakerPath, InputFileInformation> inputPathInformations;
-	public NavigableMap<String, InputFileInformation> inputDescriptorInformations;
-	public int minApi;
+	public NavigableMap<SakerPath, D8InputFileInformation> inputPathInformations;
+	public NavigableMap<String, D8InputFileInformation> inputDescriptorInformations;
+	public Integer minApi;
 	public boolean noDesugaring;
 	public boolean release;
 
@@ -47,7 +47,7 @@ public class IncrementalD8State implements Externalizable {
 		this.outputClassIndexInformations = new ConcurrentSkipListMap<>(copy.outputClassIndexInformations);
 	}
 
-	public void putInput(InputFileInformation info) {
+	public void putInput(D8InputFileInformation info) {
 		this.inputPathInformations.put(info.getPath(), info);
 		this.inputDescriptorInformations.put(info.getDescriptor(), info);
 	}
@@ -73,16 +73,16 @@ public class IncrementalD8State implements Externalizable {
 		return outinfo;
 	}
 
-	public InputFileInformation removeInputForPath(SakerPath path) {
-		InputFileInformation info = inputPathInformations.remove(path);
+	public D8InputFileInformation removeInputForPath(SakerPath path) {
+		D8InputFileInformation info = inputPathInformations.remove(path);
 		if (info != null) {
 			inputDescriptorInformations.remove(info.getDescriptor());
 		}
 		return info;
 	}
 
-	public InputFileInformation removeInputForDescriptor(String descriptor) {
-		InputFileInformation info = inputDescriptorInformations.remove(descriptor);
+	public D8InputFileInformation removeInputForDescriptor(String descriptor) {
+		D8InputFileInformation info = inputDescriptorInformations.remove(descriptor);
 		if (info != null) {
 			inputPathInformations.remove(info.getPath());
 		}
@@ -97,7 +97,7 @@ public class IncrementalD8State implements Externalizable {
 		SerialUtils.writeExternalMap(out, inputDescriptorInformations);
 		SerialUtils.writeExternalMap(out, outputDescriptorInformations);
 		SerialUtils.writeExternalMap(out, outputPathInformations);
-		out.writeInt(minApi);
+		out.writeObject(minApi);
 		out.writeBoolean(noDesugaring);
 		out.writeBoolean(release);
 		SerialUtils.writeExternalMap(out, outputClassIndexInformations);
@@ -111,7 +111,7 @@ public class IncrementalD8State implements Externalizable {
 		inputDescriptorInformations = SerialUtils.readExternalImmutableNavigableMap(in);
 		outputDescriptorInformations = SerialUtils.readExternalImmutableNavigableMap(in);
 		outputPathInformations = SerialUtils.readExternalImmutableNavigableMap(in);
-		minApi = in.readInt();
+		minApi = (Integer) in.readObject();
 		noDesugaring = in.readBoolean();
 		release = in.readBoolean();
 		outputClassIndexInformations = SerialUtils.readExternalImmutableNavigableMap(in);

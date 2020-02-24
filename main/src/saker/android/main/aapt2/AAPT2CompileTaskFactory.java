@@ -3,6 +3,7 @@ package saker.android.main.aapt2;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Set;
 
 import saker.android.impl.AndroidUtils;
 import saker.android.impl.aapt2.AAPT2CompilationConfiguration;
@@ -71,15 +72,9 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);
 
 				EnumSet<AAPT2CompilerFlag> flags = EnumSet.noneOf(AAPT2CompilerFlag.class);
-				if (legacyOption) {
-					flags.add(AAPT2CompilerFlag.LEGACY);
-				}
-				if (noCrunchOption) {
-					flags.add(AAPT2CompilerFlag.NO_CRUNCH);
-				}
-				if (pseudoLocalizeOption) {
-					flags.add(AAPT2CompilerFlag.PSEUDO_LOCALIZE);
-				}
+				addFlagIfSet(flags, AAPT2CompilerFlag.LEGACY, legacyOption);
+				addFlagIfSet(flags, AAPT2CompilerFlag.NO_CRUNCH, noCrunchOption);
+				addFlagIfSet(flags, AAPT2CompilerFlag.PSEUDO_LOCALIZE, pseudoLocalizeOption);
 				AAPT2CompilationConfiguration config = new AAPT2CompilationConfiguration(flags);
 
 				AAPT2CompileWorkerTaskIdentifier workertaskid = new AAPT2CompileWorkerTaskIdentifier(compilationid);
@@ -99,4 +94,9 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 		};
 	}
 
+	private static <T> void addFlagIfSet(Set<? super T> flags, T en, boolean flag) {
+		if (flag) {
+			flags.add(en);
+		}
+	}
 }

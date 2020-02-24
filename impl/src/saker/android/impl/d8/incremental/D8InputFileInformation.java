@@ -7,7 +7,7 @@ import java.io.ObjectOutput;
 
 import saker.build.file.path.SakerPath;
 
-public class InputFileInformation implements Externalizable {
+public class D8InputFileInformation implements Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	protected SakerPath path;
@@ -16,10 +16,10 @@ public class InputFileInformation implements Externalizable {
 	/**
 	 * For {@link Externalizable}.
 	 */
-	public InputFileInformation() {
+	public D8InputFileInformation() {
 	}
 
-	public InputFileInformation(SakerPath path, String descriptor) {
+	public D8InputFileInformation(SakerPath path, String descriptor) {
 		this.path = path;
 		this.descriptor = descriptor;
 	}

@@ -36,14 +36,14 @@ import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNotFoundException;
 import saker.sdk.support.api.exc.SDKPathNotFoundException;
+import saker.std.api.file.location.FileLocation;
 
 public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8TaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
-	@Deprecated
-	private SakerPath classDirectory;
+	private Set<FileLocation> inputs;
 	private boolean release;
-	private int minApi;
+	private Integer minApi;
 	private boolean noDesugaring;
 	private NavigableSet<String> mainDexClasses;
 
@@ -65,7 +65,7 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 		return ObjectUtils.getMapValue(sdkDescriptions, AndroidPlatformSDKReference.SDK_NAME);
 	}
 
-	public int getMinApi() {
+	public Integer getMinApi() {
 		return minApi;
 	}
 
@@ -91,14 +91,12 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 				.getSDKBasedClusterExecutionEnvironmentSelector(sdkdescriptions.values());
 	}
 
-	@Deprecated
-	public void setClassDirectory(SakerPath classDirectory) {
-		this.classDirectory = classDirectory;
+	public void setInputs(Set<FileLocation> inputs) {
+		this.inputs = inputs;
 	}
 
-	@Deprecated
-	public SakerPath getClassDirectory() {
-		return classDirectory;
+	public Set<FileLocation> getInputs() {
+		return inputs;
 	}
 
 	@Override
@@ -153,39 +151,32 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
+		SerialUtils.writeExternalCollection(out, inputs);
 		out.writeBoolean(release);
-		out.writeInt(minApi);
+		out.writeObject(minApi);
 		out.writeBoolean(noDesugaring);
 		SerialUtils.writeExternalCollection(out, mainDexClasses);
 		SerialUtils.writeExternalMap(out, sdkDescriptions);
 		out.writeObject(remoteDispatchableEnvironmentSelector);
-
-		out.writeObject(classDirectory);
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		inputs = SerialUtils.readExternalImmutableLinkedHashSet(in);
 		release = in.readBoolean();
-		minApi = in.readInt();
+		minApi = (Integer) in.readObject();
 		noDesugaring = in.readBoolean();
 		mainDexClasses = SerialUtils.readExternalSortedImmutableNavigableSet(in);
 		sdkDescriptions = SerialUtils.readExternalSortedImmutableNavigableMap(in,
 				SDKSupportUtils.getSDKNameComparator());
 		remoteDispatchableEnvironmentSelector = (TaskExecutionEnvironmentSelector) in.readObject();
-
-		classDirectory = (SakerPath) in.readObject();
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((classDirectory == null) ? 0 : classDirectory.hashCode());
-		result = prime * result + ((mainDexClasses == null) ? 0 : mainDexClasses.hashCode());
-		result = prime * result + minApi;
-		result = prime * result + (noDesugaring ? 1231 : 1237);
-		result = prime * result + (release ? 1231 : 1237);
-		result = prime * result + ((sdkDescriptions == null) ? 0 : sdkDescriptions.hashCode());
+		result = prime * result + ((inputs == null) ? 0 : inputs.hashCode());
 		return result;
 	}
 
@@ -198,17 +189,20 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 		if (getClass() != obj.getClass())
 			return false;
 		D8WorkerTaskFactory other = (D8WorkerTaskFactory) obj;
-		if (classDirectory == null) {
-			if (other.classDirectory != null)
+		if (inputs == null) {
+			if (other.inputs != null)
 				return false;
-		} else if (!classDirectory.equals(other.classDirectory))
+		} else if (!inputs.equals(other.inputs))
 			return false;
 		if (mainDexClasses == null) {
 			if (other.mainDexClasses != null)
 				return false;
 		} else if (!mainDexClasses.equals(other.mainDexClasses))
 			return false;
-		if (minApi != other.minApi)
+		if (minApi == null) {
+			if (other.minApi != null)
+				return false;
+		} else if (!minApi.equals(other.minApi))
 			return false;
 		if (noDesugaring != other.noDesugaring)
 			return false;
