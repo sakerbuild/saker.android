@@ -293,7 +293,7 @@ public class D8ExecutorImpl implements D8Executor {
 			Collection<ProgramResource> classesprogramresources = new ArrayList<>();
 			for (Entry<SakerPath, OutputFileInformation> entry : nstate.outputPathInformations.entrySet()) {
 				SakerPath filepath = entry.getKey();
-				//TODO be more efficient that resolving the file path
+				//TODO be more efficient than resolving the file path
 				SakerDexFileProgramResource programres = new SakerDexFileProgramResource(filepath,
 						taskcontext.getTaskUtilities().resolveFileAtPath(filepath), entry.getValue().getDescriptors());
 				classesprogramresources.add(programres);

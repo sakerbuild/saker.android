@@ -47,6 +47,11 @@ public class AndroidUtils {
 	private static final Pattern PATTERN_ANDROID_PLATFORM_DIRECTORY_NAME = Pattern.compile("android-([0-9]+)");
 	private static final Pattern PATTERN_SEMICOLON_SPLIT = Pattern.compile(";+");
 
+	public static final int SDK_OS_TYPE_UNKNOWN = 0;
+	public static final int SDK_OS_TYPE_WINDOWS = 1;
+	public static final int SDK_OS_TYPE_LINUX = 2;
+	public static final int SDK_OS_TYPE_MACOS = 3;
+
 	private AndroidUtils() {
 		throw new UnsupportedOperationException();
 	}
@@ -100,10 +105,25 @@ public class AndroidUtils {
 		}
 		for (String verdirname : descendingverdirectories) {
 			if (versionpredicate.test(verdirname)) {
-				return new AndroidBuildToolsSDKReference(verdirname, buildtoolspath.resolve(verdirname));
+				return new AndroidBuildToolsSDKReference(verdirname, buildtoolspath.resolve(verdirname),
+						getSdkOsType());
 			}
 		}
 		return null;
+	}
+
+	public static int getSdkOsType() {
+		String mappedname = System.mapLibraryName("test");
+		if ("test.dll".equals(mappedname)) {
+			return SDK_OS_TYPE_WINDOWS;
+		}
+		if ("libtest.so".equals(mappedname)) {
+			return SDK_OS_TYPE_LINUX;
+		}
+		if ("libtest.dylib".equals(mappedname)) {
+			return SDK_OS_TYPE_MACOS;
+		}
+		return SDK_OS_TYPE_UNKNOWN;
 	}
 
 	public static String[] getEnvironmentUserParameterSDKLocations(SakerEnvironment environment) {

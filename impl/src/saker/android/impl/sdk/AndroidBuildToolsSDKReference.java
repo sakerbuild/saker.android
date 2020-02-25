@@ -6,6 +6,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Objects;
 
+import saker.android.impl.AndroidUtils;
 import saker.build.file.path.SakerPath;
 import saker.sdk.support.api.SDKReference;
 
@@ -14,6 +15,7 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 
 	public static final String PATH_D8_JAR = "lib.jar.d8";
 	public static final String PATH_APKSIGNER_JAR = "lib.jar.apksigner";
+	public static final String PATH_CORE_LAMBDA_STUBS_JAR = "jar.core_lambda_stubs";
 
 	public static final String PATH_AAPT2_EXECUTABLE = "exe.aapt2";
 	public static final String PATH_ZIPALIGN_EXECUTABLE = "exe.zipalign";
@@ -22,8 +24,13 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 
 	private static final SakerPath LIB_D8JAR_PATH = SakerPath.valueOf("lib/d8.jar");
 	private static final SakerPath LIB_APKSIGNERJAR_PATH = SakerPath.valueOf("lib/apksigner.jar");
-	private static final SakerPath EXE_AAPT2_PATH = SakerPath.valueOf("aapt2.exe");
-	private static final SakerPath EXE_ZIPALIGN_PATH = SakerPath.valueOf("zipalign.exe");
+	private static final SakerPath WINDOWS_EXE_AAPT2_PATH = SakerPath.valueOf("aapt2.exe");
+	private static final SakerPath MACOS_EXE_AAPT2_PATH = SakerPath.valueOf("aapt2");
+	private static final SakerPath LINUX_EXE_AAPT2_PATH = SakerPath.valueOf("aapt2");
+	private static final SakerPath WINDOWS_EXE_ZIPALIGN_PATH = SakerPath.valueOf("zipalign.exe");
+	private static final SakerPath MACOS_EXE_ZIPALIGN_PATH = SakerPath.valueOf("zipalign");
+	private static final SakerPath LINUX_EXE_ZIPALIGN_PATH = SakerPath.valueOf("zipalign");
+	private static final SakerPath CORE_LAMBDA_STUBS_PATH = SakerPath.valueOf("core-lambda-stubs.jar");
 
 	public static final String SDK_NAME = "AndroidBuildTools";
 
@@ -34,17 +41,20 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 	//the base path is transient, as the SDK contents are uniquely identified by the version 
 	private transient SakerPath basePath;
 
+	private transient int osType;
+
 	/**
 	 * For {@link Externalizable}.
 	 */
 	public AndroidBuildToolsSDKReference() {
 	}
 
-	public AndroidBuildToolsSDKReference(String version, SakerPath basePath) {
+	public AndroidBuildToolsSDKReference(String version, SakerPath basePath, int osType) {
 		Objects.requireNonNull(version, "android sdk version");
 		Objects.requireNonNull(basePath, "android sdk base path");
 		this.version = version;
 		this.basePath = basePath;
+		this.osType = osType;
 	}
 
 	public String getVersion() {
@@ -64,12 +74,39 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 				return basePath.resolve(LIB_APKSIGNERJAR_PATH);
 			}
 			case PATH_AAPT2_EXECUTABLE: {
-				//TODO FIX ON NON-WINDOWS OPERATING SYSTEMS (no .exe extension)
-				return basePath.resolve(EXE_AAPT2_PATH);
+				switch (osType) {
+					case AndroidUtils.SDK_OS_TYPE_WINDOWS: {
+						return basePath.resolve(WINDOWS_EXE_AAPT2_PATH);
+					}
+					case AndroidUtils.SDK_OS_TYPE_LINUX: {
+						return basePath.resolve(LINUX_EXE_AAPT2_PATH);
+					}
+					case AndroidUtils.SDK_OS_TYPE_MACOS: {
+						return basePath.resolve(MACOS_EXE_AAPT2_PATH);
+					}
+					default: {
+						return null;
+					}
+				}
 			}
 			case PATH_ZIPALIGN_EXECUTABLE: {
-				//TODO FIX ON NON-WINDOWS OPERATING SYSTEMS (no .exe extension)
-				return basePath.resolve(EXE_ZIPALIGN_PATH);
+				switch (osType) {
+					case AndroidUtils.SDK_OS_TYPE_WINDOWS: {
+						return basePath.resolve(WINDOWS_EXE_ZIPALIGN_PATH);
+					}
+					case AndroidUtils.SDK_OS_TYPE_LINUX: {
+						return basePath.resolve(LINUX_EXE_ZIPALIGN_PATH);
+					}
+					case AndroidUtils.SDK_OS_TYPE_MACOS: {
+						return basePath.resolve(MACOS_EXE_ZIPALIGN_PATH);
+					}
+					default: {
+						return null;
+					}
+				}
+			}
+			case PATH_CORE_LAMBDA_STUBS_JAR: {
+				return basePath.resolve(CORE_LAMBDA_STUBS_PATH);
 			}
 			default: {
 				break;
@@ -98,12 +135,14 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 	public void writeExternal(ObjectOutput out) throws IOException {
 		out.writeObject(version);
 		out.writeObject(basePath);
+		out.writeInt(osType);
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		version = (String) in.readObject();
 		basePath = (SakerPath) in.readObject();
+		osType = in.readInt();
 	}
 
 	@Override
