@@ -16,7 +16,6 @@ public abstract class ZipAlignInputTaskOption {
 				return filelocation;
 			}
 		};
-
 	}
 
 	public static ZipAlignInputTaskOption valueOf(SakerPath path) {

@@ -99,6 +99,22 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 		return inputs;
 	}
 
+	public void setRelease(boolean release) {
+		this.release = release;
+	}
+
+	public void setMainDexClasses(NavigableSet<String> mainDexClasses) {
+		this.mainDexClasses = mainDexClasses;
+	}
+
+	public void setMinApi(Integer minApi) {
+		this.minApi = minApi;
+	}
+
+	public void setNoDesugaring(boolean noDesugaring) {
+		this.noDesugaring = noDesugaring;
+	}
+
 	@Override
 	public Set<String> getCapabilities() {
 		if (remoteDispatchableEnvironmentSelector != null) {

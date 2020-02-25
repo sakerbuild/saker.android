@@ -230,8 +230,7 @@ public class D8ExecutorImpl implements D8Executor {
 					return intermediateprogramresources;
 				}
 			});
-			D8ExecutorImpl.setD8BuilderCommonConfigurations(intermediatebuilder, workertask, environment,
-					sdkreferences);
+			setD8BuilderCommonConfigurations(intermediatebuilder, workertask, environment, sdkreferences);
 
 			intermediatebuilder.setIntermediate(true);
 			intermediatebuilder.setProgramConsumer(new DexFilePerClassFileConsumer() {
@@ -304,7 +303,8 @@ public class D8ExecutorImpl implements D8Executor {
 					return classesprogramresources;
 				}
 			});
-			D8ExecutorImpl.setD8BuilderCommonConfigurations(classesbuilder, workertask, environment, sdkreferences);
+			setD8BuilderCommonConfigurations(classesbuilder, workertask, environment, sdkreferences);
+			setD8BuilderMainDexClasses(classesbuilder, workertask);
 			classesbuilder.setIntermediate(false);
 			classesbuilder.setProgramConsumer(new DexIndexedConsumer() {
 				@Override
@@ -365,16 +365,15 @@ public class D8ExecutorImpl implements D8Executor {
 			SakerEnvironment environment, NavigableMap<String, SDKReference> sdkreferences) throws Exception {
 		setD8BuilderAndroidJar(builder, environment, sdkreferences);
 		setD8BuilderMinApi(builder, workertask);
-		setD8BuilderEnableDesugaring(builder, workertask);
+		setD8BuilderDisableDesugaring(builder, workertask);
 		setD8BuilderMode(builder, workertask);
-		setD8BuilderMainDexClasses(builder, workertask);
 	}
 
 	public static void setD8BuilderMode(D8Command.Builder builder, D8WorkerTaskFactory workertask) {
 		builder.setMode(workertask.isRelease() ? CompilationMode.RELEASE : CompilationMode.DEBUG);
 	}
 
-	public static void setD8BuilderEnableDesugaring(D8Command.Builder builder, D8WorkerTaskFactory workertask) {
+	public static void setD8BuilderDisableDesugaring(D8Command.Builder builder, D8WorkerTaskFactory workertask) {
 		builder.setDisableDesugaring(workertask.isNoDesugaring());
 	}
 

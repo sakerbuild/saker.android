@@ -18,6 +18,7 @@ import saker.build.task.TaskContext;
 import saker.build.task.utils.SimpleStructuredObjectTaskResult;
 import saker.build.task.utils.annot.SakerInput;
 import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
+import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.trace.BuildTrace;
 import saker.compiler.utils.api.CompilationIdentifier;
 import saker.compiler.utils.main.CompilationIdentifierTaskOption;
@@ -40,6 +41,18 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput(value = { "", "Input" }, required = true)
 			public Collection<MultiFileLocationTaskOption> inputOption;
 
+			@SakerInput(value = { "NoDesugaring" })
+			public boolean noDesugaringOption;
+
+			@SakerInput(value = { "Release" })
+			public boolean releaseOption;
+
+			@SakerInput(value = { "MainDexClasses" })
+			public Collection<String> mainDexClassesOption;
+
+			@SakerInput("MinAPI")
+			public Integer minApiOpion;
+
 			@SakerInput("Identifier")
 			public CompilationIdentifierTaskOption identifier;
 
@@ -51,6 +64,7 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 				if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 					BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 				}
+
 				CompilationIdentifier compilationid = CompilationIdentifierTaskOption.getIdentifier(identifier);
 				if (compilationid == null) {
 					compilationid = CompilationIdentifier.valueOf("default");
@@ -69,6 +83,10 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 				D8WorkerTaskIdentifier workertaskid = new D8WorkerTaskIdentifier(compilationid);
 				D8WorkerTaskFactory workertask = new D8WorkerTaskFactory();
 				workertask.setInputs(inputs);
+				workertask.setNoDesugaring(noDesugaringOption);
+				workertask.setRelease(releaseOption);
+				workertask.setMainDexClasses(ImmutableUtils.makeImmutableNavigableSet(mainDexClassesOption));
+				workertask.setMinApi(minApiOpion);
 				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);
