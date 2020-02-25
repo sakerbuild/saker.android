@@ -6,7 +6,6 @@ global(DEPENDENCIES_saker.android) = [
 	saker.java.compiler-api,
 ]
 global(saker.android.COMPILER_OPTIONS) = [
-	###
 	{
 		AddExports: [
 			{
@@ -15,7 +14,6 @@ global(saker.android.COMPILER_OPTIONS) = [
 			}
 		]
 	}
-	###
 ]
 
 static(VERSION_saker.build) = nest.dependency.resolve(

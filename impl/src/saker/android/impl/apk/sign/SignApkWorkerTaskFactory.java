@@ -14,7 +14,6 @@ import saker.android.impl.aapt2.OnlyDirectoryCreateSynchronizeDirectoryVisitPred
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.support.InstrumentingJarClassLoaderDataFinder;
 import saker.android.main.apk.sign.SignApkTaskFactory;
-import saker.build.exception.InvalidFileTypeException;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
 import saker.build.file.content.ContentDescriptor;
@@ -45,15 +44,23 @@ import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNotFoundException;
 import saker.sdk.support.api.exc.SDKPathNotFoundException;
+import saker.std.api.file.location.ExecutionFileLocation;
+import saker.std.api.file.location.FileLocation;
+import saker.std.api.file.location.FileLocationVisitor;
 
 public class SignApkWorkerTaskFactory
 		implements TaskFactory<SignApkTaskOutput>, Task<SignApkTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
-	private SakerPath inputPath;
+	private FileLocation inputFile;
 	private SakerPath outputPath;
 	private Boolean v1SigningEnabled;
 	private Boolean v2SigningEnabled;
+
+	private FileLocation keyStoreFile;
+	private String alias;
+	private String keyStorePassword;
+	private String keyPassword;
 
 	private NavigableMap<String, ? extends SDKDescription> sdkDescriptions;
 
@@ -65,8 +72,8 @@ public class SignApkWorkerTaskFactory
 	public SignApkWorkerTaskFactory() {
 	}
 
-	public void setInputPath(SakerPath inputPath) {
-		this.inputPath = inputPath;
+	public void setInputFile(FileLocation inputPath) {
+		this.inputFile = inputPath;
 	}
 
 	public void setOutputPath(SakerPath outputPath) {
@@ -103,6 +110,36 @@ public class SignApkWorkerTaskFactory
 		return v2SigningEnabled;
 	}
 
+	public void setSigning(FileLocation keystore, String keystorepassword, String alias, String keypassword) {
+		if (keystore != null) {
+			this.keyStoreFile = keystore;
+			this.keyStorePassword = keystorepassword;
+			this.alias = alias;
+			this.keyPassword = keypassword;
+		} else {
+			this.keyStoreFile = null;
+			this.keyStorePassword = null;
+			this.alias = null;
+			this.keyPassword = null;
+		}
+	}
+
+	public FileLocation getKeyStoreFile() {
+		return keyStoreFile;
+	}
+
+	public String getKeyPassword() {
+		return keyPassword;
+	}
+
+	public String getKeyStorePassword() {
+		return keyStorePassword;
+	}
+
+	public String getAlias() {
+		return alias;
+	}
+
 	@Override
 	public Set<String> getCapabilities() {
 		if (remoteDispatchableEnvironmentSelector != null) {
@@ -131,17 +168,25 @@ public class SignApkWorkerTaskFactory
 		}
 		taskcontext.setStandardOutDisplayIdentifier(SignApkTaskFactory.TASK_NAME + ":" + outputPath.getFileName());
 
-		MirroredFileContents mirroredinputfile;
-		try {
-			mirroredinputfile = taskcontext.getTaskUtilities().mirrorFileAtPathContents(inputPath);
-		} catch (FileNotFoundException | InvalidFileTypeException e) {
-			taskcontext.reportInputFileDependency(null, inputPath, CommonTaskContentDescriptors.IS_NOT_FILE);
-			FileNotFoundException fnfe = new FileNotFoundException(inputPath.toString());
-			fnfe.initCause(e);
-			taskcontext.abortExecution(fnfe);
-			return null;
-		}
-		taskcontext.reportInputFileDependency(null, inputPath, mirroredinputfile.getContents());
+		Path[] inputfilelocalpath = { null };
+		inputFile.accept(new FileLocationVisitor() {
+			@Override
+			public void visit(ExecutionFileLocation loc) {
+				SakerPath inputpath = loc.getPath();
+				MirroredFileContents mirroredinputfile;
+				try {
+					mirroredinputfile = taskcontext.getTaskUtilities().mirrorFileAtPathContents(inputpath);
+				} catch (IOException e) {
+					taskcontext.reportInputFileDependency(null, inputpath, CommonTaskContentDescriptors.IS_NOT_FILE);
+					FileNotFoundException fnfe = new FileNotFoundException(loc.toString());
+					fnfe.initCause(e);
+					ObjectUtils.sneakyThrow(fnfe);
+					return;
+				}
+				taskcontext.reportInputFileDependency(null, inputpath, mirroredinputfile.getContents());
+				inputfilelocalpath[0] = mirroredinputfile.getPath();
+			}
+		});
 
 		SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
 		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtRelativePathCreate(builddir,
@@ -159,12 +204,11 @@ public class SignApkWorkerTaskFactory
 			sdkrefs = SDKSupportUtils.resolveSDKReferences(environment, this.sdkDescriptions);
 		}
 
-		Path inputfilelocalpath = mirroredinputfile.getPath();
 		Path outputfilelocalpath = taskcontext
 				.mirror(outputdir, OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate.INSTANCE)
 				.resolve(outputPath.getFileName());
 
-		executor.run(taskcontext, this, sdkrefs, inputfilelocalpath, outputfilelocalpath);
+		executor.run(taskcontext, this, sdkrefs, inputfilelocalpath[0], outputfilelocalpath);
 
 		ProviderHolderPathKey outputfilepathkey = LocalFileProvider.getInstance().getPathKey(outputfilelocalpath);
 		ContentDescriptor outputfilecd = taskcontext.invalidateGetContentDescriptor(outputfilepathkey);
@@ -187,10 +231,14 @@ public class SignApkWorkerTaskFactory
 
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeObject(inputPath);
+		out.writeObject(inputFile);
 		out.writeObject(outputPath);
 		out.writeObject(v1SigningEnabled);
 		out.writeObject(v2SigningEnabled);
+		out.writeObject(keyStoreFile);
+		out.writeObject(alias);
+		out.writeObject(keyStorePassword);
+		out.writeObject(keyPassword);
 
 		SerialUtils.writeExternalMap(out, sdkDescriptions);
 		out.writeObject(remoteDispatchableEnvironmentSelector);
@@ -198,10 +246,14 @@ public class SignApkWorkerTaskFactory
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		inputPath = (SakerPath) in.readObject();
+		inputFile = (FileLocation) in.readObject();
 		outputPath = (SakerPath) in.readObject();
 		v1SigningEnabled = (Boolean) in.readObject();
 		v2SigningEnabled = (Boolean) in.readObject();
+		keyStoreFile = (FileLocation) in.readObject();
+		alias = (String) in.readObject();
+		keyStorePassword = (String) in.readObject();
+		keyPassword = (String) in.readObject();
 
 		sdkDescriptions = SerialUtils.readExternalSortedImmutableNavigableMap(in,
 				SDKSupportUtils.getSDKNameComparator());
@@ -212,11 +264,7 @@ public class SignApkWorkerTaskFactory
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((inputPath == null) ? 0 : inputPath.hashCode());
 		result = prime * result + ((outputPath == null) ? 0 : outputPath.hashCode());
-		result = prime * result + ((sdkDescriptions == null) ? 0 : sdkDescriptions.hashCode());
-		result = prime * result + ((v1SigningEnabled == null) ? 0 : v1SigningEnabled.hashCode());
-		result = prime * result + ((v2SigningEnabled == null) ? 0 : v2SigningEnabled.hashCode());
 		return result;
 	}
 
@@ -229,10 +277,30 @@ public class SignApkWorkerTaskFactory
 		if (getClass() != obj.getClass())
 			return false;
 		SignApkWorkerTaskFactory other = (SignApkWorkerTaskFactory) obj;
-		if (inputPath == null) {
-			if (other.inputPath != null)
+		if (alias == null) {
+			if (other.alias != null)
 				return false;
-		} else if (!inputPath.equals(other.inputPath))
+		} else if (!alias.equals(other.alias))
+			return false;
+		if (inputFile == null) {
+			if (other.inputFile != null)
+				return false;
+		} else if (!inputFile.equals(other.inputFile))
+			return false;
+		if (keyPassword == null) {
+			if (other.keyPassword != null)
+				return false;
+		} else if (!keyPassword.equals(other.keyPassword))
+			return false;
+		if (keyStoreFile == null) {
+			if (other.keyStoreFile != null)
+				return false;
+		} else if (!keyStoreFile.equals(other.keyStoreFile))
+			return false;
+		if (keyStorePassword == null) {
+			if (other.keyStorePassword != null)
+				return false;
+		} else if (!keyStorePassword.equals(other.keyStorePassword))
 			return false;
 		if (outputPath == null) {
 			if (other.outputPath != null)

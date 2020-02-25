@@ -76,13 +76,10 @@ public class AndroidUtils {
 		if (!ranges.isEmpty()) {
 			VersionRange union = UnionVersionRange.create(ranges);
 			return v -> {
-				try {
+				if (BundleIdentifier.isValidVersionNumber(v)) {
 					if (union.includes(v)) {
 						return true;
 					}
-				} catch (IllegalArgumentException e) {
-					//not a valid version number or something
-					//ignore, and don't include
 				}
 				return versions.contains(v);
 			};
@@ -97,9 +94,16 @@ public class AndroidUtils {
 		SakerPath buildtoolspath = installpath.resolve("build-tools");
 		NavigableSet<String> descendingverdirectories = new TreeSet<>(
 				Collections.reverseOrder(BundleIdentifier::compareVersionNumbers));
+		NavigableSet<String> remainingdirs = new TreeSet<>();
 		try {
 			NavigableMap<String, ? extends FileEntry> buildtoolsentries = fp.getDirectoryEntries(buildtoolspath);
-			descendingverdirectories.addAll(buildtoolsentries.keySet());
+			for (String direntry : buildtoolsentries.keySet()) {
+				if (BundleIdentifier.isValidVersionNumber(direntry)) {
+					descendingverdirectories.add(direntry);
+				} else {
+					remainingdirs.add(direntry);
+				}
+			}
 		} catch (IOException e) {
 			return null;
 		}
@@ -109,30 +113,13 @@ public class AndroidUtils {
 						getSdkOsType());
 			}
 		}
+		for (String verdirname : remainingdirs) {
+			if (versionpredicate.test(verdirname)) {
+				return new AndroidBuildToolsSDKReference(verdirname, buildtoolspath.resolve(verdirname),
+						getSdkOsType());
+			}
+		}
 		return null;
-	}
-
-	public static int getSdkOsType() {
-		String mappedname = System.mapLibraryName("test");
-		if ("test.dll".equals(mappedname)) {
-			return SDK_OS_TYPE_WINDOWS;
-		}
-		if ("libtest.so".equals(mappedname)) {
-			return SDK_OS_TYPE_LINUX;
-		}
-		if ("libtest.dylib".equals(mappedname)) {
-			return SDK_OS_TYPE_MACOS;
-		}
-		return SDK_OS_TYPE_UNKNOWN;
-	}
-
-	public static String[] getEnvironmentUserParameterSDKLocations(SakerEnvironment environment) {
-		Map<String, String> userparams = environment.getUserParameters();
-		String installlocationsparam = userparams.get(AndroidUtils.ENVIRONMENT_USER_PARAMETER_ANDROID_SDK_LOCATIONS);
-		if (ObjectUtils.isNullOrEmpty(installlocationsparam)) {
-			return ObjectUtils.EMPTY_STRING_ARRAY;
-		}
-		return PATTERN_SEMICOLON_SPLIT.split(installlocationsparam);
 	}
 
 	public static SDKReference searchPlatformInAndroidSDKInstallLocation(SakerPath installpath,
@@ -167,7 +154,8 @@ public class AndroidUtils {
 				Integer rver = r.getValue();
 				if (lver == null) {
 					if (rver == null) {
-						return l.getKey().compareTo(r.getKey());
+						//descending order for directories that are not in "android-<num>" format
+						return -l.getKey().compareTo(r.getKey());
 					}
 					return 1;
 				}
@@ -182,10 +170,35 @@ public class AndroidUtils {
 		}
 		for (Entry<String, Integer> verdirentry : verdirectories) {
 			String verdirname = verdirentry.getKey();
-			if (versionpredicate.test(verdirname)) {
+			Integer ver = verdirentry.getValue();
+			if (versionpredicate.test(verdirname) || (ver != null && versionpredicate.test(ver.toString()))) {
 				return new AndroidPlatformSDKReference(verdirname, platformspath.resolve(verdirname));
 			}
 		}
 		return null;
 	}
+
+	public static int getSdkOsType() {
+		String mappedname = System.mapLibraryName("test");
+		if ("test.dll".equals(mappedname)) {
+			return SDK_OS_TYPE_WINDOWS;
+		}
+		if ("libtest.so".equals(mappedname)) {
+			return SDK_OS_TYPE_LINUX;
+		}
+		if ("libtest.dylib".equals(mappedname)) {
+			return SDK_OS_TYPE_MACOS;
+		}
+		return SDK_OS_TYPE_UNKNOWN;
+	}
+
+	public static String[] getEnvironmentUserParameterSDKLocations(SakerEnvironment environment) {
+		Map<String, String> userparams = environment.getUserParameters();
+		String installlocationsparam = userparams.get(AndroidUtils.ENVIRONMENT_USER_PARAMETER_ANDROID_SDK_LOCATIONS);
+		if (ObjectUtils.isNullOrEmpty(installlocationsparam)) {
+			return ObjectUtils.EMPTY_STRING_ARRAY;
+		}
+		return PATTERN_SEMICOLON_SPLIT.split(installlocationsparam);
+	}
+
 }

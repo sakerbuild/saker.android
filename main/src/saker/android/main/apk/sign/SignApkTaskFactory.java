@@ -22,6 +22,10 @@ import saker.build.trace.BuildTrace;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
+import saker.std.api.file.location.FileLocation;
+import saker.std.api.util.SakerStandardUtils;
+import saker.std.main.file.option.FileLocationTaskOption;
+import saker.std.main.file.utils.TaskOptionUtils;
 
 public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
@@ -33,7 +37,7 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 		return new ParameterizableTask<Object>() {
 
 			@SakerInput(value = { "", "APK" }, required = true)
-			public SakerPath apkOption;
+			public FileLocationTaskOption apkOption;
 
 			@SakerInput(value = "Output")
 			public SakerPath outputOption;
@@ -41,11 +45,21 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput(value = { "SDKs" })
 			public Map<String, SDKDescriptionTaskOption> sdksOption;
 
+			@SakerInput(value = { "KeyStore" })
+			public FileLocationTaskOption keyStoreOption;
+			@SakerInput(value = { "Alias" })
+			public String aliasOption;
+			@SakerInput(value = { "StorePassword" })
+			public String keyStorePasswordOption;
+			@SakerInput(value = { "Key" })
+			public String keyPasswordOption;
+
 			@Override
 			public Object run(TaskContext taskcontext) throws Exception {
 				if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 					BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 				}
+				FileLocation apkfilelocation = TaskOptionUtils.toFileLocation(apkOption, taskcontext);
 				SakerPath outputpath = outputOption;
 				if (outputpath != null) {
 					if (!outputpath.isForwardRelative()) {
@@ -54,9 +68,10 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 						return null;
 					}
 				} else {
-					String apkfname = apkOption.getFileName();
+					String apkfname = SakerStandardUtils.getFileLocationFileName(apkfilelocation);
 					outputpath = SakerPath.valueOf(toSignedOutputApkFileName(apkfname));
 				}
+				FileLocation keystorefilelocation = TaskOptionUtils.toFileLocation(keyStoreOption, null);
 
 				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
 						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
@@ -66,9 +81,12 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 
 				SignApkWorkerTaskIdentifier workertaskid = new SignApkWorkerTaskIdentifier(outputpath);
 				SignApkWorkerTaskFactory workertask = new SignApkWorkerTaskFactory();
-				workertask.setInputPath(apkOption);
+				workertask.setInputFile(apkfilelocation);
 				workertask.setOutputPath(SakerPath.valueOf(TASK_NAME).resolve(outputpath));
 				workertask.setSDKDescriptions(sdkdescriptions);
+				if (keystorefilelocation != null) {
+					workertask.setSigning(keystorefilelocation, keyStorePasswordOption, aliasOption, keyPasswordOption);
+				}
 
 				taskcontext.startTask(workertaskid, workertask, null);
 

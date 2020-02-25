@@ -1,5 +1,6 @@
 package saker.android.apksignersupport;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigInteger;
@@ -12,7 +13,6 @@ import java.security.PrivateKey;
 import java.security.SecureRandom;
 import java.security.cert.Certificate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.NavigableMap;
 import java.util.UUID;
@@ -22,10 +22,16 @@ import com.android.apksigner.ApkSignerTool;
 import saker.android.impl.apk.sign.ApkSignExecutor;
 import saker.android.impl.apk.sign.SignApkWorkerTaskFactory;
 import saker.android.impl.support.SupportToolSystemExitError;
+import saker.build.file.path.SakerPath;
+import saker.build.task.CommonTaskContentDescriptors;
 import saker.build.task.TaskContext;
+import saker.build.task.TaskExecutionUtilities.MirroredFileContents;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.nest.bundle.NestBundleClassLoader;
 import saker.sdk.support.api.SDKReference;
+import saker.std.api.file.location.ExecutionFileLocation;
+import saker.std.api.file.location.FileLocation;
+import saker.std.api.file.location.FileLocationVisitor;
 import sun.security.x509.AlgorithmId;
 import sun.security.x509.CertificateAlgorithmId;
 import sun.security.x509.CertificateSerialNumber;
@@ -41,6 +47,9 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 	private static final Object DEBUG_KEY_GENERATE_LOCK = new Object();
 
 	private static final String DEBUG_KEYSTORE_NAME = "android_debug.jks";
+	private static final String DEBUG_KEY_ALIAS = "androiddebugkey";
+	private static final String DEBUG_KEY_PASSWORD = "android";
+	private static final char[] DEBUG_KEY_PASSWORD_CHARS = DEBUG_KEY_PASSWORD.toCharArray();
 
 	public static ApkSignExecutor createApkSignExecutor() {
 		return new ApkSignExecutorImpl();
@@ -51,32 +60,84 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 			NavigableMap<String, SDKReference> sdkrefs, Path inputfilelocalpath, Path outputfilelocalpath)
 			throws Exception {
 		NestBundleClassLoader nestcl = (NestBundleClassLoader) ApkSignExecutor.class.getClassLoader();
-		Path storagepath = nestcl.getBundle().getBundleStoragePath();
-		Path debugkeypath = storagepath.resolve(DEBUG_KEYSTORE_NAME);
-		if (!Files.exists(debugkeypath)) {
-			synchronized (DEBUG_KEY_GENERATE_LOCK) {
-				Files.createDirectories(debugkeypath.getParent());
-				Path temppath = debugkeypath.resolveSibling(DEBUG_KEYSTORE_NAME + "_" + UUID.randomUUID());
-				try {
-					generateDebugKeyStoreToPath(temppath);
-
+		FileLocation ksfilelocation = workertask.getKeyStoreFile();
+		String[] storepassword = { null };
+		String[] keypassword = { null };
+		Path[] keystorepath = { null };
+		String[] alias = { null };
+		if (ksfilelocation == null) {
+			Path storagepath = nestcl.getBundle().getBundleStoragePath();
+			Path debugkeypath = storagepath.resolve(DEBUG_KEYSTORE_NAME);
+			if (!Files.exists(debugkeypath)) {
+				synchronized (DEBUG_KEY_GENERATE_LOCK) {
+					Files.createDirectories(debugkeypath.getParent());
+					Path temppath = debugkeypath.resolveSibling(DEBUG_KEYSTORE_NAME + "_" + UUID.randomUUID());
 					try {
-						//no REPLACE_EXISTING
-						Files.move(temppath, debugkeypath);
-					} catch (IOException e) {
-						//failed to move, might be because others concurrently created it
+						generateDebugKeyStoreToPath(temppath);
+
+						try {
+							//no REPLACE_EXISTING
+							Files.move(temppath, debugkeypath);
+						} catch (IOException e) {
+							//failed to move, might be because others concurrently created it
+						}
+					} finally {
+						Files.deleteIfExists(temppath);
 					}
-				} finally {
-					Files.deleteIfExists(temppath);
 				}
 			}
+
+			keystorepath[0] = debugkeypath;
+			storepassword[0] = DEBUG_KEY_PASSWORD;
+			keypassword[0] = DEBUG_KEY_PASSWORD;
+			alias[0] = DEBUG_KEY_ALIAS;
+		} else {
+			ksfilelocation.accept(new FileLocationVisitor() {
+				@Override
+				public void visit(ExecutionFileLocation loc) {
+					SakerPath inputpath = loc.getPath();
+					MirroredFileContents mirroredinputfile;
+					try {
+						mirroredinputfile = taskcontext.getTaskUtilities().mirrorFileAtPathContents(inputpath);
+					} catch (IOException e) {
+						taskcontext.reportInputFileDependency(null, inputpath,
+								CommonTaskContentDescriptors.IS_NOT_FILE);
+						FileNotFoundException fnfe = new FileNotFoundException(loc.toString());
+						fnfe.initCause(e);
+						ObjectUtils.sneakyThrow(fnfe);
+						return;
+					}
+					taskcontext.reportInputFileDependency(null, inputpath, mirroredinputfile.getContents());
+					keystorepath[0] = mirroredinputfile.getPath();
+				}
+			});
+			storepassword[0] = workertask.getKeyStorePassword();
+			keypassword[0] = workertask.getKeyPassword();
+			alias[0] = workertask.getAlias();
 		}
 
 		try {
 			ArrayList<String> args = new ArrayList<>(11 + 4 + 1);
-			Collections.addAll(args, "sign", "-ks", debugkeypath.toString(), "--ks-key-alias", "androiddebugkey",
-					"-ks-pass", "pass:" + DEBUG_KEY_PASSWORD, "-key-pass", "pass:" + DEBUG_KEY_PASSWORD, "--out",
-					outputfilelocalpath.toString());
+
+			args.add("sign");
+			args.add("--ks");
+			args.add(keystorepath[0].toString());
+
+			if (alias != null) {
+				args.add("--ks-key-alias");
+				args.add(alias[0]);
+			}
+			if (storepassword != null) {
+				args.add("--ks-pass");
+				args.add("pass:" + storepassword[0]);
+			}
+			if (keypassword != null) {
+				args.add("--key-pass");
+				args.add("pass:" + keypassword[0]);
+			}
+			args.add("--out");
+			args.add(outputfilelocalpath.toString());
+
 			Boolean v1signingenabled = workertask.getV1SigningEnabled();
 			Boolean v2signingenabled = workertask.getV2SigningEnabled();
 			if (v1signingenabled != null) {
@@ -91,11 +152,12 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 			ApkSignerTool.main(args.toArray(ObjectUtils.EMPTY_STRING_ARRAY));
 		} catch (SupportToolSystemExitError e) {
 			throw new IOException("apksigner execution failed: " + e.getExitCode());
+		} catch (NoClassDefFoundError e) {
+			throw new IOException(
+					"Failed to run apksigner. This may be due to the class version of apksigner is not supported by the current JVM.",
+					e);
 		}
 	}
-
-	private static final String DEBUG_KEY_PASSWORD = "android";
-	private static final char[] DEBUG_KEY_PASSWORD_CHARS = DEBUG_KEY_PASSWORD.toCharArray();
 
 	private static void generateDebugKeyStoreToPath(Path path) throws Exception {
 		//partially based on
@@ -135,7 +197,7 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 		cert = new X509CertImpl(info);
 		cert.sign(privkey, algorithm);
 
-		ks.setKeyEntry("androiddebugkey", privkey, DEBUG_KEY_PASSWORD_CHARS, new Certificate[] { cert });
+		ks.setKeyEntry(DEBUG_KEY_ALIAS, privkey, DEBUG_KEY_PASSWORD_CHARS, new Certificate[] { cert });
 
 		try (OutputStream os = Files.newOutputStream(path)) {
 			ks.store(os, DEBUG_KEY_PASSWORD_CHARS);
