@@ -1,7 +1,7 @@
 saker.android.d8=saker.android.main.d8.D8TaskFactory
 saker.android.aapt2.compile=saker.android.main.aapt2.AAPT2CompileTaskFactory
 saker.android.aapt2.link=saker.android.main.aapt2.AAPT2LinkTaskFactory
-saker.android.zipalign=saker.android.main.zipalign.ZipalignTaskFactory
+saker.android.zipalign=saker.android.main.zipalign.ZipAlignTaskFactory
 saker.apk.create=saker.android.main.apk.create.ApkCreateTaskFactory
 saker.apk.sign=saker.android.main.apk.sign.SignApkTaskFactory
 saker.android.sdk.buildtools=saker.android.main.sdk.AndroidBuildToolsSDKTaskFactory

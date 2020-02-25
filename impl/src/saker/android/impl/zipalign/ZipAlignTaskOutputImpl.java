@@ -5,11 +5,11 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
-import saker.android.api.zipalign.ZipalignTaskOutput;
+import saker.android.api.zipalign.ZipAlignTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 
-final class ZipalignTaskOutputImpl implements ZipalignTaskOutput, Externalizable {
+final class ZipAlignTaskOutputImpl implements ZipAlignTaskOutput, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private SakerPath path;
@@ -17,10 +17,10 @@ final class ZipalignTaskOutputImpl implements ZipalignTaskOutput, Externalizable
 	/**
 	 * For {@link Externalizable}.
 	 */
-	public ZipalignTaskOutputImpl() {
+	public ZipAlignTaskOutputImpl() {
 	}
 
-	public ZipalignTaskOutputImpl(SakerPath path) {
+	public ZipAlignTaskOutputImpl(SakerPath path) {
 		this.path = path;
 	}
 

@@ -8,7 +8,7 @@ import java.io.ObjectOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.task.identifier.TaskIdentifier;
 
-public class ZipalignWorkerTaskIdentifier implements TaskIdentifier, Externalizable {
+public class ZipAlignWorkerTaskIdentifier implements TaskIdentifier, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private SakerPath outputPath;
@@ -16,10 +16,10 @@ public class ZipalignWorkerTaskIdentifier implements TaskIdentifier, Externaliza
 	/**
 	 * For {@link Externalizable}.
 	 */
-	public ZipalignWorkerTaskIdentifier() {
+	public ZipAlignWorkerTaskIdentifier() {
 	}
 
-	public ZipalignWorkerTaskIdentifier(SakerPath outputPath) {
+	public ZipAlignWorkerTaskIdentifier(SakerPath outputPath) {
 		this.outputPath = outputPath;
 	}
 
@@ -53,7 +53,7 @@ public class ZipalignWorkerTaskIdentifier implements TaskIdentifier, Externaliza
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		ZipalignWorkerTaskIdentifier other = (ZipalignWorkerTaskIdentifier) obj;
+		ZipAlignWorkerTaskIdentifier other = (ZipAlignWorkerTaskIdentifier) obj;
 		if (outputPath == null) {
 			if (other.outputPath != null)
 				return false;

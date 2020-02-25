@@ -6,9 +6,10 @@ import java.util.NavigableMap;
 import saker.android.impl.AndroidUtils;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
-import saker.android.impl.zipalign.ZipalignWorkerTaskFactory;
-import saker.android.impl.zipalign.ZipalignWorkerTaskIdentifier;
+import saker.android.impl.zipalign.ZipAlignWorkerTaskFactory;
+import saker.android.impl.zipalign.ZipAlignWorkerTaskIdentifier;
 import saker.android.main.AndroidFrontendUtils;
+import saker.android.main.zipalign.option.ZipAlignInputTaskOption;
 import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
@@ -22,8 +23,10 @@ import saker.build.trace.BuildTrace;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
+import saker.std.api.file.location.FileLocation;
+import saker.std.api.util.SakerStandardUtils;
 
-public class ZipalignTaskFactory extends FrontendTaskFactory<Object> {
+public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
 	public static final String TASK_NAME = "saker.android.zipalign";
@@ -32,7 +35,7 @@ public class ZipalignTaskFactory extends FrontendTaskFactory<Object> {
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
 		return new ParameterizableTask<Object>() {
 			@SakerInput(value = { "", "APK", "Input" }, required = true)
-			public SakerPath inputOption;
+			public ZipAlignInputTaskOption inputOption;
 
 			@SakerInput(value = "Output")
 			public SakerPath outputOption;
@@ -45,6 +48,7 @@ public class ZipalignTaskFactory extends FrontendTaskFactory<Object> {
 				if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 					BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 				}
+				FileLocation inputzipfile = inputOption.getInputFileLocation();
 
 				SakerPath outputpath = outputOption;
 				if (outputpath != null) {
@@ -54,7 +58,7 @@ public class ZipalignTaskFactory extends FrontendTaskFactory<Object> {
 						return null;
 					}
 				} else {
-					String apkfname = inputOption.getFileName();
+					String apkfname = SakerStandardUtils.getFileLocationFileName(inputzipfile);
 					outputpath = SakerPath.valueOf(toAlignedOutputApkFileName(apkfname));
 				}
 
@@ -64,9 +68,9 @@ public class ZipalignTaskFactory extends FrontendTaskFactory<Object> {
 						AndroidUtils.DEFAULT_BUILD_TOOLS_SDK);
 				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);
 
-				ZipalignWorkerTaskIdentifier workertaskid = new ZipalignWorkerTaskIdentifier(outputpath);
-				ZipalignWorkerTaskFactory workertask = new ZipalignWorkerTaskFactory();
-				workertask.setInputPath(inputOption);
+				ZipAlignWorkerTaskIdentifier workertaskid = new ZipAlignWorkerTaskIdentifier(outputpath);
+				ZipAlignWorkerTaskFactory workertask = new ZipAlignWorkerTaskFactory();
+				workertask.setInputFile(inputzipfile);
 				workertask.setOutputPath(SakerPath.valueOf(TASK_NAME).resolve(outputpath));
 				workertask.setSDKDescriptions(sdkdescriptions);
 

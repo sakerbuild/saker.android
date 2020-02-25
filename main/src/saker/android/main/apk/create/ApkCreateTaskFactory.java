@@ -49,7 +49,7 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput(value = { "Resources" }, required = true)
 			public ApkResourcesTaskOption resourcesOption;
 
-			@SakerInput(value = { "Classes" })
+			@SakerInput(value = { "Classes" }, required = true)
 			public ApkClassesTaskOption classesOption;
 
 			@SakerInput(value = { "Assets" })
@@ -67,7 +67,7 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 				if (outputpath != null) {
 					if (!outputpath.isForwardRelative()) {
 						taskcontext.abortExecution(new InvalidPathFormatException(
-								"Signed APK output path must be forward relative: " + outputpath));
+								"APK output path must be forward relative: " + outputpath));
 						return null;
 					}
 				} else {

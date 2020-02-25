@@ -9,6 +9,7 @@ import saker.android.impl.apk.sign.SignApkWorkerTaskIdentifier;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.AndroidFrontendUtils;
+import saker.android.main.apk.sign.option.SignApkInputTaskOption;
 import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
@@ -37,7 +38,7 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 		return new ParameterizableTask<Object>() {
 
 			@SakerInput(value = { "", "APK" }, required = true)
-			public FileLocationTaskOption apkOption;
+			public SignApkInputTaskOption apkOption;
 
 			@SakerInput(value = "Output")
 			public SakerPath outputOption;
@@ -59,7 +60,7 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 				if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 					BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 				}
-				FileLocation apkfilelocation = TaskOptionUtils.toFileLocation(apkOption, taskcontext);
+				FileLocation apkfilelocation = apkOption.getInputFileLocation();
 				SakerPath outputpath = outputOption;
 				if (outputpath != null) {
 					if (!outputpath.isForwardRelative()) {
