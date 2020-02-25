@@ -43,9 +43,6 @@ import sun.security.x509.X509CertImpl;
 import sun.security.x509.X509CertInfo;
 
 public class ApkSignExecutorImpl implements ApkSignExecutor {
-
-	private static final Object DEBUG_KEY_GENERATE_LOCK = new Object();
-
 	private static final String DEBUG_KEYSTORE_NAME = "android_debug.jks";
 	private static final String DEBUG_KEY_ALIAS = "androiddebugkey";
 	private static final String DEBUG_KEY_PASSWORD = "android";
@@ -69,7 +66,7 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 			Path storagepath = nestcl.getBundle().getBundleStoragePath();
 			Path debugkeypath = storagepath.resolve(DEBUG_KEYSTORE_NAME);
 			if (!Files.exists(debugkeypath)) {
-				synchronized (DEBUG_KEY_GENERATE_LOCK) {
+				synchronized ((getClass().getName() + ":debug_key:" + debugkeypath).intern()) {
 					Files.createDirectories(debugkeypath.getParent());
 					Path temppath = debugkeypath.resolveSibling(DEBUG_KEYSTORE_NAME + "_" + UUID.randomUUID());
 					try {
