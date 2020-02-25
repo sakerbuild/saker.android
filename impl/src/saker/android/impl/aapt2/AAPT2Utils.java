@@ -38,6 +38,9 @@ public class AAPT2Utils {
 				//continue, try without daemon
 			}
 		}
+		
+		//TODO we could use the libaapt2_jni libraries in the build tools if present. However, it's only 32bit for windows
+		//     we also need sure to not load it multiple times in a single JVM, so may need to extract it to the bundle storage location
 
 		//TODO use @argument-file when input files are too many to fit on the command line
 		//     (not necessary with daemon)

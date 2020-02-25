@@ -3,6 +3,7 @@ global(DEPENDENCIES_saker.android) = [
 	saker.sdk.support,
 	saker.compiler.utils,
 	saker.zip-api,
+	saker.java.compiler-api,
 ]
 global(saker.android.COMPILER_OPTIONS) = [
 	###

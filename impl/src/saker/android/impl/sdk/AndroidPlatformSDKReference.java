@@ -15,6 +15,7 @@ public class AndroidPlatformSDKReference implements SDKReference, Externalizable
 	public static final String PROPERTY_VERSION = "version";
 
 	public static final String PATH_ANDROID_JAR = "jar.android";
+	public static final String PATH_SOURCES = "sources";
 
 	private static final SakerPath ANDROID_JAR_PATH = SakerPath.valueOf("android.jar");
 
@@ -52,6 +53,9 @@ public class AndroidPlatformSDKReference implements SDKReference, Externalizable
 		switch (identifier) {
 			case PATH_ANDROID_JAR: {
 				return basePath.resolve(ANDROID_JAR_PATH);
+			}
+			case PATH_SOURCES: {
+				return basePath.resolve("../../sources/" + version);
 			}
 			default: {
 				break;

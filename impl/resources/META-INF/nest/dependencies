@@ -2,3 +2,5 @@ saker.android-api
 	classpath: [this]
 saker.sdk.support-api
 	classpath: [0.8.2)
+saker.java.compiler-api
+	classpath: [0.8.4)
