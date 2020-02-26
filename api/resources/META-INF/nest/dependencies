@@ -3,3 +3,5 @@ saker.android-impl
 		compile-transitive: false
 saker.compiler.utils-api
 	classpath: [0)
+saker.standard-api
+	classpath: [0.8.2)
