@@ -1,4 +1,4 @@
-package saker.android.impl.aapt2;
+package saker.android.impl.aapt2.link;
 
 import java.io.Externalizable;
 import java.io.File;
@@ -19,6 +19,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
+import saker.android.impl.aapt2.AAPT2Utils;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.aapt2.AAPT2LinkTaskFactory;
@@ -321,7 +322,7 @@ public class AAPT2LinkWorkerTaskFactory
 				generateMainDexProguardRules, "rules_main.pro");
 		Path outputemitidslocalpath = getOutputPathIfEnabledForFileName(outputdirmirror, emitIds, "emit_ids.txt");
 		Path outputtextsymbolslocalpath = getOutputPathIfEnabledForFileName(outputdirmirror, outputTextSymbols,
-				"text_symbols.txt");
+				"R.txt");
 
 		Path javaoutputdirpath = taskcontext.mirror(javaoutdir);
 

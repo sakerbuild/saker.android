@@ -10,9 +10,9 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
-import saker.android.impl.aapt2.AAPT2LinkWorkerTaskFactory;
-import saker.android.impl.aapt2.AAPT2LinkWorkerTaskIdentifier;
-import saker.android.impl.aapt2.AAPT2LinkerFlag;
+import saker.android.impl.aapt2.link.AAPT2LinkWorkerTaskFactory;
+import saker.android.impl.aapt2.link.AAPT2LinkWorkerTaskIdentifier;
+import saker.android.impl.aapt2.link.AAPT2LinkerFlag;
 import saker.android.main.aapt2.option.AAPT2OutputFormatTaskOption;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;

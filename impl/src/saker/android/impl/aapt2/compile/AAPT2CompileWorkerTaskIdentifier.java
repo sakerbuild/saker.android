@@ -1,4 +1,4 @@
-package saker.android.impl.aapt2;
+package saker.android.impl.aapt2.compile;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -8,7 +8,7 @@ import java.io.ObjectOutput;
 import saker.build.task.identifier.TaskIdentifier;
 import saker.compiler.utils.api.CompilationIdentifier;
 
-public class AAPT2LinkWorkerTaskIdentifier implements TaskIdentifier, Externalizable {
+public class AAPT2CompileWorkerTaskIdentifier implements TaskIdentifier, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private CompilationIdentifier compilationIdentifier;
@@ -16,10 +16,10 @@ public class AAPT2LinkWorkerTaskIdentifier implements TaskIdentifier, Externaliz
 	/**
 	 * For {@link Externalizable}.
 	 */
-	public AAPT2LinkWorkerTaskIdentifier() {
+	public AAPT2CompileWorkerTaskIdentifier() {
 	}
 
-	public AAPT2LinkWorkerTaskIdentifier(CompilationIdentifier compilationIdentifier) {
+	public AAPT2CompileWorkerTaskIdentifier(CompilationIdentifier compilationIdentifier) {
 		this.compilationIdentifier = compilationIdentifier;
 	}
 
@@ -53,7 +53,7 @@ public class AAPT2LinkWorkerTaskIdentifier implements TaskIdentifier, Externaliz
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		AAPT2LinkWorkerTaskIdentifier other = (AAPT2LinkWorkerTaskIdentifier) obj;
+		AAPT2CompileWorkerTaskIdentifier other = (AAPT2CompileWorkerTaskIdentifier) obj;
 		if (compilationIdentifier == null) {
 			if (other.compilationIdentifier != null)
 				return false;

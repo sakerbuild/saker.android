@@ -1,4 +1,4 @@
-package saker.android.impl.aapt2;
+package saker.android.impl.aapt2.compile;
 
 public enum AAPT2CompilerFlag {
 	PSEUDO_LOCALIZE("--pseudo-localize"),

@@ -2,7 +2,7 @@ package saker.android.main.aapt2.option;
 
 import java.util.Locale;
 
-import saker.android.impl.aapt2.AAPT2LinkerFlag;
+import saker.android.impl.aapt2.link.AAPT2LinkerFlag;
 
 public class AAPT2OutputFormatTaskOption {
 	private AAPT2LinkerFlag flag;

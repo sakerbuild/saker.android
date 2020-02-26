@@ -1,4 +1,4 @@
-package saker.android.impl.aapt2;
+package saker.android.impl.aapt2.link;
 
 public enum AAPT2LinkerFlag {
 	ALLOW_RESERVED_PACKAGE_ID("--allow-reserved-package-id"),

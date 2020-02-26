@@ -8,10 +8,10 @@ import java.util.NavigableMap;
 import java.util.Set;
 
 import saker.android.impl.AndroidUtils;
-import saker.android.impl.aapt2.AAPT2CompilationConfiguration;
-import saker.android.impl.aapt2.AAPT2CompileWorkerTaskFactory;
-import saker.android.impl.aapt2.AAPT2CompileWorkerTaskIdentifier;
-import saker.android.impl.aapt2.AAPT2CompilerFlag;
+import saker.android.impl.aapt2.compile.AAPT2CompilationConfiguration;
+import saker.android.impl.aapt2.compile.AAPT2CompileWorkerTaskFactory;
+import saker.android.impl.aapt2.compile.AAPT2CompileWorkerTaskIdentifier;
+import saker.android.impl.aapt2.compile.AAPT2CompilerFlag;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.AndroidFrontendUtils;

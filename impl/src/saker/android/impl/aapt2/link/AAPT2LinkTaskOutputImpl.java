@@ -1,4 +1,4 @@
-package saker.android.impl.aapt2;
+package saker.android.impl.aapt2.link;
 
 import java.io.Externalizable;
 import java.io.IOException;

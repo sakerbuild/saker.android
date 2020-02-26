@@ -1,4 +1,4 @@
-package saker.android.impl.aapt2;
+package saker.android.impl.aapt2.compile;
 
 import java.io.Externalizable;
 import java.io.IOException;
@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
+import saker.android.impl.aapt2.AAPT2Utils;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.main.aapt2.AAPT2CompileTaskFactory;
 import saker.build.file.SakerDirectory;
@@ -168,7 +169,7 @@ public class AAPT2CompileWorkerTaskFactory
 		}
 
 		NavigableMap<SakerPath, SakerFile> collectedfiles = taskcontext.getTaskUtilities()
-				.collectFilesReportInputFileAndAdditionDependency(AAPT2TaskTags.INPUT_RESOURCE,
+				.collectFilesReportInputFileAndAdditionDependency(AAPT2CompilerTags.INPUT_RESOURCE,
 						inputcollectionstrategies);
 
 		AAPT2CompilationConfiguration thiscompilationconfig = this.configuration;
@@ -189,9 +190,9 @@ public class AAPT2CompileWorkerTaskFactory
 			nstate = new CompileState(prevstate);
 
 			NavigableMap<SakerPath, SakerFile> changedinputfiles = TaskUtils.collectFilesForTag(
-					taskcontext.getFileDeltas(DeltaType.INPUT_FILE_CHANGE), AAPT2TaskTags.INPUT_RESOURCE);
+					taskcontext.getFileDeltas(DeltaType.INPUT_FILE_CHANGE), AAPT2CompilerTags.INPUT_RESOURCE);
 			NavigableMap<SakerPath, SakerFile> changedoutputfiles = TaskUtils.collectFilesForTag(
-					taskcontext.getFileDeltas(DeltaType.OUTPUT_FILE_CHANGE), AAPT2TaskTags.OUTPUT_COMPILED);
+					taskcontext.getFileDeltas(DeltaType.OUTPUT_FILE_CHANGE), AAPT2CompilerTags.OUTPUT_COMPILED);
 
 			inputfiles = new TreeMap<>();
 
@@ -274,8 +275,7 @@ public class AAPT2CompileWorkerTaskFactory
 						in.input.outputDirectoryRelativePath);
 
 				outdir.clear();
-				Path outputdirlocalpath = taskcontext.mirror(outdir,
-						OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate.INSTANCE);
+				Path outputdirlocalpath = taskcontext.mirror(outdir);
 
 				ArrayList<String> cmd = new ArrayList<>();
 				cmd.add("compile");
@@ -287,6 +287,11 @@ public class AAPT2CompileWorkerTaskFactory
 				}
 				cmd.add("-o");
 				cmd.add(outputdirlocalpath.toString());
+
+				//XXX output text symbols?
+//				cmd.add("--output-text-symbols");
+//				cmd.add(outputdirlocalpath.resolve("textsymbols.txt").toString());
+
 				cmd.add(taskcontext.mirror(file).toString());
 
 				UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
@@ -325,7 +330,7 @@ public class AAPT2CompileWorkerTaskFactory
 		}
 		outputdir.synchronize();
 
-		taskcontext.getTaskUtilities().reportOutputFileDependency(AAPT2TaskTags.OUTPUT_COMPILED, outputfilecontents);
+		taskcontext.getTaskUtilities().reportOutputFileDependency(AAPT2CompilerTags.OUTPUT_COMPILED, outputfilecontents);
 
 		NavigableMap<String, SDKDescription> pinnedsdks = new TreeMap<>(SDKSupportUtils.getSDKNameComparator());
 		for (Entry<String, SDKReference> entry : sdkrefs.entrySet()) {
