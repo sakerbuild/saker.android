@@ -66,4 +66,48 @@ final class AAPT2CompileTaskOutputImpl implements AAPT2CompileTaskOutput, Extern
 		compilationId = (CompilationIdentifier) in.readObject();
 		sdks = SerialUtils.readExternalSortedImmutableNavigableMap(in, SDKSupportUtils.getSDKNameComparator());
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((compilationId == null) ? 0 : compilationId.hashCode());
+		result = prime * result + ((outputDirectoryPath == null) ? 0 : outputDirectoryPath.hashCode());
+		result = prime * result + ((outputFilePaths == null) ? 0 : outputFilePaths.hashCode());
+		result = prime * result + ((sdks == null) ? 0 : sdks.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		AAPT2CompileTaskOutputImpl other = (AAPT2CompileTaskOutputImpl) obj;
+		if (compilationId == null) {
+			if (other.compilationId != null)
+				return false;
+		} else if (!compilationId.equals(other.compilationId))
+			return false;
+		if (outputDirectoryPath == null) {
+			if (other.outputDirectoryPath != null)
+				return false;
+		} else if (!outputDirectoryPath.equals(other.outputDirectoryPath))
+			return false;
+		if (outputFilePaths == null) {
+			if (other.outputFilePaths != null)
+				return false;
+		} else if (!outputFilePaths.equals(other.outputFilePaths))
+			return false;
+		if (sdks == null) {
+			if (other.sdks != null)
+				return false;
+		} else if (!sdks.equals(other.sdks))
+			return false;
+		return true;
+	}
+
 }

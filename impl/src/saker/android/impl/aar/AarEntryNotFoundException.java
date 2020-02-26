@@ -1,4 +1,4 @@
-package saker.android.api.aar;
+package saker.android.impl.aar;
 
 public class AarEntryNotFoundException extends RuntimeException {
 	private static final long serialVersionUID = 1L;

@@ -2,6 +2,7 @@ package saker.android.main.aapt2;
 
 import java.util.Collection;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
@@ -9,10 +10,15 @@ import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeMap;
 
-import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
+import saker.android.impl.AndroidUtils;
 import saker.android.impl.aapt2.link.AAPT2LinkWorkerTaskFactory;
 import saker.android.impl.aapt2.link.AAPT2LinkWorkerTaskIdentifier;
 import saker.android.impl.aapt2.link.AAPT2LinkerFlag;
+import saker.android.impl.aapt2.link.option.AAPT2LinkerInput;
+import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
+import saker.android.impl.sdk.AndroidPlatformSDKReference;
+import saker.android.main.AndroidFrontendUtils;
+import saker.android.main.aapt2.option.AAPT2LinkerInputTaskOption;
 import saker.android.main.aapt2.option.AAPT2OutputFormatTaskOption;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
@@ -24,7 +30,11 @@ import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.trace.BuildTrace;
+import saker.compiler.utils.api.CompilationIdentifier;
+import saker.compiler.utils.main.CompilationIdentifierTaskOption;
 import saker.nest.utils.FrontendTaskFactory;
+import saker.sdk.support.api.SDKDescription;
+import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 
 public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
@@ -36,7 +46,9 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 		return new ParameterizableTask<Object>() {
 
 			@SakerInput(value = { "", "Input" }, required = true)
-			public AAPT2CompileTaskOutput input;
+			public Collection<AAPT2LinkerInputTaskOption> input;
+			@SakerInput(value = { "Overlay" })
+			public Collection<AAPT2LinkerInputTaskOption> overlayOption;
 
 			@SakerInput(value = "Manifest", required = true)
 			public SakerPath manifestOption;
@@ -157,6 +169,12 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput("Verbose")
 			public boolean verboseOption;
 
+			@SakerInput("Identifier")
+			public CompilationIdentifierTaskOption identifierOption;
+
+			@SakerInput(value = { "SDKs" })
+			public Map<String, SDKDescriptionTaskOption> sdksOption;
+
 			@Override
 			public Object run(TaskContext taskcontext) throws Exception {
 				if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
@@ -165,9 +183,40 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 
 				SakerPath workingdirpath = taskcontext.getTaskWorkingDirectoryPath();
 
-				AAPT2LinkWorkerTaskIdentifier workertaskid = new AAPT2LinkWorkerTaskIdentifier(input.getIdentifier());
+				CompilationIdentifier compilationid = CompilationIdentifierTaskOption.getIdentifier(identifierOption);
+
+				LinkedHashSet<AAPT2LinkerInput> inputset = new LinkedHashSet<>();
+				CompilationIdentifier inferredid = null;
+				for (AAPT2LinkerInputTaskOption inoption : input) {
+					if (inoption == null) {
+						continue;
+					}
+					inputset.addAll(inoption.toLinkerInput(taskcontext));
+					if (compilationid == null) {
+						inferredid = CompilationIdentifier.concat(inferredid, inoption.inferCompilationIdentifier());
+					}
+				}
+
+				if (compilationid == null) {
+					compilationid = inferredid;
+					if (compilationid == null) {
+						compilationid = CompilationIdentifier.valueOf("default");
+					}
+				}
+				Set<AAPT2LinkerInput> overlayset = new LinkedHashSet<>();
+				if (!ObjectUtils.isNullOrEmpty(overlayOption)) {
+					for (AAPT2LinkerInputTaskOption inoption : overlayOption) {
+						if (inoption == null) {
+							continue;
+						}
+						overlayset.addAll(inoption.toLinkerInput(taskcontext));
+					}
+				}
+
+				AAPT2LinkWorkerTaskIdentifier workertaskid = new AAPT2LinkWorkerTaskIdentifier(compilationid);
 				AAPT2LinkWorkerTaskFactory workertask = new AAPT2LinkWorkerTaskFactory();
-				workertask.setInputFiles(input.getOutputPaths());
+				workertask.setInput(inputset);
+				workertask.setOverlay(overlayset);
 				workertask.setManifest(workingdirpath.tryResolve(manifestOption));
 				workertask.setPackageId(packageIdOption);
 				workertask.setGenerateProguardRules(generateProguardRulesOption);
@@ -234,7 +283,13 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 
 				workertask.setVerbose(verboseOption);
 
-				workertask.setSDKDescriptions(input.getSDKs());
+				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
+						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
+				sdkdescriptions.putIfAbsent(AndroidBuildToolsSDKReference.SDK_NAME,
+						AndroidUtils.DEFAULT_BUILD_TOOLS_SDK);
+				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);
+
+				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);
 

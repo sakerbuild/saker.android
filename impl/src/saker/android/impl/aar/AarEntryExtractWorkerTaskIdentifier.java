@@ -8,7 +8,7 @@ import java.io.ObjectOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.task.identifier.TaskIdentifier;
 
-public class AarClassesWorkerTaskIdentifier implements TaskIdentifier, Externalizable {
+public class AarEntryExtractWorkerTaskIdentifier implements TaskIdentifier, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	protected SakerPath outputPath;
@@ -17,10 +17,10 @@ public class AarClassesWorkerTaskIdentifier implements TaskIdentifier, Externali
 	/**
 	 * For {@link Externalizable}.
 	 */
-	public AarClassesWorkerTaskIdentifier() {
+	public AarEntryExtractWorkerTaskIdentifier() {
 	}
 
-	public AarClassesWorkerTaskIdentifier(SakerPath outputPath, int outPathKind) {
+	public AarEntryExtractWorkerTaskIdentifier(SakerPath outputPath, int outPathKind) {
 		this.outputPath = outputPath;
 		this.outPathKind = outPathKind;
 	}
@@ -58,7 +58,7 @@ public class AarClassesWorkerTaskIdentifier implements TaskIdentifier, Externali
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		AarClassesWorkerTaskIdentifier other = (AarClassesWorkerTaskIdentifier) obj;
+		AarEntryExtractWorkerTaskIdentifier other = (AarEntryExtractWorkerTaskIdentifier) obj;
 		if (outPathKind != other.outPathKind)
 			return false;
 		if (outputPath == null) {

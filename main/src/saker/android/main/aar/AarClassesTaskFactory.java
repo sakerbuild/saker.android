@@ -1,7 +1,7 @@
 package saker.android.main.aar;
 
-import saker.android.impl.aar.AarClassesWorkerTaskFactory;
-import saker.android.impl.aar.AarClassesWorkerTaskIdentifier;
+import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
+import saker.android.impl.aar.AarEntryExtractWorkerTaskIdentifier;
 import saker.android.impl.aar.AarEntryExporterWorkerTaskFactoryBase;
 import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.path.SakerPath;
@@ -28,7 +28,7 @@ public class AarClassesTaskFactory extends FrontendTaskFactory<Object> {
 
 	public static final String TASK_NAME = "saker.aar.classes";
 
-	private static final SakerPath PATH_OUTPUT_BASE_DIRECTORY = SakerPath.valueOf(AarClassesTaskFactory.TASK_NAME);
+	private static final SakerPath PATH_OUTPUT_BASE_DIRECTORY = SakerPath.valueOf("saker.aar.extract");
 
 	@Override
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
@@ -69,13 +69,13 @@ public class AarClassesTaskFactory extends FrontendTaskFactory<Object> {
 							outputRelativePath = outputPathOption;
 						} else {
 							SakerPath inpath = loc.getPath();
-							outputRelativePath = SakerPath
-									.valueOf(StringUtils.toHexString(FileUtils.hashString(inpath.toString())))
-									.resolve(inpath.getFileName());
+							outputRelativePath = SakerPath.valueOf(inpath.getFileName())
+									.resolve(StringUtils.toHexString(FileUtils.hashString(inpath.toString())));
 						}
-						AarClassesWorkerTaskFactory wtask = new AarClassesWorkerTaskFactory(loc,
+						AarEntryExtractWorkerTaskFactory wtask = new AarEntryExtractWorkerTaskFactory(loc,
 								PATH_OUTPUT_BASE_DIRECTORY.resolve(outputRelativePath),
-								AarClassesWorkerTaskFactory.OUTPUT_KIND_EXECUTION);
+								AarEntryExtractWorkerTaskFactory.OUTPUT_KIND_EXECUTION,
+								AarEntryExporterWorkerTaskFactoryBase.ENTRY_NAME_CLASSES_JAR);
 						workertask[0] = wtask;
 					}
 
@@ -83,23 +83,24 @@ public class AarClassesTaskFactory extends FrontendTaskFactory<Object> {
 					public void visit(LocalFileLocation loc) {
 						if (outputPathOption == null) {
 							SakerPath inpath = loc.getLocalPath();
-							SakerPath outputRelativePath = SakerPath
-									.valueOf(StringUtils.toHexString(FileUtils.hashString(inpath.toString())))
-									.resolve(inpath.getFileName());
+							SakerPath outputRelativePath = SakerPath.valueOf(inpath.getFileName())
+									.resolve(StringUtils.toHexString(FileUtils.hashString(inpath.toString())));
 
-							AarClassesWorkerTaskFactory wtask = new AarClassesWorkerTaskFactory(loc,
+							AarEntryExtractWorkerTaskFactory wtask = new AarEntryExtractWorkerTaskFactory(loc,
 									PATH_OUTPUT_BASE_DIRECTORY.resolve(outputRelativePath),
-									AarClassesWorkerTaskFactory.OUTPUT_KIND_BUNDLE_STORAGE);
+									AarEntryExtractWorkerTaskFactory.OUTPUT_KIND_BUNDLE_STORAGE,
+									AarEntryExporterWorkerTaskFactoryBase.ENTRY_NAME_CLASSES_JAR);
 							workertask[0] = wtask;
 							return;
 						}
-						AarClassesWorkerTaskFactory wtask = new AarClassesWorkerTaskFactory(loc,
+						AarEntryExtractWorkerTaskFactory wtask = new AarEntryExtractWorkerTaskFactory(loc,
 								PATH_OUTPUT_BASE_DIRECTORY.resolve(outputPathOption),
-								AarClassesWorkerTaskFactory.OUTPUT_KIND_EXECUTION);
+								AarEntryExtractWorkerTaskFactory.OUTPUT_KIND_EXECUTION,
+								AarEntryExporterWorkerTaskFactoryBase.ENTRY_NAME_CLASSES_JAR);
 						workertask[0] = wtask;
 					}
 				});
-				TaskIdentifier workertaskid = new AarClassesWorkerTaskIdentifier(workertask[0].getOutputRelativePath(),
+				TaskIdentifier workertaskid = new AarEntryExtractWorkerTaskIdentifier(workertask[0].getOutputRelativePath(),
 						workertask[0].getOutPathKind());
 				taskcontext.startTask(workertaskid, workertask[0], null);
 

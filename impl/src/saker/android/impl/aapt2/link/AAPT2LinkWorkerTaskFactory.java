@@ -18,8 +18,12 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.android.impl.aapt2.AAPT2Utils;
+import saker.android.impl.aapt2.aar.AAPT2AarWorkerTaskFactory;
+import saker.android.impl.aapt2.aar.AAPT2AarWorkerTaskOutput;
+import saker.android.impl.aapt2.link.option.AAPT2LinkerInput;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.aapt2.AAPT2LinkTaskFactory;
@@ -40,7 +44,6 @@ import saker.build.task.TaskExecutionEnvironmentSelector;
 import saker.build.task.TaskExecutionUtilities;
 import saker.build.task.TaskExecutionUtilities.MirroredFileContents;
 import saker.build.task.TaskFactory;
-import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
 import saker.build.thirdparty.saker.util.io.FileUtils;
@@ -53,12 +56,18 @@ import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNotFoundException;
 import saker.sdk.support.api.exc.SDKPathNotFoundException;
+import saker.std.api.file.location.ExecutionFileLocation;
+import saker.std.api.file.location.FileLocation;
+import saker.std.api.file.location.FileLocationVisitor;
+import saker.std.api.file.location.LocalFileLocation;
+import saker.std.api.util.SakerStandardUtils;
 
 public class AAPT2LinkWorkerTaskFactory
 		implements TaskFactory<AAPT2LinkTaskOutput>, Task<AAPT2LinkTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
-	private NavigableSet<SakerPath> inputFiles;
+	private Set<AAPT2LinkerInput> input;
+	private Set<AAPT2LinkerInput> overlay;
 	private SakerPath manifest;
 	private Set<AAPT2LinkerFlag> flags = Collections.emptySet();
 	private Integer packageId;
@@ -238,34 +247,37 @@ public class AAPT2LinkWorkerTaskFactory
 		this.flags = flags == null ? Collections.emptySet() : flags;
 	}
 
-	public void setInputFiles(NavigableSet<SakerPath> inputFiles) {
-		this.inputFiles = inputFiles;
+	public void setInput(Set<AAPT2LinkerInput> input) {
+		this.input = input;
+	}
+
+	public void setOverlay(Set<AAPT2LinkerInput> overlay) {
+		this.overlay = overlay;
 	}
 
 	public void setManifest(SakerPath manifest) {
 		this.manifest = manifest;
 	}
 
-	@Override
-	public Set<String> getCapabilities() {
-		if (remoteDispatchableEnvironmentSelector != null) {
-			return ImmutableUtils.singletonNavigableSet(CAPABILITY_REMOTE_DISPATCHABLE);
-		}
-		return TaskFactory.super.getCapabilities();
-	}
-
-	@Override
-	public TaskExecutionEnvironmentSelector getExecutionEnvironmentSelector() {
-		if (remoteDispatchableEnvironmentSelector != null) {
-			return remoteDispatchableEnvironmentSelector;
-		}
-		return TaskFactory.super.getExecutionEnvironmentSelector();
-	}
-
-	@Override
-	public int getRequestedComputationTokenCount() {
-		return 1;
-	}
+	//TODO reenable computation tokens when aar worker is started in frontend
+//	@Override
+//	public int getRequestedComputationTokenCount() {
+//		return 1;
+//	}
+//	@Override
+//	public TaskExecutionEnvironmentSelector getExecutionEnvironmentSelector() {
+//		if (remoteDispatchableEnvironmentSelector != null) {
+//			return remoteDispatchableEnvironmentSelector;
+//		}
+//		return TaskFactory.super.getExecutionEnvironmentSelector();
+//	}
+//	@Override
+//	public Set<String> getCapabilities() {
+//		if (remoteDispatchableEnvironmentSelector != null) {
+//			return ImmutableUtils.singletonNavigableSet(CAPABILITY_REMOTE_DISPATCHABLE);
+//		}
+//		return TaskFactory.super.getCapabilities();
+//	}
 
 	@Override
 	public Task<? extends AAPT2LinkTaskOutput> createTask(ExecutionContext executioncontext) {
@@ -331,10 +343,13 @@ public class AAPT2LinkWorkerTaskFactory
 		ArrayList<String> cmd = new ArrayList<>();
 		cmd.add("link");
 		//XXX  parallelize if necessary
-		for (SakerPath inpath : inputFiles) {
-			MirroredFileContents filecontents = taskutils.mirrorFileAtPathContents(inpath);
-			cmd.add(filecontents.getPath().toString());
-			inputfilecontents.put(inpath, filecontents.getContents());
+		for (AAPT2LinkerInput linkerinput : input) {
+			addInputCommandsForLinkerInput(taskcontext, taskutils, inputfilecontents, cmd, linkerinput, null);
+		}
+		if (!ObjectUtils.isNullOrEmpty(overlay)) {
+			for (AAPT2LinkerInput linkerinput : overlay) {
+				addInputCommandsForLinkerInput(taskcontext, taskutils, inputfilecontents, cmd, linkerinput, "-R");
+			}
 		}
 		cmd.add("-o");
 		cmd.add(outputapkfilelocalpath.toString());
@@ -517,6 +532,68 @@ public class AAPT2LinkWorkerTaskFactory
 		return result;
 	}
 
+	private void addInputCommandsForLinkerInput(TaskContext taskcontext, TaskExecutionUtilities taskutils,
+			NavigableMap<SakerPath, ContentDescriptor> inputfilecontents, List<String> cmd,
+			AAPT2LinkerInput linkerinput, String prearg) {
+		linkerinput.accept(new AAPT2LinkerInput.Visitor() {
+			@Override
+			public void visit(AAPT2CompileTaskOutput compilationinput) {
+				for (SakerPath inpath : compilationinput.getOutputPaths()) {
+					handleExecutionInputFile(inpath);
+				}
+			}
+
+			@Override
+			public void visit(FileLocation inputfile) {
+				String inputfname = SakerStandardUtils.getFileLocationFileName(inputfile);
+				if (FileUtils.hasExtensionIgnoreCase(inputfname, "aar")) {
+					AAPT2AarWorkerTaskFactory inworker = new AAPT2AarWorkerTaskFactory(inputfile);
+					inworker.setSDKDescriptions(sdkDescriptions);
+					AAPT2AarWorkerTaskOutput aarlibres = taskcontext.getTaskUtilities()
+							.runTaskResult(inworker.createWorkerTaskIdentifier(), inworker);
+					for (SakerPath path : aarlibres.getOutputFiles()) {
+						handleExecutionInputFile(path);
+					}
+					return;
+				}
+				inputfile.accept(new FileLocationVisitor() {
+					@Override
+					public void visit(ExecutionFileLocation loc) {
+						SakerPath inpath = loc.getPath();
+						handleExecutionInputFile(inpath);
+					}
+
+					@Override
+					public void visit(LocalFileLocation loc) {
+						SakerPath localpath = loc.getLocalPath();
+						String str = localpath.toString();
+						addCommand(cmd, str);
+						taskcontext.getTaskUtilities().getReportExecutionDependency(SakerStandardUtils
+								.createLocalFileContentDescriptorExecutionProperty(localpath, taskcontext.getTaskId()));
+					}
+
+				});
+			}
+
+			private void handleExecutionInputFile(SakerPath inpath) {
+				try {
+					MirroredFileContents filecontents = taskutils.mirrorFileAtPathContents(inpath);
+					addCommand(cmd, filecontents.getPath().toString());
+					inputfilecontents.put(inpath, filecontents.getContents());
+				} catch (Exception e) {
+					throw ObjectUtils.sneakyThrow(e);
+				}
+			}
+
+			private void addCommand(List<String> cmd, String str) {
+				if (prearg != null) {
+					cmd.add(prearg);
+				}
+				cmd.add(str);
+			}
+		});
+	}
+
 	private static SakerPath discoverOutputFile(TaskContext taskcontext, SakerDirectory outputdir, Path outputfilepath,
 			Map<SakerPath, ContentDescriptor> outputfilecontents, LocalFileProvider fp) throws IOException {
 		if (outputfilepath == null) {
@@ -569,7 +646,8 @@ public class AAPT2LinkWorkerTaskFactory
 
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
-		SerialUtils.writeExternalCollection(out, inputFiles);
+		SerialUtils.writeExternalCollection(out, input);
+		SerialUtils.writeExternalCollection(out, overlay);
 		out.writeObject(manifest);
 		out.writeObject(packageId);
 		SerialUtils.writeExternalCollection(out, flags);
@@ -608,7 +686,8 @@ public class AAPT2LinkWorkerTaskFactory
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		inputFiles = SerialUtils.readExternalSortedImmutableNavigableSet(in);
+		input = SerialUtils.readExternalImmutableLinkedHashSet(in);
+		overlay = SerialUtils.readExternalImmutableLinkedHashSet(in);
 		manifest = (SakerPath) in.readObject();
 		packageId = SerialUtils.readExternalObject(in);
 		flags = SerialUtils.readExternalEnumSetCollection(AAPT2LinkerFlag.class, in);
@@ -709,10 +788,10 @@ public class AAPT2LinkWorkerTaskFactory
 			return false;
 		if (generateProguardRules != other.generateProguardRules)
 			return false;
-		if (inputFiles == null) {
-			if (other.inputFiles != null)
+		if (input == null) {
+			if (other.input != null)
 				return false;
-		} else if (!inputFiles.equals(other.inputFiles))
+		} else if (!input.equals(other.input))
 			return false;
 		if (manifest == null) {
 			if (other.manifest != null)
@@ -735,6 +814,11 @@ public class AAPT2LinkWorkerTaskFactory
 		} else if (!noncompressedExtensions.equals(other.noncompressedExtensions))
 			return false;
 		if (outputTextSymbols != other.outputTextSymbols)
+			return false;
+		if (overlay == null) {
+			if (other.overlay != null)
+				return false;
+		} else if (!overlay.equals(other.overlay))
 			return false;
 		if (packageId == null) {
 			if (other.packageId != null)

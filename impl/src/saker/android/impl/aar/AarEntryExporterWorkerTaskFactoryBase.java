@@ -46,6 +46,8 @@ import saker.std.api.util.SakerStandardUtils;
 public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFactory<T>, Task<T>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
+	public static final String ENTRY_NAME_CLASSES_JAR = "classes.jar";
+
 	public static final int OUTPUT_KIND_EXECUTION = 1;
 	public static final int OUTPUT_KIND_BUNDLE_STORAGE = 2;
 
@@ -123,15 +125,15 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 		return (T) result[0];
 	}
 
-	protected T addResultFile(TaskContext taskcontext, ByteArrayRegion bytes, String appendname) throws Exception {
+	protected T addResultFile(TaskContext taskcontext, ByteArrayRegion bytes, String entryname) throws Exception {
 		switch (outPathKind) {
 			case OUTPUT_KIND_EXECUTION: {
 				SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
 
+				SakerPath outputentrynamerelativepath = outputRelativePath.resolve(entryname);
 				SakerDirectory outdir = taskcontext.getTaskUtilities().resolveDirectoryAtRelativePathCreate(builddir,
-						outputRelativePath.getParent());
-				ByteArraySakerFile outfile = new ByteArraySakerFile(outputRelativePath.getFileName() + appendname,
-						bytes);
+						outputentrynamerelativepath.getParent());
+				ByteArraySakerFile outfile = new ByteArraySakerFile(outputentrynamerelativepath.getFileName(), bytes);
 				outdir.add(outfile);
 				outfile.synchronize();
 				SakerPath outfilepath = outfile.getSakerPath();
@@ -144,12 +146,9 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 				byte[] contenthash = digest.digest();
 
 				NestBundleClassLoader cl = (NestBundleClassLoader) this.getClass().getClassLoader();
-				Path outputdirpath = cl.getBundle().getBundleStoragePath()
-						.resolve(outputRelativePath.getParent().toString())
+				Path outputdirpath = cl.getBundle().getBundleStoragePath().resolve(outputRelativePath.toString())
 						.resolve(StringUtils.toHexString(contenthash));
-				String outfname = outputRelativePath.getFileName() + appendname;
-				Path outputfilepath = outputdirpath.resolve(outfname);
-				Path outputtempfilepath = outputdirpath.resolve(outfname + "." + UUID.randomUUID());
+				Path outputfilepath = outputdirpath.resolve(entryname);
 
 				try {
 					BasicFileAttributes presentattrs = Files.readAttributes(outputfilepath, BasicFileAttributes.class);
@@ -159,6 +158,8 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 					}
 				} catch (IOException e) {
 				}
+
+				Path outputtempfilepath = outputdirpath.resolve(outputfilepath.getFileName() + "." + UUID.randomUUID());
 
 				Files.createDirectories(outputdirpath);
 				try (OutputStream fos = Files.newOutputStream(outputtempfilepath)) {
@@ -184,6 +185,8 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 					}
 					//hard fail the task
 					throw e;
+				} finally {
+					Files.deleteIfExists(outputtempfilepath);
 				}
 			}
 			default: {
@@ -202,9 +205,13 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 		return createLocalResult(outputlocalsakerpath);
 	}
 
-	protected abstract T createLocalResult(SakerPath outputlocalsakerpath);
+	protected T createLocalResult(SakerPath outputlocalsakerpath) {
+		throw new UnsupportedOperationException();
+	}
 
-	protected abstract T createExecutionResult(SakerPath outfilepath);
+	protected T createExecutionResult(SakerPath outfilepath) {
+		throw new UnsupportedOperationException();
+	}
 
 	protected abstract T handleLocalFile(TaskContext taskcontext, SakerPath localPath) throws Exception;
 
@@ -234,11 +241,15 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 	}
 
 	public static ByteArrayRegion getFileClassesJarBytes(SakerFile f) throws IOException {
+		return getZipEntryBytes(f, ENTRY_NAME_CLASSES_JAR);
+	}
+
+	public static ByteArrayRegion getZipEntryBytes(SakerFile f, String entryname) throws IOException {
 		ByteArrayRegion classesbytes = null;
 		try (InputStream instream = f.openInputStream();
 				ZipInputStream zipin = new ZipInputStream(instream)) {
 			for (ZipEntry ze; (ze = zipin.getNextEntry()) != null;) {
-				if (!"classes.jar".equals(ze.getName())) {
+				if (!entryname.equals(ze.getName())) {
 					continue;
 				}
 				//found classes.jar in aar
@@ -249,9 +260,14 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 	}
 
 	public static ByteArrayRegion getLocalFileClassesJarBytes(SakerPath localpath) throws IOException, ZipException {
+		return getLocalZipEntryBytes(localpath, ENTRY_NAME_CLASSES_JAR);
+	}
+
+	public static ByteArrayRegion getLocalZipEntryBytes(SakerPath localpath, String entryname)
+			throws IOException, ZipException {
 		ByteArrayRegion classesbytes;
 		try (ZipFile zf = new ZipFile(LocalFileProvider.toRealPath(localpath).toFile())) {
-			ZipEntry classesentry = zf.getEntry("classes.jar");
+			ZipEntry classesentry = zf.getEntry(entryname);
 			if (classesentry == null) {
 				return null;
 			}

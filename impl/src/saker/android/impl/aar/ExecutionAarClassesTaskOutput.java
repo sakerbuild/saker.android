@@ -5,13 +5,11 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
-import saker.android.api.aar.AarClassesTaskOutput;
-import saker.android.api.aar.AarEntryNotFoundException;
 import saker.build.file.path.SakerPath;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileLocation;
 
-final class ExecutionAarClassesTaskOutput implements AarClassesTaskOutput, Externalizable {
+final class ExecutionAarClassesTaskOutput implements AarEntryExtractTaskOutput, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private SakerPath outputFilePath;

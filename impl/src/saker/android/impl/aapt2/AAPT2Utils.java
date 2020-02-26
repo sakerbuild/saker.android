@@ -183,7 +183,7 @@ public class AAPT2Utils {
 			if (!AIFU_state.compareAndSet(this, STATE_READY, STATE_USED)) {
 				return false;
 			}
-			if (!process.process.isAlive()) {
+			if (!process.isAlive()) {
 				//the actual closing will still be called by the cache manager.
 				//just set the state here so we're not reused
 				this.state = STATE_CLOSED;
@@ -211,6 +211,7 @@ public class AAPT2Utils {
 					if (l == null) {
 						break;
 					}
+					//TODO sometimes this skips lines
 					if ("Done".equals(l)) {
 						if (res == null) {
 							res = 0;

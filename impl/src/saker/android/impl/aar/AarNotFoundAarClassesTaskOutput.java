@@ -4,13 +4,12 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Set;
 
-import saker.android.api.aar.AarClassesTaskOutput;
-import saker.android.api.aar.AarEntryNotFoundException;
 import saker.build.file.path.SakerPath;
 import saker.std.api.file.location.FileLocation;
 
-final class AarNotFoundAarClassesTaskOutput implements AarClassesTaskOutput, Externalizable {
+final class AarNotFoundAarClassesTaskOutput implements AarEntryExtractTaskOutput, Externalizable, AarResourcesTaskOutput {
 	private static final long serialVersionUID = 1L;
 
 	private SakerPath inpath;
@@ -26,7 +25,17 @@ final class AarNotFoundAarClassesTaskOutput implements AarClassesTaskOutput, Ext
 	}
 
 	@Override
+	public FileLocation toFileLocation() {
+		return getFileLocation();
+	}
+
+	@Override
 	public FileLocation getFileLocation() {
+		throw new AarEntryNotFoundException("AAR file not found: " + inpath);
+	}
+
+	@Override
+	public Set<FileLocation> getResourceFiles() {
 		throw new AarEntryNotFoundException("AAR file not found: " + inpath);
 	}
 
