@@ -8,19 +8,21 @@ import java.io.ObjectOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.task.identifier.TaskIdentifier;
 
-public class LocalAarClassesWorkerTaskIdentifier implements TaskIdentifier, Externalizable {
+public class AarClassesWorkerTaskIdentifier implements TaskIdentifier, Externalizable {
 	private static final long serialVersionUID = 1L;
 
-	private SakerPath outputPath;
+	protected SakerPath outputPath;
+	protected int outPathKind;
 
 	/**
 	 * For {@link Externalizable}.
 	 */
-	public LocalAarClassesWorkerTaskIdentifier() {
+	public AarClassesWorkerTaskIdentifier() {
 	}
 
-	public LocalAarClassesWorkerTaskIdentifier(SakerPath outputPath) {
+	public AarClassesWorkerTaskIdentifier(SakerPath outputPath, int outPathKind) {
 		this.outputPath = outputPath;
+		this.outPathKind = outPathKind;
 	}
 
 	public SakerPath getOutputPath() {
@@ -30,17 +32,20 @@ public class LocalAarClassesWorkerTaskIdentifier implements TaskIdentifier, Exte
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
 		out.writeObject(outputPath);
+		out.writeInt(outPathKind);
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		outputPath = (SakerPath) in.readObject();
+		outPathKind = in.readInt();
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
+		result = prime * result + outPathKind;
 		result = prime * result + ((outputPath == null) ? 0 : outputPath.hashCode());
 		return result;
 	}
@@ -53,7 +58,9 @@ public class LocalAarClassesWorkerTaskIdentifier implements TaskIdentifier, Exte
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		LocalAarClassesWorkerTaskIdentifier other = (LocalAarClassesWorkerTaskIdentifier) obj;
+		AarClassesWorkerTaskIdentifier other = (AarClassesWorkerTaskIdentifier) obj;
+		if (outPathKind != other.outPathKind)
+			return false;
 		if (outputPath == null) {
 			if (other.outputPath != null)
 				return false;

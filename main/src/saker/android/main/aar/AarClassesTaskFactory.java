@@ -1,15 +1,13 @@
 package saker.android.main.aar;
 
-import saker.android.impl.aar.ExecutionAarClassesWorkerTaskIdentifier;
-import saker.android.impl.aar.ExecutionFileAarClassesWorkerTaskFactory;
-import saker.android.impl.aar.LocalAarClassesWorkerTaskIdentifier;
-import saker.android.impl.aar.LocalFileAarClassesWorkerTaskFactory;
+import saker.android.impl.aar.AarClassesWorkerTaskFactory;
+import saker.android.impl.aar.AarClassesWorkerTaskIdentifier;
+import saker.android.impl.aar.AarEntryExporterWorkerTaskFactoryBase;
 import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.ParameterizableTask;
 import saker.build.task.TaskContext;
-import saker.build.task.TaskFactory;
 import saker.build.task.identifier.TaskIdentifier;
 import saker.build.task.utils.SimpleStructuredObjectTaskResult;
 import saker.build.task.utils.annot.SakerInput;
@@ -29,6 +27,8 @@ public class AarClassesTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
 	public static final String TASK_NAME = "saker.aar.classes";
+
+	private static final SakerPath PATH_OUTPUT_BASE_DIRECTORY = SakerPath.valueOf(AarClassesTaskFactory.TASK_NAME);
 
 	@Override
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
@@ -58,8 +58,7 @@ public class AarClassesTaskFactory extends FrontendTaskFactory<Object> {
 					}
 				}
 
-				TaskIdentifier[] workertaskid = { null };
-				TaskFactory<?>[] workertask = { null };
+				AarEntryExporterWorkerTaskFactoryBase<?>[] workertask = { null };
 
 				FileLocation filelocation = TaskOptionUtils.toFileLocation(inputOption, taskcontext);
 				filelocation.accept(new FileLocationVisitor() {
@@ -74,9 +73,9 @@ public class AarClassesTaskFactory extends FrontendTaskFactory<Object> {
 									.valueOf(StringUtils.toHexString(FileUtils.hashString(inpath.toString())))
 									.resolve(inpath.getFileName());
 						}
-						ExecutionFileAarClassesWorkerTaskFactory wtask = new ExecutionFileAarClassesWorkerTaskFactory(
-								loc, outputRelativePath);
-						workertaskid[0] = new ExecutionAarClassesWorkerTaskIdentifier(outputRelativePath);
+						AarClassesWorkerTaskFactory wtask = new AarClassesWorkerTaskFactory(loc,
+								PATH_OUTPUT_BASE_DIRECTORY.resolve(outputRelativePath),
+								AarClassesWorkerTaskFactory.OUTPUT_KIND_EXECUTION);
 						workertask[0] = wtask;
 					}
 
@@ -88,21 +87,23 @@ public class AarClassesTaskFactory extends FrontendTaskFactory<Object> {
 									.valueOf(StringUtils.toHexString(FileUtils.hashString(inpath.toString())))
 									.resolve(inpath.getFileName());
 
-							LocalFileAarClassesWorkerTaskFactory wtask = new LocalFileAarClassesWorkerTaskFactory(loc,
-									outputRelativePath);
-							workertaskid[0] = new LocalAarClassesWorkerTaskIdentifier(outputRelativePath);
+							AarClassesWorkerTaskFactory wtask = new AarClassesWorkerTaskFactory(loc,
+									PATH_OUTPUT_BASE_DIRECTORY.resolve(outputRelativePath),
+									AarClassesWorkerTaskFactory.OUTPUT_KIND_BUNDLE_STORAGE);
 							workertask[0] = wtask;
 							return;
 						}
-						ExecutionFileAarClassesWorkerTaskFactory wtask = new ExecutionFileAarClassesWorkerTaskFactory(
-								loc, outputPathOption);
-						workertaskid[0] = new ExecutionAarClassesWorkerTaskIdentifier(outputPathOption);
+						AarClassesWorkerTaskFactory wtask = new AarClassesWorkerTaskFactory(loc,
+								PATH_OUTPUT_BASE_DIRECTORY.resolve(outputPathOption),
+								AarClassesWorkerTaskFactory.OUTPUT_KIND_EXECUTION);
 						workertask[0] = wtask;
 					}
 				});
-				taskcontext.startTask(workertaskid[0], workertask[0], null);
+				TaskIdentifier workertaskid = new AarClassesWorkerTaskIdentifier(workertask[0].getOutputRelativePath(),
+						workertask[0].getOutPathKind());
+				taskcontext.startTask(workertaskid, workertask[0], null);
 
-				SimpleStructuredObjectTaskResult result = new SimpleStructuredObjectTaskResult(workertaskid[0]);
+				SimpleStructuredObjectTaskResult result = new SimpleStructuredObjectTaskResult(workertaskid);
 				taskcontext.reportSelfTaskOutputChangeDetector(new EqualityTaskOutputChangeDetector(result));
 				return result;
 			}
