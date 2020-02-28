@@ -4,11 +4,13 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Set;
 
+import saker.android.api.aar.AarExtractTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.std.api.file.location.FileLocation;
 
-final class EntryNotFoundAarClassesTaskOutput implements AarEntryExtractTaskOutput, Externalizable {
+final class EntryNotFoundAarExtractTaskOutput implements AarExtractTaskOutput, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private SakerPath inputPath;
@@ -17,17 +19,26 @@ final class EntryNotFoundAarClassesTaskOutput implements AarEntryExtractTaskOutp
 	/**
 	 * For {@link Externalizable}.
 	 */
-	public EntryNotFoundAarClassesTaskOutput() {
+	public EntryNotFoundAarExtractTaskOutput() {
 	}
 
-	public EntryNotFoundAarClassesTaskOutput(SakerPath inputPath, String name) {
+	public EntryNotFoundAarExtractTaskOutput(SakerPath inputPath, String name) {
 		this.inputPath = inputPath;
 		this.name = name;
 	}
 
 	@Override
 	public FileLocation getFileLocation() {
-		throw new AarEntryNotFoundException(name + " not found in AAR: " + inputPath);
+		throw failException();
+	}
+
+	@Override
+	public Set<FileLocation> getDirectoryFileLocations() {
+		throw failException();
+	}
+
+	private AarEntryNotFoundException failException() {
+		return new AarEntryNotFoundException(name + " not found in AAR: " + inputPath);
 	}
 
 	@Override
@@ -59,7 +70,7 @@ final class EntryNotFoundAarClassesTaskOutput implements AarEntryExtractTaskOutp
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		EntryNotFoundAarClassesTaskOutput other = (EntryNotFoundAarClassesTaskOutput) obj;
+		EntryNotFoundAarExtractTaskOutput other = (EntryNotFoundAarExtractTaskOutput) obj;
 		if (inputPath == null) {
 			if (other.inputPath != null)
 				return false;

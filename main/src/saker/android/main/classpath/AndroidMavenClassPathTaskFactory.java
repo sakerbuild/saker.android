@@ -9,8 +9,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import saker.android.impl.aar.AarEntryExporterWorkerTaskFactoryBase;
-import saker.android.impl.aar.AarEntryExtractTaskOutput;
+import saker.android.api.aar.AarExtractTaskOutput;
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
@@ -26,7 +25,6 @@ import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
 import saker.build.thirdparty.saker.util.io.FileUtils;
-import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.trace.BuildTrace;
 import saker.maven.classpath.api.MavenClassPathTaskBuilder;
 import saker.maven.classpath.api.MavenClassPathTaskBuilder.EntryBuilder;
@@ -98,7 +96,6 @@ public class AndroidMavenClassPathTaskFactory extends FrontendTaskFactory<Object
 				taskcontext.reportSelfTaskOutputChangeDetector(new EqualityTaskOutputChangeDetector(result));
 				return result;
 			}
-
 		};
 	}
 
@@ -114,25 +111,34 @@ public class AndroidMavenClassPathTaskFactory extends FrontendTaskFactory<Object
 
 		TaskIdentifier localizationtaskid = ArtifactLocalizationUtils
 				.createLocalizeArtifactsTaskIdentifier(depoutmavenconfig, tolocalizeartifacts);
-		taskcontext.startTask(localizationtaskid,
+		ArtifactLocalizationTaskOutput localizationout = taskcontext.getTaskUtilities().runTaskResult(
+				localizationtaskid,
 				ArtifactLocalizationUtils.createLocalizeArtifactsTaskFactory(depoutmavenconfig, tolocalizeartifacts),
 				null);
 
 		for (ArtifactCoordinates coords : departifactcoordinates) {
 			EntryBuilder entrybuilder = MavenClassPathTaskBuilder.EntryBuilder.newBuilder();
 			if ("aar".equals(coords.getExtension())) {
-				ArtifactLocalizationFileLocationStructuredTaskResult artifactfilelocationtaskresult = new ArtifactLocalizationFileLocationStructuredTaskResult(
-						localizationtaskid, coords);
-				//TODO this user.dir/.m2/repository should be depended on an environment property or something
+				StructuredTaskResult localizationresult = localizationout.getLocalizationResult(coords);
+				if (localizationresult == null) {
+					throw new RuntimeException("Artifact localization results not found: " + coords);
+				}
+				TaskResultDependencyHandle artlocdephandle = localizationresult.toResultDependencyHandle(taskcontext);
+				ArtifactLocalizationWorkerTaskOutput artifactlocalizationresult = (ArtifactLocalizationWorkerTaskOutput) artlocdephandle
+						.get();
+
+				LocalFileLocation artifactlocalfilelocation = LocalFileLocation
+						.create(artifactlocalizationresult.getLocalPath());
+
+				//TODO this user.dir/.m2/repository should depend on an environment property or something
 				String repohash = StringUtils
 						.toHexString(FileUtils.hashString(Objects.toString(depoutmavenconfig.getLocalRepositoryPath(),
 								System.getProperty("user.dir") + "/.m2/repository")));
-				SakerPath extractoutputrelativepath = SakerPath.valueOf(TASK_NAME)
-						.resolve(coords.getGroupId(), coords.getArtifactId(), coords.getVersion()).resolve(repohash);
+				SakerPath extractoutputrelativepath = SakerPath.valueOf(TASK_NAME).resolve(repohash)
+						.resolve(coords.getGroupId(), coords.getArtifactId(), coords.getVersion());
 
 				AarEntryExtractWorkerTaskFactory extracttask = new AarEntryExtractWorkerTaskFactory(
-						artifactfilelocationtaskresult, extractoutputrelativepath,
-						AarEntryExporterWorkerTaskFactoryBase.OUTPUT_KIND_BUNDLE_STORAGE,
+						artifactlocalfilelocation, extractoutputrelativepath,
 						AarEntryExtractWorkerTaskFactory.ENTRY_NAME_CLASSES_JAR);
 				TaskIdentifier entryExtractTaskId = extracttask.createTaskId();
 				taskcontext.startTask(entryExtractTaskId, extracttask, null);
@@ -175,7 +181,7 @@ public class AndroidMavenClassPathTaskFactory extends FrontendTaskFactory<Object
 		@Override
 		public Object toResult(TaskResultResolver results) throws NullPointerException, RuntimeException {
 			TaskResultDependencyHandle dephandle = results.getTaskResultDependencyHandle(entryExtractTaskId);
-			AarEntryExtractTaskOutput out = (AarEntryExtractTaskOutput) dephandle.get();
+			AarExtractTaskOutput out = (AarExtractTaskOutput) dephandle.get();
 			FileLocation result = out.getFileLocation();
 			dephandle.setTaskOutputChangeDetector(new EqualityTaskOutputChangeDetector(result));
 			return result;
@@ -222,91 +228,4 @@ public class AndroidMavenClassPathTaskFactory extends FrontendTaskFactory<Object
 		}
 	}
 
-	public static class ArtifactLocalizationFileLocationStructuredTaskResult
-			implements StructuredTaskResult, Externalizable {
-		private static final long serialVersionUID = 1L;
-
-		private TaskIdentifier localizationTaskId;
-		private ArtifactCoordinates coordinates;
-
-		/**
-		 * For {@link Externalizable}.
-		 */
-		public ArtifactLocalizationFileLocationStructuredTaskResult() {
-		}
-
-		public ArtifactLocalizationFileLocationStructuredTaskResult(TaskIdentifier localizationTaskId,
-				ArtifactCoordinates coordinates) {
-			this.localizationTaskId = localizationTaskId;
-			this.coordinates = coordinates;
-		}
-
-		@Override
-		public Object toResult(TaskResultResolver results) throws NullPointerException, RuntimeException {
-			//TODO report dependencies for the handles
-
-			TaskResultDependencyHandle localizedephandle = results.getTaskResultDependencyHandle(localizationTaskId);
-			ArtifactLocalizationTaskOutput localizationout = (ArtifactLocalizationTaskOutput) localizedephandle.get();
-
-			StructuredTaskResult localizationresult = localizationout.getLocalizationResult(coordinates);
-			if (localizationresult == null) {
-				throw new RuntimeException("Artifact localization results not found: " + coordinates);
-			}
-			TaskResultDependencyHandle artlocdephandle = localizationresult.toResultDependencyHandle(results);
-			ArtifactLocalizationWorkerTaskOutput artifactlocalizationresult = (ArtifactLocalizationWorkerTaskOutput) artlocdephandle
-					.get();
-
-			return LocalFileLocation.create(artifactlocalizationresult.getLocalPath());
-		}
-
-		@Override
-		public void writeExternal(ObjectOutput out) throws IOException {
-			out.writeObject(localizationTaskId);
-			out.writeObject(coordinates);
-		}
-
-		@Override
-		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-			localizationTaskId = SerialUtils.readExternalObject(in);
-			coordinates = SerialUtils.readExternalObject(in);
-		}
-
-		@Override
-		public int hashCode() {
-			final int prime = 31;
-			int result = 1;
-			result = prime * result + ((coordinates == null) ? 0 : coordinates.hashCode());
-			result = prime * result + ((localizationTaskId == null) ? 0 : localizationTaskId.hashCode());
-			return result;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			if (this == obj)
-				return true;
-			if (obj == null)
-				return false;
-			if (getClass() != obj.getClass())
-				return false;
-			ArtifactLocalizationFileLocationStructuredTaskResult other = (ArtifactLocalizationFileLocationStructuredTaskResult) obj;
-			if (coordinates == null) {
-				if (other.coordinates != null)
-					return false;
-			} else if (!coordinates.equals(other.coordinates))
-				return false;
-			if (localizationTaskId == null) {
-				if (other.localizationTaskId != null)
-					return false;
-			} else if (!localizationTaskId.equals(other.localizationTaskId))
-				return false;
-			return true;
-		}
-
-		@Override
-		public String toString() {
-			return getClass().getSimpleName() + "[localizationTaskId=" + localizationTaskId + ", coordinates="
-					+ coordinates + "]";
-		}
-
-	}
 }

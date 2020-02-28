@@ -4,24 +4,33 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Set;
 
+import saker.android.api.aar.AarExtractTaskOutput;
 import saker.build.file.path.SakerPath;
+import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.std.api.file.location.FileLocation;
 import saker.std.api.file.location.LocalFileLocation;
 
-final class LocalAarClassesTaskOutput implements AarEntryExtractTaskOutput, Externalizable {
+public final class LocalAarExtractTaskOutput implements AarExtractTaskOutput, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private SakerPath outputLocalFilePath;
+	private Set<FileLocation> directoryFileLocations;
 
 	/**
 	 * For {@link Externalizable}.
 	 */
-	public LocalAarClassesTaskOutput() {
+	public LocalAarExtractTaskOutput() {
 	}
 
-	LocalAarClassesTaskOutput(SakerPath outfilepath) {
+	public LocalAarExtractTaskOutput(SakerPath outfilepath) {
 		this.outputLocalFilePath = outfilepath;
+	}
+
+	public LocalAarExtractTaskOutput(SakerPath outputLocalFilePath, Set<FileLocation> directoryFileLocations) {
+		this.outputLocalFilePath = outputLocalFilePath;
+		this.directoryFileLocations = directoryFileLocations;
 	}
 
 	@Override
@@ -34,19 +43,27 @@ final class LocalAarClassesTaskOutput implements AarEntryExtractTaskOutput, Exte
 	}
 
 	@Override
+	public Set<FileLocation> getDirectoryFileLocations() {
+		return directoryFileLocations;
+	}
+
+	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
 		out.writeObject(outputLocalFilePath);
+		SerialUtils.writeExternalCollection(out, directoryFileLocations);
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		outputLocalFilePath = (SakerPath) in.readObject();
+		directoryFileLocations = SerialUtils.readExternalImmutableLinkedHashSet(in);
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
+		result = prime * result + ((directoryFileLocations == null) ? 0 : directoryFileLocations.hashCode());
 		result = prime * result + ((outputLocalFilePath == null) ? 0 : outputLocalFilePath.hashCode());
 		return result;
 	}
@@ -59,7 +76,12 @@ final class LocalAarClassesTaskOutput implements AarEntryExtractTaskOutput, Exte
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		LocalAarClassesTaskOutput other = (LocalAarClassesTaskOutput) obj;
+		LocalAarExtractTaskOutput other = (LocalAarExtractTaskOutput) obj;
+		if (directoryFileLocations == null) {
+			if (other.directoryFileLocations != null)
+				return false;
+		} else if (!directoryFileLocations.equals(other.directoryFileLocations))
+			return false;
 		if (outputLocalFilePath == null) {
 			if (other.outputLocalFilePath != null)
 				return false;

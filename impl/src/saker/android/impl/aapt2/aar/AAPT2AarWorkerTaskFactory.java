@@ -8,11 +8,12 @@ import java.io.ObjectOutput;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.NavigableMap;
+import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import saker.android.api.aar.AarExtractTaskOutput;
 import saker.android.impl.aapt2.AAPT2Utils;
-import saker.android.impl.aar.AarFolderExtractWorkerTaskFactory;
-import saker.android.impl.aar.AarResourcesTaskOutput;
+import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
@@ -31,6 +32,8 @@ import saker.build.task.TaskFactory;
 import saker.build.task.identifier.TaskIdentifier;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.thirdparty.saker.util.StringUtils;
+import saker.build.thirdparty.saker.util.io.FileUtils;
 import saker.build.thirdparty.saker.util.io.UnsyncByteArrayOutputStream;
 import saker.build.thirdparty.saker.util.thread.ThreadUtils;
 import saker.build.trace.BuildTrace;
@@ -66,8 +69,10 @@ public class AAPT2AarWorkerTaskFactory
 	}
 
 	public TaskIdentifier createWorkerTaskIdentifier() {
+		SakerPath filelocationpath = AarEntryExtractWorkerTaskFactory.getFileLocationPath(input);
 		return new AAPT2AarWorkerTaskIdentifier(SakerPath.valueOf("saker.android.aapt2.aar")
-				.resolve(AarFolderExtractWorkerTaskFactory.createOutputRelativePath(input)));
+				.resolve(StringUtils.toHexString(FileUtils.hashString(filelocationpath.toString())))
+				.resolve(filelocationpath.getFileName()));
 	}
 
 	public void setSDKDescriptions(NavigableMap<String, ? extends SDKDescription> sdkdescriptions) {
@@ -114,8 +119,8 @@ public class AAPT2AarWorkerTaskFactory
 			throw new SDKPathNotFoundException("aapt2 executable not found in " + buildtoolssdkref);
 		}
 
-		AarFolderExtractWorkerTaskFactory resworker = new AarFolderExtractWorkerTaskFactory(input, "res/");
-		AarResourcesTaskOutput resourcesout = taskcontext.getTaskUtilities().runTaskResult(resworker.getWorkerTaskId(),
+		AarEntryExtractWorkerTaskFactory resworker = new AarEntryExtractWorkerTaskFactory(input, "res");
+		AarExtractTaskOutput resourcesout = taskcontext.getTaskUtilities().runTaskResult(resworker.createTaskId(),
 				resworker);
 		FileLocation resourcesbasedir = resourcesout.getFileLocation();
 
@@ -131,7 +136,11 @@ public class AAPT2AarWorkerTaskFactory
 		NavigableMap<SakerPath, ContentDescriptor> inputdependencies = new ConcurrentSkipListMap<>();
 		NavigableMap<SakerPath, ContentDescriptor> outputdependencies = new ConcurrentSkipListMap<>();
 
-		ThreadUtils.runParallelItems(resourcesout.getResourceFiles(), fl -> {
+		Set<FileLocation> resdirfiles = resourcesout.getDirectoryFileLocations();
+		if (resdirfiles == null) {
+			throw new IllegalArgumentException("AAR res doesn't exist any files.");
+		}
+		ThreadUtils.runParallelItems(resdirfiles, fl -> {
 			ArrayList<String> cmd = new ArrayList<>();
 			cmd.add("compile");
 			SakerPath[] flrelativepath = { null };
