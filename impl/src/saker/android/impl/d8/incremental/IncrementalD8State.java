@@ -23,10 +23,10 @@ public class IncrementalD8State implements Externalizable {
 	public boolean noDesugaring;
 	public boolean release;
 
-	public NavigableMap<String, OutputFileInformation> outputDescriptorInformations;
-	public NavigableMap<SakerPath, OutputFileInformation> outputPathInformations;
+	public NavigableMap<String, D8OutputFileInformation> outputDescriptorInformations;
+	public NavigableMap<SakerPath, D8OutputFileInformation> outputPathInformations;
 
-	public NavigableMap<SakerPath, OutputFileInformation> outputClassIndexInformations;
+	public NavigableMap<SakerPath, D8OutputFileInformation> outputClassIndexInformations;
 
 	/**
 	 * For {@link Externalizable}.
@@ -52,21 +52,21 @@ public class IncrementalD8State implements Externalizable {
 		this.inputDescriptorInformations.put(info.getDescriptor(), info);
 	}
 
-	public void putOutput(OutputFileInformation info) {
+	public void putOutput(D8OutputFileInformation info) {
 		this.outputPathInformations.put(info.getPath(), info);
 		this.outputDescriptorInformations.put(info.getDescriptor(), info);
 	}
 
-	public OutputFileInformation removeOutputForPath(SakerPath path) {
-		OutputFileInformation outinfo = outputPathInformations.remove(path);
+	public D8OutputFileInformation removeOutputForPath(SakerPath path) {
+		D8OutputFileInformation outinfo = outputPathInformations.remove(path);
 		if (outinfo != null) {
 			outputDescriptorInformations.remove(outinfo.getDescriptor());
 		}
 		return outinfo;
 	}
 
-	public OutputFileInformation removeOutputForDescriptor(String descriptor) {
-		OutputFileInformation outinfo = outputDescriptorInformations.remove(descriptor);
+	public D8OutputFileInformation removeOutputForDescriptor(String descriptor) {
+		D8OutputFileInformation outinfo = outputDescriptorInformations.remove(descriptor);
 		if (outinfo != null) {
 			outputPathInformations.remove(outinfo.getPath());
 		}

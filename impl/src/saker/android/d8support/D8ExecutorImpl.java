@@ -3,6 +3,7 @@ package saker.android.d8support;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
@@ -11,6 +12,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import com.android.tools.r8.ClassFileResourceProvider;
 import com.android.tools.r8.CompilationMode;
 import com.android.tools.r8.D8;
 import com.android.tools.r8.D8Command;
@@ -23,16 +25,17 @@ import com.android.tools.r8.ResourceException;
 import com.android.tools.r8.utils.StringDiagnostic;
 
 import saker.android.api.d8.D8TaskOutput;
-import saker.android.impl.d8.AndroidJarDescriptorsCacheKey;
-import saker.android.impl.d8.AndroidJarDescriptorsCacheKey.AndroidJarData;
+import saker.android.impl.d8.ArchiveClassDescriptorsCacheKey;
+import saker.android.impl.d8.ArchiveClassDescriptorsCacheKey.ArchiveClassDescriptorsData;
 import saker.android.impl.d8.D8Executor;
+import saker.android.impl.d8.D8InputFileCollectionStrategy;
 import saker.android.impl.d8.D8TaskOutputImpl;
 import saker.android.impl.d8.D8TaskTags;
 import saker.android.impl.d8.D8WorkerTaskFactory;
 import saker.android.impl.d8.D8WorkerTaskIdentifier;
 import saker.android.impl.d8.incremental.D8InputFileInformation;
 import saker.android.impl.d8.incremental.IncrementalD8State;
-import saker.android.impl.d8.incremental.OutputFileInformation;
+import saker.android.impl.d8.incremental.D8OutputFileInformation;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.d8.D8TaskFactory;
@@ -47,7 +50,6 @@ import saker.build.task.TaskContext;
 import saker.build.task.delta.DeltaType;
 import saker.build.task.dependencies.FileCollectionStrategy;
 import saker.build.task.utils.TaskUtils;
-import saker.build.task.utils.dependencies.RecursiveIgnoreCaseExtensionFileCollectionStrategy;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.sdk.support.api.SDKReference;
@@ -111,17 +113,24 @@ public class D8ExecutorImpl implements D8Executor {
 			in.accept(new FileLocationVisitor() {
 				@Override
 				public void visit(ExecutionFileLocation loc) {
-					SakerPath classdirectory = loc.getPath();
-					FileCollectionStrategy strategy = RecursiveIgnoreCaseExtensionFileCollectionStrategy
-							.create(classdirectory, ".class");
+					SakerPath inputpath = loc.getPath();
+					FileCollectionStrategy strategy = new D8InputFileCollectionStrategy(inputpath);
 					NavigableMap<SakerPath, SakerFile> collectedfiles = taskcontext.getTaskUtilities()
-							.collectFilesReportInputFileAndAdditionDependency(D8TaskTags.INPUT_FILE, strategy);
+							.collectFilesReportInputFileAndAdditionDependency(D8TaskTags.INPUT_CLASS_FILE, strategy);
 
-					for (Entry<SakerPath, SakerFile> entry : collectedfiles.entrySet()) {
-						SakerPath infilepath = entry.getKey();
-						String cdescriptor = D8ExecutorImpl
-								.getDescriptorFromClassFileRelativePath(classdirectory.relativize(infilepath));
-						collectedinputfileinfos.put(infilepath, new InputSakerFileInfo(entry.getValue(), cdescriptor));
+					SakerFile fileforinputpath = collectedfiles.get(inputpath);
+					if (fileforinputpath != null) {
+						//the path denotes a file, not a directory
+						//TODO support archives
+						throw new UnsupportedOperationException("unsupported d8 input " + inputpath);
+					} else {
+						for (Entry<SakerPath, SakerFile> entry : collectedfiles.entrySet()) {
+							SakerPath infilepath = entry.getKey();
+							String cdescriptor = D8ExecutorImpl
+									.getDescriptorFromClassFileRelativePath(inputpath.relativize(infilepath));
+							collectedinputfileinfos.put(infilepath,
+									new InputSakerFileInfo(entry.getValue(), cdescriptor));
+						}
 					}
 				}
 			});
@@ -133,11 +142,14 @@ public class D8ExecutorImpl implements D8Executor {
 		NavigableMap<SakerPath, InputSakerFileInfo> inputfiles;
 		IncrementalD8State nstate;
 		boolean anychange[] = { prevstate == null };
+
+		NavigableMap<String, D8InputFileInformation> previnputforclasspath;
+
 		if (prevstate != null) {
 			nstate = new IncrementalD8State(prevstate);
 
-			NavigableMap<SakerPath, SakerFile> changedinputfiles = TaskUtils
-					.collectFilesForTag(taskcontext.getFileDeltas(DeltaType.INPUT_FILE_CHANGE), D8TaskTags.INPUT_FILE);
+			NavigableMap<SakerPath, SakerFile> changedinputfiles = TaskUtils.collectFilesForTag(
+					taskcontext.getFileDeltas(DeltaType.INPUT_FILE_CHANGE), D8TaskTags.INPUT_CLASS_FILE);
 			NavigableMap<SakerPath, SakerFile> changedoutputfiles = TaskUtils.collectFilesForTag(
 					taskcontext.getFileDeltas(DeltaType.OUTPUT_FILE_CHANGE), D8TaskTags.OUTPUT_INTERMEDIATE_DEX_FILE);
 
@@ -188,9 +200,11 @@ public class D8ExecutorImpl implements D8Executor {
 						inputfiles.put(filepath, infile);
 					});
 			//XXX make more efficient
-			for (Entry<SakerPath, OutputFileInformation> entry : nstate.outputPathInformations.entrySet()) {
+			for (Entry<SakerPath, D8OutputFileInformation> entry : nstate.outputPathInformations.entrySet()) {
 				outputintermediatefiles.put(entry.getKey(), entry.getValue().getContents());
 			}
+
+			previnputforclasspath = ImmutableUtils.makeImmutableNavigableMap(nstate.inputDescriptorInformations);
 		} else {
 			nstate = new IncrementalD8State();
 			nstate.buildToolsSDK = sdkreferences.get(AndroidBuildToolsSDKReference.SDK_NAME);
@@ -203,13 +217,15 @@ public class D8ExecutorImpl implements D8Executor {
 			nstate.minApi = minapi;
 			nstate.noDesugaring = nodesugar;
 			nstate.release = releasemode;
+
 			inputfiles = collectedinputfileinfos;
+			previnputforclasspath = Collections.emptyNavigableMap();
 		}
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
 
 		if (!inputfiles.isEmpty()) {
 			anychange[0] = true;
-			for (Entry<SakerPath, InputSakerFileInfo> entry : collectedinputfileinfos.entrySet()) {
+			for (Entry<SakerPath, InputSakerFileInfo> entry : inputfiles.entrySet()) {
 				SakerPath filepath = entry.getKey();
 				InputSakerFileInfo inputinfo = entry.getValue();
 				SakerFile file = inputinfo.file;
@@ -233,6 +249,16 @@ public class D8ExecutorImpl implements D8Executor {
 			setD8BuilderCommonConfigurations(intermediatebuilder, workertask, environment, sdkreferences);
 
 			intermediatebuilder.setIntermediate(true);
+			if (prevstate != null) {
+				NavigableMap<SakerPath, ? extends SakerFile> previnputfiles = taskcontext
+						.getPreviousInputDependencies(D8TaskTags.INPUT_CLASS_FILE);
+				NavigableMap<String, SakerPath> descriptorinputclassfiles = new TreeMap<>();
+				for (Entry<SakerPath, D8InputFileInformation> entry : nstate.inputPathInformations.entrySet()) {
+					descriptorinputclassfiles.put(entry.getValue().getDescriptor(), entry.getKey());
+				}
+				intermediatebuilder.addClasspathResourceProvider(
+						new PreviousClasspathClassFileResourceProvider(previnputforclasspath, previnputfiles));
+			}
 			intermediatebuilder.setProgramConsumer(new DexFilePerClassFileConsumer() {
 				@Override
 				public void finished(DiagnosticsHandler handler) {
@@ -258,7 +284,7 @@ public class D8ExecutorImpl implements D8Executor {
 					SakerPath dexoutabspath = intermediateoutputdirpath.resolve(dexoutpath);
 					outputintermediatefiles.put(dexoutabspath, outputfiledescriptor);
 
-					nstate.putOutput(new OutputFileInformation(outputfiledescriptor, dexoutabspath,
+					nstate.putOutput(new D8OutputFileInformation(outputfiledescriptor, dexoutabspath,
 							primaryClassDescriptor, descriptors));
 				}
 			});
@@ -290,7 +316,7 @@ public class D8ExecutorImpl implements D8Executor {
 			D8Command.Builder classesbuilder = D8Command.builder(classesdiaghandler);
 
 			Collection<ProgramResource> classesprogramresources = new ArrayList<>();
-			for (Entry<SakerPath, OutputFileInformation> entry : nstate.outputPathInformations.entrySet()) {
+			for (Entry<SakerPath, D8OutputFileInformation> entry : nstate.outputPathInformations.entrySet()) {
 				SakerPath filepath = entry.getKey();
 				//TODO be more efficient than resolving the file path
 				SakerDexFileProgramResource programres = new SakerDexFileProgramResource(filepath,
@@ -339,14 +365,14 @@ public class D8ExecutorImpl implements D8Executor {
 		return new D8TaskOutputImpl(dexfiles);
 	}
 
-	private static OutputFileInformation removeOutputFileForDescriptor(TaskContext taskcontext,
+	private static D8OutputFileInformation removeOutputFileForDescriptor(TaskContext taskcontext,
 			IncrementalD8State nstate, String descriptor) {
-		OutputFileInformation outputinfo = nstate.removeOutputForDescriptor(descriptor);
+		D8OutputFileInformation outputinfo = nstate.removeOutputForDescriptor(descriptor);
 		deleteOutputFile(taskcontext, outputinfo);
 		return outputinfo;
 	}
 
-	private static void deleteOutputFile(TaskContext taskcontext, OutputFileInformation outputinfo) {
+	private static void deleteOutputFile(TaskContext taskcontext, D8OutputFileInformation outputinfo) {
 		if (outputinfo != null) {
 			SakerPath outputfilepath = outputinfo.getPath();
 			SakerFile outputfile = taskcontext.getTaskUtilities().resolveFileAtPath(outputfilepath);
@@ -357,11 +383,11 @@ public class D8ExecutorImpl implements D8Executor {
 		}
 	}
 
-	public static String getDefaultDexFileName(int fileIndex) {
+	private static String getDefaultDexFileName(int fileIndex) {
 		return fileIndex == 0 ? "classes" + ".dex" : ("classes" + (fileIndex + 1) + ".dex");
 	}
 
-	public static void setD8BuilderCommonConfigurations(D8Command.Builder builder, D8WorkerTaskFactory workertask,
+	private static void setD8BuilderCommonConfigurations(D8Command.Builder builder, D8WorkerTaskFactory workertask,
 			SakerEnvironment environment, NavigableMap<String, SDKReference> sdkreferences) throws Exception {
 		setD8BuilderAndroidJar(builder, environment, sdkreferences);
 		setD8BuilderMinApi(builder, workertask);
@@ -369,22 +395,22 @@ public class D8ExecutorImpl implements D8Executor {
 		setD8BuilderMode(builder, workertask);
 	}
 
-	public static void setD8BuilderMode(D8Command.Builder builder, D8WorkerTaskFactory workertask) {
+	private static void setD8BuilderMode(D8Command.Builder builder, D8WorkerTaskFactory workertask) {
 		builder.setMode(workertask.isRelease() ? CompilationMode.RELEASE : CompilationMode.DEBUG);
 	}
 
-	public static void setD8BuilderDisableDesugaring(D8Command.Builder builder, D8WorkerTaskFactory workertask) {
+	private static void setD8BuilderDisableDesugaring(D8Command.Builder builder, D8WorkerTaskFactory workertask) {
 		builder.setDisableDesugaring(workertask.isNoDesugaring());
 	}
 
-	public static void setD8BuilderMinApi(D8Command.Builder builder, D8WorkerTaskFactory workertask) {
+	private static void setD8BuilderMinApi(D8Command.Builder builder, D8WorkerTaskFactory workertask) {
 		Integer minapi = workertask.getMinApi();
 		if (minapi != null) {
 			builder.setMinApiLevel(minapi);
 		}
 	}
 
-	public static void setD8BuilderAndroidJar(D8Command.Builder builder, SakerEnvironment environment,
+	private static void setD8BuilderAndroidJar(D8Command.Builder builder, SakerEnvironment environment,
 			NavigableMap<String, SDKReference> sdkreferences) throws Exception {
 		SDKReference platformsdk = sdkreferences.get(AndroidPlatformSDKReference.SDK_NAME);
 		if (platformsdk == null) {
@@ -394,18 +420,19 @@ public class D8ExecutorImpl implements D8Executor {
 		if (androidjarpath == null) {
 			return;
 		}
-		AndroidJarData jardata = environment.getCachedData(new AndroidJarDescriptorsCacheKey(androidjarpath));
-		builder.addLibraryResourceProvider(new JarFileClassFileResourceProvider(jardata));
+		ArchiveClassDescriptorsData jardata = environment
+				.getCachedData(new ArchiveClassDescriptorsCacheKey(androidjarpath));
+		builder.addLibraryResourceProvider(new ArchiveFileClassFileResourceProvider(jardata));
 	}
 
-	public static void setD8BuilderMainDexClasses(D8Command.Builder builder, D8WorkerTaskFactory workertask) {
+	private static void setD8BuilderMainDexClasses(D8Command.Builder builder, D8WorkerTaskFactory workertask) {
 		NavigableSet<String> maindexclasses = workertask.getMainDexClasses();
 		if (!ObjectUtils.isNullOrEmpty(maindexclasses)) {
 			builder.addMainDexClasses(maindexclasses);
 		}
 	}
 
-	public static String getDescriptorFromClassFileRelativePath(SakerPath cfpath) {
+	private static String getDescriptorFromClassFileRelativePath(SakerPath cfpath) {
 		StringBuilder sb = new StringBuilder();
 		sb.append('L');
 		String pathstr = cfpath.toString();
@@ -413,6 +440,37 @@ public class D8ExecutorImpl implements D8Executor {
 		sb.append(pathstr.substring(0, pathstr.length() - 6));
 		sb.append(';');
 		return sb.toString();
+	}
+
+	private static final class PreviousClasspathClassFileResourceProvider implements ClassFileResourceProvider {
+		private final NavigableMap<String, D8InputFileInformation> previnputforclasspath;
+		private final NavigableMap<SakerPath, ? extends SakerFile> previnputfiles;
+
+		private PreviousClasspathClassFileResourceProvider(
+				NavigableMap<String, D8InputFileInformation> previnputforclasspath,
+				NavigableMap<SakerPath, ? extends SakerFile> previnputfiles) {
+			this.previnputforclasspath = previnputforclasspath;
+			this.previnputfiles = previnputfiles;
+		}
+
+		@Override
+		public ProgramResource getProgramResource(String descriptor) {
+			D8InputFileInformation ininfo = previnputforclasspath.get(descriptor);
+			if (ininfo == null) {
+				return null;
+			}
+			SakerPath fpath = ininfo.getPath();
+			SakerFile pfile = previnputfiles.get(fpath);
+			if (pfile == null) {
+				return null;
+			}
+			return new SakerClassFileProgramResource(fpath, pfile, ImmutableUtils.singletonNavigableSet(descriptor));
+		}
+
+		@Override
+		public Set<String> getClassDescriptors() {
+			return previnputforclasspath.keySet();
+		}
 	}
 
 }

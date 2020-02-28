@@ -81,8 +81,7 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);
 
 				D8WorkerTaskIdentifier workertaskid = new D8WorkerTaskIdentifier(compilationid);
-				D8WorkerTaskFactory workertask = new D8WorkerTaskFactory();
-				workertask.setInputs(inputs);
+				D8WorkerTaskFactory workertask = new D8WorkerTaskFactory(inputs);
 				workertask.setNoDesugaring(noDesugaringOption);
 				workertask.setRelease(releaseOption);
 				workertask.setMainDexClasses(ImmutableUtils.makeImmutableNavigableSet(mainDexClassesOption));

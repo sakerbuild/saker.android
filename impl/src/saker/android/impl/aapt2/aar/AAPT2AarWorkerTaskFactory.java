@@ -138,7 +138,7 @@ public class AAPT2AarWorkerTaskFactory
 
 		Set<FileLocation> resdirfiles = resourcesout.getDirectoryFileLocations();
 		if (resdirfiles == null) {
-			throw new IllegalArgumentException("AAR res doesn't exist any files.");
+			throw new IllegalArgumentException("AAR res entry doesn't contain any files: " + input);
 		}
 		ThreadUtils.runParallelItems(resdirfiles, fl -> {
 			ArrayList<String> cmd = new ArrayList<>();

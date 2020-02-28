@@ -98,7 +98,7 @@ public class AarEntryExtractWorkerTaskFactory
 	}
 
 	public TaskIdentifier createTaskId() {
-		return new AarEntryExtractWorkerTaskIdentifier(outputRelativePath, outPathKind);
+		return new AarEntryExtractWorkerTaskIdentifier(outputRelativePath, outPathKind, entryName);
 	}
 
 	public static SakerPath createGeneralAarExtractOutputRelativePath(FileLocation fl) {
@@ -558,7 +558,9 @@ public class AarEntryExtractWorkerTaskFactory
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
+		result = prime * result + ((entryName == null) ? 0 : entryName.hashCode());
 		result = prime * result + ((inputFile == null) ? 0 : inputFile.hashCode());
+		result = prime * result + outPathKind;
 		result = prime * result + ((outputRelativePath == null) ? 0 : outputRelativePath.hashCode());
 		return result;
 	}
@@ -572,10 +574,17 @@ public class AarEntryExtractWorkerTaskFactory
 		if (getClass() != obj.getClass())
 			return false;
 		AarEntryExtractWorkerTaskFactory other = (AarEntryExtractWorkerTaskFactory) obj;
+		if (entryName == null) {
+			if (other.entryName != null)
+				return false;
+		} else if (!entryName.equals(other.entryName))
+			return false;
 		if (inputFile == null) {
 			if (other.inputFile != null)
 				return false;
 		} else if (!inputFile.equals(other.inputFile))
+			return false;
+		if (outPathKind != other.outPathKind)
 			return false;
 		if (outputRelativePath == null) {
 			if (other.outputRelativePath != null)

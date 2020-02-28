@@ -13,6 +13,7 @@ public class AarEntryExtractWorkerTaskIdentifier implements TaskIdentifier, Exte
 
 	protected SakerPath outputPath;
 	protected int outPathKind;
+	protected String entryName;
 
 	/**
 	 * For {@link Externalizable}.
@@ -20,9 +21,10 @@ public class AarEntryExtractWorkerTaskIdentifier implements TaskIdentifier, Exte
 	public AarEntryExtractWorkerTaskIdentifier() {
 	}
 
-	public AarEntryExtractWorkerTaskIdentifier(SakerPath outputPath, int outPathKind) {
+	public AarEntryExtractWorkerTaskIdentifier(SakerPath outputPath, int outPathKind, String entryName) {
 		this.outputPath = outputPath;
 		this.outPathKind = outPathKind;
+		this.entryName = entryName;
 	}
 
 	public SakerPath getOutputPath() {
@@ -33,18 +35,21 @@ public class AarEntryExtractWorkerTaskIdentifier implements TaskIdentifier, Exte
 	public void writeExternal(ObjectOutput out) throws IOException {
 		out.writeObject(outputPath);
 		out.writeInt(outPathKind);
+		out.writeObject(entryName);
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		outputPath = (SakerPath) in.readObject();
 		outPathKind = in.readInt();
+		entryName = (String) in.readObject();
 	}
 
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
+		result = prime * result + ((entryName == null) ? 0 : entryName.hashCode());
 		result = prime * result + outPathKind;
 		result = prime * result + ((outputPath == null) ? 0 : outputPath.hashCode());
 		return result;
@@ -59,6 +64,11 @@ public class AarEntryExtractWorkerTaskIdentifier implements TaskIdentifier, Exte
 		if (getClass() != obj.getClass())
 			return false;
 		AarEntryExtractWorkerTaskIdentifier other = (AarEntryExtractWorkerTaskIdentifier) obj;
+		if (entryName == null) {
+			if (other.entryName != null)
+				return false;
+		} else if (!entryName.equals(other.entryName))
+			return false;
 		if (outPathKind != other.outPathKind)
 			return false;
 		if (outputPath == null) {

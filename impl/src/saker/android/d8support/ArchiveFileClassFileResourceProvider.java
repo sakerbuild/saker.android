@@ -15,18 +15,18 @@ import com.android.tools.r8.origin.ArchiveEntryOrigin;
 import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.origin.PathOrigin;
 
-import saker.android.impl.d8.AndroidJarDescriptorsCacheKey.AndroidJarData;
+import saker.android.impl.d8.ArchiveClassDescriptorsCacheKey.ArchiveClassDescriptorsData;
 
-public final class JarFileClassFileResourceProvider implements ClassFileResourceProvider {
+public final class ArchiveFileClassFileResourceProvider implements ClassFileResourceProvider {
 	private final NavigableMap<String, ZipEntry> descriptorEntries;
-	private final AndroidJarData jarData;
-	private final Origin jarOrigin;
+	private final ArchiveClassDescriptorsData archiveData;
+	private final Origin archiveOrigin;
 
-	public JarFileClassFileResourceProvider(AndroidJarData jardata) {
-		NavigableMap<String, ZipEntry> descriptorentries = jardata.getDescriptorEntries();
+	public ArchiveFileClassFileResourceProvider(ArchiveClassDescriptorsData archivedata) {
+		NavigableMap<String, ZipEntry> descriptorentries = archivedata.getDescriptorEntries();
 		this.descriptorEntries = descriptorentries;
-		this.jarData = jardata;
-		this.jarOrigin = new PathOrigin(Paths.get(jardata.getJarFile().getName()));
+		this.archiveData = archivedata;
+		this.archiveOrigin = new PathOrigin(Paths.get(archivedata.getZipFile().getName()));
 	}
 
 	@Override
@@ -38,7 +38,7 @@ public final class JarFileClassFileResourceProvider implements ClassFileResource
 		return new ProgramResource() {
 			@Override
 			public Origin getOrigin() {
-				return new ArchiveEntryOrigin(entry.getName(), jarOrigin);
+				return new ArchiveEntryOrigin(entry.getName(), archiveOrigin);
 			}
 
 			@Override
@@ -54,7 +54,7 @@ public final class JarFileClassFileResourceProvider implements ClassFileResource
 			@Override
 			public InputStream getByteStream() throws ResourceException {
 				try {
-					return jarData.getJarFile().getInputStream(entry);
+					return archiveData.getZipFile().getInputStream(entry);
 				} catch (IOException e) {
 					throw new ResourceException(getOrigin(), e);
 				}

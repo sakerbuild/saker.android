@@ -10,7 +10,6 @@ import java.util.Set;
 
 import saker.android.api.d8.D8TaskOutput;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
-import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.d8.D8TaskFactory;
 import saker.build.file.path.SakerPath;
 import saker.build.file.provider.LocalFileProvider;
@@ -57,12 +56,8 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 	public D8WorkerTaskFactory() {
 	}
 
-	public SDKDescription getAndroidBuildToolsSDKDescription() {
-		return ObjectUtils.getMapValue(sdkDescriptions, AndroidBuildToolsSDKReference.SDK_NAME);
-	}
-
-	public SDKDescription getAndroidPlatformSDKDescription() {
-		return ObjectUtils.getMapValue(sdkDescriptions, AndroidPlatformSDKReference.SDK_NAME);
+	public D8WorkerTaskFactory(Set<FileLocation> inputs) {
+		this.inputs = inputs;
 	}
 
 	public Integer getMinApi() {
@@ -147,8 +142,8 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 		taskcontext.setStandardOutDisplayIdentifier(D8TaskFactory.TASK_NAME + ":" + taskid.getCompilationIdentifier());
 
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
-		D8Executor executor = environment
-				.getCachedData(new D8ExecutorCacheKey(environment, getAndroidBuildToolsSDKDescription()));
+		D8Executor executor = environment.getCachedData(new D8ExecutorCacheKey(environment,
+				ObjectUtils.getMapValue(sdkDescriptions, AndroidBuildToolsSDKReference.SDK_NAME)));
 
 		NavigableMap<String, SDKReference> sdkrefs;
 		//if we have an environment selector then the dependencies are reported during selection

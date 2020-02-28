@@ -10,7 +10,7 @@ import saker.build.file.content.ContentDescriptor;
 import saker.build.file.path.SakerPath;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 
-public class OutputFileInformation implements Externalizable {
+public class D8OutputFileInformation implements Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	protected ContentDescriptor contents;
@@ -21,10 +21,10 @@ public class OutputFileInformation implements Externalizable {
 	/**
 	 * For {@link Externalizable}.
 	 */
-	public OutputFileInformation() {
+	public D8OutputFileInformation() {
 	}
 
-	public OutputFileInformation(ContentDescriptor contents, SakerPath path, String descriptor,
+	public D8OutputFileInformation(ContentDescriptor contents, SakerPath path, String descriptor,
 			Set<String> descriptors) {
 		this.contents = contents;
 		this.path = path;
