@@ -11,8 +11,8 @@ import java.util.NavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import saker.android.impl.aapt2.AAPT2Utils;
-import saker.android.impl.aar.AarResourcesTaskOutput;
 import saker.android.impl.aar.AarFolderExtractWorkerTaskFactory;
+import saker.android.impl.aar.AarResourcesTaskOutput;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;

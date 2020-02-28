@@ -1,8 +1,7 @@
 package saker.android.main.aar;
 
-import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
-import saker.android.impl.aar.AarEntryExtractWorkerTaskIdentifier;
 import saker.android.impl.aar.AarEntryExporterWorkerTaskFactoryBase;
+import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
@@ -58,7 +57,7 @@ public class AarClassesTaskFactory extends FrontendTaskFactory<Object> {
 					}
 				}
 
-				AarEntryExporterWorkerTaskFactoryBase<?>[] workertask = { null };
+				AarEntryExtractWorkerTaskFactory[] workertask = { null };
 
 				FileLocation filelocation = TaskOptionUtils.toFileLocation(inputOption, taskcontext);
 				filelocation.accept(new FileLocationVisitor() {
@@ -100,8 +99,7 @@ public class AarClassesTaskFactory extends FrontendTaskFactory<Object> {
 						workertask[0] = wtask;
 					}
 				});
-				TaskIdentifier workertaskid = new AarEntryExtractWorkerTaskIdentifier(workertask[0].getOutputRelativePath(),
-						workertask[0].getOutPathKind());
+				TaskIdentifier workertaskid = workertask[0].createTaskId();
 				taskcontext.startTask(workertaskid, workertask[0], null);
 
 				SimpleStructuredObjectTaskResult result = new SimpleStructuredObjectTaskResult(workertaskid);

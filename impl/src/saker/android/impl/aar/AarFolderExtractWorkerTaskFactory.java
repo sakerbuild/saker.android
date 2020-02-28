@@ -46,9 +46,8 @@ public class AarFolderExtractWorkerTaskFactory extends AarEntryExporterWorkerTas
 	}
 
 	public AarFolderExtractWorkerTaskFactory(FileLocation inputFile, String foldername) {
-		super(inputFile,
-				SakerPath.valueOf("saker.aar.extract").resolve(createOutputRelativePath(inputFile)).resolve(foldername),
-				OUTPUT_KIND_EXECUTION);
+		super(inputFile, SakerPath.valueOf("saker.aar.extract").resolve(createOutputRelativePath(inputFile))
+				.resolve(foldername));
 		folderName = verifyFolderName(foldername) + "/";
 	}
 
@@ -64,7 +63,7 @@ public class AarFolderExtractWorkerTaskFactory extends AarEntryExporterWorkerTas
 	}
 
 	public TaskIdentifier getWorkerTaskId() {
-		return new AarFolderExtractWorkerTaskIdentifier(outputRelativePath, outPathKind);
+		return new AarFolderExtractWorkerTaskIdentifier(outputRelativePath, OUTPUT_KIND_EXECUTION);
 	}
 
 	@Override

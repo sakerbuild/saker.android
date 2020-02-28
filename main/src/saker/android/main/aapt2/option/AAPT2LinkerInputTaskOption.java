@@ -3,9 +3,11 @@ package saker.android.main.aapt2.option;
 import java.util.Set;
 
 import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
+import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.android.impl.aapt2.link.option.AAPT2LinkerInput;
 import saker.android.impl.aapt2.link.option.CompilationAAPT2LinkerInput;
 import saker.android.impl.aapt2.link.option.FileAAPT2LinkerInput;
+import saker.android.impl.aapt2.link.option.LinkAAPT2LinkerInput;
 import saker.build.file.path.SakerPath;
 import saker.build.task.TaskContext;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
@@ -20,11 +22,30 @@ public abstract class AAPT2LinkerInputTaskOption {
 		return null;
 	}
 
-	public static AAPT2LinkerInputTaskOption valueOf(AAPT2CompileTaskOutput compileoutput) {
+	public static AAPT2LinkerInputTaskOption valueOf(AAPT2CompileTaskOutput output) {
 		return new AAPT2LinkerInputTaskOption() {
 			@Override
 			public Set<AAPT2LinkerInput> toLinkerInput(TaskContext taskcontext) {
-				return ImmutableUtils.singletonSet(new CompilationAAPT2LinkerInput(compileoutput));
+				return ImmutableUtils.singletonSet(new CompilationAAPT2LinkerInput(output));
+			}
+
+			@Override
+			public CompilationIdentifier inferCompilationIdentifier() {
+				return output.getIdentifier();
+			}
+		};
+	}
+
+	public static AAPT2LinkerInputTaskOption valueOf(AAPT2LinkTaskOutput output) {
+		return new AAPT2LinkerInputTaskOption() {
+			@Override
+			public Set<AAPT2LinkerInput> toLinkerInput(TaskContext taskcontext) {
+				return ImmutableUtils.singletonSet(new LinkAAPT2LinkerInput(output));
+			}
+
+			@Override
+			public CompilationIdentifier inferCompilationIdentifier() {
+				return output.getIdentifier();
 			}
 		};
 	}

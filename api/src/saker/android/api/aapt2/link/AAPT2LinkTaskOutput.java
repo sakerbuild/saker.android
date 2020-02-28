@@ -1,14 +1,18 @@
 package saker.android.api.aapt2.link;
 
+import java.util.List;
 import java.util.NavigableMap;
 
 import saker.build.file.path.SakerPath;
+import saker.compiler.utils.api.CompilationIdentifier;
 
 public interface AAPT2LinkTaskOutput {
+	public CompilationIdentifier getIdentifier();
+
 	public SakerPath getAPKPath();
 
-	public SakerPath getRJavaSourceDirectory();
-
+	public List<SakerPath> getJavaSourceDirectories();
+	
 	public SakerPath getProguardPath();
 
 	public SakerPath getProguardMainDexPath();

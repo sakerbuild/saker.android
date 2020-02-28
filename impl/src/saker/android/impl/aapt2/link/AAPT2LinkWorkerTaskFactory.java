@@ -44,6 +44,7 @@ import saker.build.task.TaskExecutionEnvironmentSelector;
 import saker.build.task.TaskExecutionUtilities;
 import saker.build.task.TaskExecutionUtilities.MirroredFileContents;
 import saker.build.task.TaskFactory;
+import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
 import saker.build.thirdparty.saker.util.io.FileUtils;
@@ -68,7 +69,7 @@ public class AAPT2LinkWorkerTaskFactory
 
 	private Set<AAPT2LinkerInput> input;
 	private Set<AAPT2LinkerInput> overlay;
-	private SakerPath manifest;
+	private FileLocation manifest;
 	private Set<AAPT2LinkerFlag> flags = Collections.emptySet();
 	private Integer packageId;
 
@@ -255,7 +256,7 @@ public class AAPT2LinkWorkerTaskFactory
 		this.overlay = overlay;
 	}
 
-	public void setManifest(SakerPath manifest) {
+	public void setManifest(FileLocation manifest) {
 		this.manifest = manifest;
 	}
 
@@ -354,10 +355,30 @@ public class AAPT2LinkWorkerTaskFactory
 		cmd.add("-o");
 		cmd.add(outputapkfilelocalpath.toString());
 
-		cmd.add("--manifest");
-		MirroredFileContents manifestcontents = taskutils.mirrorFileAtPathContents(manifest);
-		cmd.add(manifestcontents.getPath().toString());
-		inputfilecontents.put(manifest, manifestcontents.getContents());
+		if (manifest != null) {
+			cmd.add("--manifest");
+			manifest.accept(new FileLocationVisitor() {
+				@Override
+				public void visit(ExecutionFileLocation loc) {
+					SakerPath manifestpath = loc.getPath();
+					try {
+						MirroredFileContents manifestcontents = taskutils.mirrorFileAtPathContents(manifestpath);
+						cmd.add(manifestcontents.getPath().toString());
+						inputfilecontents.put(manifestpath, manifestcontents.getContents());
+					} catch (IOException e) {
+						throw ObjectUtils.sneakyThrow(e);
+					}
+				}
+
+				@Override
+				public void visit(LocalFileLocation loc) {
+					SakerPath localpath = loc.getLocalPath();
+					cmd.add(localpath.toString());
+					taskcontext.getTaskUtilities().getReportExecutionDependency(SakerStandardUtils
+							.createLocalFileContentDescriptorExecutionProperty(localpath, taskcontext.getTaskId()));
+				}
+			});
+		}
 
 		if (stableIdsFilePath != null) {
 			MirroredFileContents stableidscontents = taskutils.mirrorFileAtPathContents(stableIdsFilePath);
@@ -523,7 +544,8 @@ public class AAPT2LinkWorkerTaskFactory
 
 		SakerPath rjavasourcedirpath = javaoutdir.getSakerPath();
 
-		AAPT2LinkTaskOutputImpl result = new AAPT2LinkTaskOutputImpl(outputapkpath, rjavasourcedirpath);
+		AAPT2LinkTaskOutputImpl result = new AAPT2LinkTaskOutputImpl(compilationid, outputapkpath);
+		result.setJavaSourceDirectories(ImmutableUtils.asUnmodifiableArrayList(rjavasourcedirpath));
 		result.setProguardPath(outputproguardpath);
 		result.setProguardMainDexPath(outputmaindexproguardpath);
 		result.setIDMappingsPath(outputemitidspath);
@@ -566,13 +588,17 @@ public class AAPT2LinkWorkerTaskFactory
 					@Override
 					public void visit(LocalFileLocation loc) {
 						SakerPath localpath = loc.getLocalPath();
-						String str = localpath.toString();
-						addCommand(cmd, str);
+						addCommand(cmd, localpath.toString());
 						taskcontext.getTaskUtilities().getReportExecutionDependency(SakerStandardUtils
 								.createLocalFileContentDescriptorExecutionProperty(localpath, taskcontext.getTaskId()));
 					}
 
 				});
+			}
+
+			@Override
+			public void visit(AAPT2LinkTaskOutput linkinput) {
+				handleExecutionInputFile(linkinput.getAPKPath());
 			}
 
 			private void handleExecutionInputFile(SakerPath inpath) {
@@ -688,7 +714,7 @@ public class AAPT2LinkWorkerTaskFactory
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		input = SerialUtils.readExternalImmutableLinkedHashSet(in);
 		overlay = SerialUtils.readExternalImmutableLinkedHashSet(in);
-		manifest = (SakerPath) in.readObject();
+		manifest = (FileLocation) in.readObject();
 		packageId = SerialUtils.readExternalObject(in);
 		flags = SerialUtils.readExternalEnumSetCollection(AAPT2LinkerFlag.class, in);
 		generateProguardRules = in.readBoolean();

@@ -6,3 +6,5 @@ saker.sdk.support
 	classpath: [0)
 saker.zip-api
 	classpath: [0)
+saker.maven.support
+	classpath: [0)

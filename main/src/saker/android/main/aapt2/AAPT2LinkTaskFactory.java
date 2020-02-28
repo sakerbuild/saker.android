@@ -35,6 +35,8 @@ import saker.compiler.utils.main.CompilationIdentifierTaskOption;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
+import saker.std.main.file.option.FileLocationTaskOption;
+import saker.std.main.file.utils.TaskOptionUtils;
 
 public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
@@ -51,7 +53,7 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 			public Collection<AAPT2LinkerInputTaskOption> overlayOption;
 
 			@SakerInput(value = "Manifest", required = true)
-			public SakerPath manifestOption;
+			public FileLocationTaskOption manifestOption;
 
 			@SakerInput(value = { "PackageId" })
 			public Integer packageIdOption;
@@ -217,7 +219,7 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 				AAPT2LinkWorkerTaskFactory workertask = new AAPT2LinkWorkerTaskFactory();
 				workertask.setInput(inputset);
 				workertask.setOverlay(overlayset);
-				workertask.setManifest(workingdirpath.tryResolve(manifestOption));
+				workertask.setManifest(TaskOptionUtils.toFileLocation(manifestOption, taskcontext));
 				workertask.setPackageId(packageIdOption);
 				workertask.setGenerateProguardRules(generateProguardRulesOption);
 				workertask.setGenerateMainDexProguardRules(generateMainDexProguardRulesOption);

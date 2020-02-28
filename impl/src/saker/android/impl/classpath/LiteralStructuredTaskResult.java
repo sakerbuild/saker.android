@@ -11,7 +11,7 @@ import saker.build.task.utils.StructuredTaskResult;
 
 @Deprecated
 //TODO use StructuredTaskResult.createLiteral from saker.build 0.8.10 instead
-class LiteralStructuredTaskResult implements StructuredTaskResult, Externalizable {
+public class LiteralStructuredTaskResult implements StructuredTaskResult, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private Object value;

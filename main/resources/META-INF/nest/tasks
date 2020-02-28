@@ -7,4 +7,5 @@ saker.apk.sign=saker.android.main.apk.sign.SignApkTaskFactory
 saker.android.sdk.buildtools=saker.android.main.sdk.AndroidBuildToolsSDKTaskFactory
 saker.android.sdk.platform=saker.android.main.sdk.AndroidPlatformSDKTaskFactory
 saker.android.classpath.platform=saker.android.main.classpath.AndroidPlatformClassPathTaskFactory
+saker.android.classpath.maven=saker.android.main.classpath.AndroidMavenClassPathTaskFactory
 saker.aar.classes=saker.android.main.aar.AarClassesTaskFactory

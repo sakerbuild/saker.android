@@ -16,6 +16,7 @@ import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
+import saker.android.impl.classpath.LiteralStructuredTaskResult;
 import saker.build.file.ByteArraySakerFile;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
@@ -29,6 +30,7 @@ import saker.build.task.CommonTaskContentDescriptors;
 import saker.build.task.Task;
 import saker.build.task.TaskContext;
 import saker.build.task.TaskFactory;
+import saker.build.task.utils.StructuredTaskResult;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
@@ -51,9 +53,8 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 	public static final int OUTPUT_KIND_EXECUTION = 1;
 	public static final int OUTPUT_KIND_BUNDLE_STORAGE = 2;
 
-	protected FileLocation inputFile;
+	protected StructuredTaskResult inputFile;
 	protected SakerPath outputRelativePath;
-	protected int outPathKind;
 
 	/**
 	 * For {@link Externalizable}.
@@ -61,15 +62,13 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 	public AarEntryExporterWorkerTaskFactoryBase() {
 	}
 
-	public AarEntryExporterWorkerTaskFactoryBase(FileLocation inputFile, SakerPath outputRelativePath,
-			int outPathKind) {
-		this.inputFile = inputFile;
-		this.outputRelativePath = outputRelativePath;
-		this.outPathKind = outPathKind;
+	public AarEntryExporterWorkerTaskFactoryBase(FileLocation inputFile, SakerPath outputRelativePath) {
+		this(new LiteralStructuredTaskResult(inputFile), outputRelativePath);
 	}
 
-	public int getOutPathKind() {
-		return outPathKind;
+	public AarEntryExporterWorkerTaskFactoryBase(StructuredTaskResult inputFile, SakerPath outputRelativePath) {
+		this.inputFile = inputFile;
+		this.outputRelativePath = outputRelativePath;
 	}
 
 	public SakerPath getOutputRelativePath() {
@@ -83,8 +82,16 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 		}
 
+		Object inputfileres = inputFile.toResult(taskcontext);
+		if (!(inputfileres instanceof FileLocation)) {
+			taskcontext.abortExecution(
+					new ClassCastException("Invalid input type for aar entry extraction: " + inputfileres));
+			return null;
+		}
+		FileLocation inputfile = (FileLocation) inputfileres;
+
 		Object[] result = { null };
-		inputFile.accept(new FileLocationVisitor() {
+		inputfile.accept(new FileLocationVisitor() {
 			@Override
 			public void visit(ExecutionFileLocation loc) {
 				try {
@@ -125,7 +132,8 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 		return (T) result[0];
 	}
 
-	protected T addResultFile(TaskContext taskcontext, ByteArrayRegion bytes, String entryname) throws Exception {
+	protected T addResultFile(TaskContext taskcontext, ByteArrayRegion bytes, String entryname, int outPathKind)
+			throws Exception {
 		switch (outPathKind) {
 			case OUTPUT_KIND_EXECUTION: {
 				SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
@@ -230,14 +238,14 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 	public void writeExternal(ObjectOutput out) throws IOException {
 		out.writeObject(inputFile);
 		out.writeObject(outputRelativePath);
-		out.writeInt(outPathKind);
+
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		inputFile = (FileLocation) in.readObject();
+		inputFile = (StructuredTaskResult) in.readObject();
 		outputRelativePath = (SakerPath) in.readObject();
-		outPathKind = in.readInt();
+
 	}
 
 	public static ByteArrayRegion getFileClassesJarBytes(SakerFile f) throws IOException {
@@ -283,7 +291,6 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((inputFile == null) ? 0 : inputFile.hashCode());
-		result = prime * result + outPathKind;
 		result = prime * result + ((outputRelativePath == null) ? 0 : outputRelativePath.hashCode());
 		return result;
 	}
@@ -301,8 +308,6 @@ public abstract class AarEntryExporterWorkerTaskFactoryBase<T> implements TaskFa
 			if (other.inputFile != null)
 				return false;
 		} else if (!inputFile.equals(other.inputFile))
-			return false;
-		if (outPathKind != other.outPathKind)
 			return false;
 		if (outputRelativePath == null) {
 			if (other.outputRelativePath != null)

@@ -8,6 +8,8 @@ import java.io.ObjectOutput;
 import saker.build.file.SakerFile;
 import saker.build.file.path.SakerPath;
 import saker.build.task.TaskContext;
+import saker.build.task.identifier.TaskIdentifier;
+import saker.build.task.utils.StructuredTaskResult;
 import saker.build.thirdparty.saker.util.io.ByteArrayRegion;
 import saker.std.api.file.location.FileLocation;
 
@@ -15,6 +17,7 @@ public class AarEntryExtractWorkerTaskFactory extends AarEntryExporterWorkerTask
 	private static final long serialVersionUID = 1L;
 
 	private String entryName;
+	protected int outPathKind;
 
 	/**
 	 * For {@link Externalizable}.
@@ -24,8 +27,20 @@ public class AarEntryExtractWorkerTaskFactory extends AarEntryExporterWorkerTask
 
 	public AarEntryExtractWorkerTaskFactory(FileLocation inputFile, SakerPath outputRelativePath, int outPathKind,
 			String entryName) {
-		super(inputFile, outputRelativePath, outPathKind);
+		super(inputFile, outputRelativePath);
+		this.outPathKind = outPathKind;
 		this.entryName = entryName;
+	}
+
+	public AarEntryExtractWorkerTaskFactory(StructuredTaskResult inputFile, SakerPath outputRelativePath,
+			int outPathKind, String entryName) {
+		super(inputFile, outputRelativePath);
+		this.outPathKind = outPathKind;
+		this.entryName = entryName;
+	}
+
+	public TaskIdentifier createTaskId() {
+		return new AarEntryExtractWorkerTaskIdentifier(outputRelativePath, outPathKind);
 	}
 
 	@Override
@@ -60,7 +75,7 @@ public class AarEntryExtractWorkerTaskFactory extends AarEntryExporterWorkerTask
 		if (classesbytes == null) {
 			return new EntryNotFoundAarClassesTaskOutput(localpath, entryName);
 		}
-		return addResultFile(taskcontext, classesbytes, entryName);
+		return addResultFile(taskcontext, classesbytes, entryName, outPathKind);
 	}
 
 	@Override
@@ -69,19 +84,21 @@ public class AarEntryExtractWorkerTaskFactory extends AarEntryExporterWorkerTask
 		if (classesbytes == null) {
 			return new EntryNotFoundAarClassesTaskOutput(f.getSakerPath(), entryName);
 		}
-		return addResultFile(taskcontext, classesbytes, entryName);
+		return addResultFile(taskcontext, classesbytes, entryName, outPathKind);
 	}
 
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
 		super.writeExternal(out);
 		out.writeObject(entryName);
+		out.writeInt(outPathKind);
 	}
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		super.readExternal(in);
 		entryName = (String) in.readObject();
+		outPathKind = in.readInt();
 	}
 
 	@Override
@@ -89,6 +106,7 @@ public class AarEntryExtractWorkerTaskFactory extends AarEntryExporterWorkerTask
 		final int prime = 31;
 		int result = super.hashCode();
 		result = prime * result + ((entryName == null) ? 0 : entryName.hashCode());
+		result = prime * result + outPathKind;
 		return result;
 	}
 
@@ -105,6 +123,8 @@ public class AarEntryExtractWorkerTaskFactory extends AarEntryExporterWorkerTask
 			if (other.entryName != null)
 				return false;
 		} else if (!entryName.equals(other.entryName))
+			return false;
+		if (outPathKind != other.outPathKind)
 			return false;
 		return true;
 	}

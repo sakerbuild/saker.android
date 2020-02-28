@@ -4,6 +4,8 @@ global(DEPENDENCIES_saker.android) = [
 	saker.compiler.utils,
 	saker.zip-api,
 	saker.java.compiler-api,
+	saker.maven.classpath-api,
+	saker.maven.support,
 ]
 global(saker.android.COMPILER_OPTIONS) = [
 	{
