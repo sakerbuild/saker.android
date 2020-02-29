@@ -21,8 +21,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.android.impl.aapt2.AAPT2Utils;
-import saker.android.impl.aapt2.aar.AAPT2AarWorkerTaskFactory;
-import saker.android.impl.aapt2.aar.AAPT2AarWorkerTaskOutput;
 import saker.android.impl.aapt2.link.option.AAPT2LinkerInput;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
@@ -120,6 +118,11 @@ public class AAPT2LinkWorkerTaskFactory
 	 * For {@link Externalizable}.
 	 */
 	public AAPT2LinkWorkerTaskFactory() {
+	}
+
+	public AAPT2LinkWorkerTaskFactory(Set<AAPT2LinkerInput> input, FileLocation manifest) {
+		this.input = input;
+		this.manifest = manifest;
 	}
 
 	public void setSDKDescriptions(NavigableMap<String, ? extends SDKDescription> sdkdescriptions) {
@@ -568,16 +571,17 @@ public class AAPT2LinkWorkerTaskFactory
 			@Override
 			public void visit(FileLocation inputfile) {
 				String inputfname = SakerStandardUtils.getFileLocationFileName(inputfile);
-				if (FileUtils.hasExtensionIgnoreCase(inputfname, "aar")) {
-					AAPT2AarWorkerTaskFactory inworker = new AAPT2AarWorkerTaskFactory(inputfile);
-					inworker.setSDKDescriptions(sdkDescriptions);
-					AAPT2AarWorkerTaskOutput aarlibres = taskcontext.getTaskUtilities()
-							.runTaskResult(inworker.createWorkerTaskIdentifier(), inworker);
-					for (SakerPath path : aarlibres.getOutputFiles()) {
-						handleExecutionInputFile(path);
-					}
-					return;
-				}
+//				if (FileUtils.hasExtensionIgnoreCase(inputfname, "aar")) {
+//					AAPT2AarStaticLibraryWorkerTaskFactory inworker = new AAPT2AarStaticLibraryWorkerTaskFactory(
+//							inputfile, new AAPT2CompilationConfiguration(EnumSet.noneOf(AAPT2CompilerFlag.class)));
+//					inworker.setSDKDescriptions(sdkDescriptions);
+//					AAPT2AarStaticLibraryWorkerTaskOutput aarlibres = taskcontext.getTaskUtilities()
+//							.runTaskResult(inworker.createWorkerTaskIdentifier(), inworker);
+//					for (SakerPath path : aarlibres.getOutputFiles()) {
+//						handleExecutionInputFile(path);
+//					}
+//					return;
+//				}
 				inputfile.accept(new FileLocationVisitor() {
 					@Override
 					public void visit(ExecutionFileLocation loc) {

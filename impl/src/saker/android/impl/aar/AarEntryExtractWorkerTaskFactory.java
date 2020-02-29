@@ -35,8 +35,10 @@ import saker.build.file.content.DirectoryContentDescriptor;
 import saker.build.file.path.PathKey;
 import saker.build.file.path.SakerPath;
 import saker.build.file.path.SimplePathKey;
+import saker.build.file.provider.FileEntry;
 import saker.build.file.provider.FileHashResult;
 import saker.build.file.provider.LocalFileProvider;
+import saker.build.file.provider.SakerFileProvider;
 import saker.build.file.provider.SakerPathFiles;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.CommonTaskContentDescriptors;
@@ -220,11 +222,13 @@ public class AarEntryExtractWorkerTaskFactory
 		Files.createDirectories(tempdir);
 
 		Path outputdirpath = storagedir.resolve(outputRelativePath.toString())
-				.resolve(StringUtils.toHexString(archivehash.getHash()));
+				.resolve(StringUtils.toHexString(archivehash.getHash())).resolve(entryName);
 
 		//XXX should check and delete already existing, non-archive files in place
 
 		UUID dependencyuniqueness = UUID.randomUUID();
+
+		LocalFileProvider localfp = LocalFileProvider.getInstance();
 
 		Set<FileLocation> dirfilelocations = new LinkedHashSet<>();
 		Collection<PathKey> invalidatepathkeys = new ArrayList<>(folderentrybytes.size());
@@ -237,10 +241,12 @@ public class AarEntryExtractWorkerTaskFactory
 			if (isLocalOutputRegularFileUpToDate(entryoutpath, entrybytes.getLength())) {
 				continue;
 			}
-			Files.createDirectories(entryoutpath.getParent());
 
 			Path outputtempfilepath = tempdir.resolve(entryoutpath.getFileName() + "." + dependencyuniqueness);
 
+			//create parent dirs
+			localfp.ensureWriteRequest(entryoutpath.getParent(), FileEntry.TYPE_DIRECTORY,
+					SakerFileProvider.OPERATION_FLAG_DELETE_INTERMEDIATE_FILES);
 			Files.createDirectories(outputdirpath);
 			try (OutputStream fos = Files.newOutputStream(outputtempfilepath)) {
 				entrybytes.writeTo(fos);
@@ -258,7 +264,6 @@ public class AarEntryExtractWorkerTaskFactory
 				Files.deleteIfExists(outputtempfilepath);
 			}
 			invalidatepathkeys.add(new SimplePathKey(entryoutsakerpath, LocalFileProvider.getProviderKeyStatic()));
-			dirfilelocations.add(LocalFileLocation.create(entryoutsakerpath));
 		}
 		TaskExecutionUtilities taskutils = taskcontext.getTaskUtilities();
 		taskutils.invalidate(invalidatepathkeys);
@@ -266,6 +271,7 @@ public class AarEntryExtractWorkerTaskFactory
 			taskutils.getReportExecutionDependency(
 					SakerStandardUtils.createLocalFileContentDescriptorExecutionProperty(outputlocalsakerpath,
 							ImmutableUtils.asUnmodifiableArrayList(taskcontext.getTaskId(), dependencyuniqueness)));
+			dirfilelocations.add(LocalFileLocation.create(outputlocalsakerpath));
 		}
 		return new LocalAarExtractTaskOutput(SakerPath.valueOf(outputdirpath), dirfilelocations);
 	}
@@ -342,7 +348,9 @@ public class AarEntryExtractWorkerTaskFactory
 
 		Path outputtempfilepath = tempdir.resolve(outputfilepath.getFileName() + "." + UUID.randomUUID());
 
-		Files.createDirectories(outputdirpath);
+		//create parent dirs
+		LocalFileProvider.getInstance().ensureWriteRequest(outputdirpath, FileEntry.TYPE_DIRECTORY,
+				SakerFileProvider.OPERATION_FLAG_DELETE_INTERMEDIATE_FILES);
 		try (OutputStream fos = Files.newOutputStream(outputtempfilepath)) {
 			bytes.writeTo(fos);
 		}
@@ -398,18 +406,23 @@ public class AarEntryExtractWorkerTaskFactory
 		}
 
 		try (ZipFile zf = new ZipFile(LocalFileProvider.toRealPath(localpath).toFile())) {
+			//maps relative paths to the zip entries
+			NavigableMap<SakerPath, ZipEntry> direntries = null;
+
 			ZipEntry foundentry = zf.getEntry(entryName);
 			if (foundentry != null) {
-				ByteArrayRegion entrybytes;
-				try (InputStream zipin = zf.getInputStream(foundentry)) {
-					entrybytes = StreamUtils.readStreamFully(zipin);
+				if (!foundentry.isDirectory()) {
+					ByteArrayRegion entrybytes;
+					try (InputStream zipin = zf.getInputStream(foundentry)) {
+						entrybytes = StreamUtils.readStreamFully(zipin);
+					}
+					return addResultFile(taskcontext, entrybytes, archivehash);
+				} else {
+					direntries = new TreeMap<>();
 				}
-				return addResultFile(taskcontext, entrybytes, archivehash);
 			}
 			String direntryname = entryName + "/";
 
-			//maps relative paths to the zip entries
-			NavigableMap<SakerPath, ZipEntry> direntries = null;
 			Enumeration<? extends ZipEntry> entries = zf.entries();
 			while (entries.hasMoreElements()) {
 				ZipEntry ze = (ZipEntry) entries.nextElement();
@@ -419,7 +432,9 @@ public class AarEntryExtractWorkerTaskFactory
 				}
 				if (zename.length() == direntryname.length()) {
 					//found the directory
-					direntries = new TreeMap<>();
+					if (direntries == null) {
+						direntries = new TreeMap<>();
+					}
 				} else {
 					if (!ze.isDirectory()) {
 						direntries.put(SakerPath.valueOf(zename).subPath(1), ze);
@@ -461,16 +476,23 @@ public class AarEntryExtractWorkerTaskFactory
 				for (ZipEntry ze; (ze = zipin.getNextEntry()) != null;) {
 					String zename = ze.getName();
 					if (zename.equals(entryName)) {
-						//null it out just in case
-						direntries = null;
-						entrybytes = StreamUtils.readStreamFully(zipin);
-						break;
+						if (!ze.isDirectory()) {
+
+							//null it out just in case
+							direntries = null;
+							entrybytes = StreamUtils.readStreamFully(zipin);
+							break;
+						} else if (direntries == null) {
+							direntries = new TreeMap<>();
+						}
 					}
 
 					if (zename.startsWith(direntryname)) {
 						if (zename.length() == direntryname.length()) {
 							//found the directory
-							direntries = new TreeMap<>();
+							if (direntries == null) {
+								direntries = new TreeMap<>();
+							}
 						} else {
 							if (!ze.isDirectory()) {
 								direntries.put(SakerPath.valueOf(zename).subPath(1),

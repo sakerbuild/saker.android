@@ -12,6 +12,8 @@ import saker.android.impl.aapt2.compile.AAPT2CompilationConfiguration;
 import saker.android.impl.aapt2.compile.AAPT2CompileWorkerTaskFactory;
 import saker.android.impl.aapt2.compile.AAPT2CompileWorkerTaskIdentifier;
 import saker.android.impl.aapt2.compile.AAPT2CompilerFlag;
+import saker.android.impl.aapt2.compile.option.AAPT2CompilerInputOption;
+import saker.android.impl.aapt2.compile.option.ResourceDirectoryAAPT2CompilerInputOption;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.AndroidFrontendUtils;
@@ -68,9 +70,11 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 				if (compilationid == null) {
 					compilationid = CompilationIdentifier.valueOf("default");
 				}
-				Set<FileLocation> inputs = new LinkedHashSet<>();
+				Set<AAPT2CompilerInputOption> inputs = new LinkedHashSet<>();
 				for (MultiFileLocationTaskOption intaskoption : inputOption) {
-					inputs.addAll(TaskOptionUtils.toFileLocations(intaskoption, taskcontext, null));
+					for (FileLocation fl : TaskOptionUtils.toFileLocations(intaskoption, taskcontext, null)) {
+						inputs.add(new ResourceDirectoryAAPT2CompilerInputOption(fl));
+					}
 				}
 
 				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
@@ -85,11 +89,11 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 				addFlagIfSet(flags, AAPT2CompilerFlag.PSEUDO_LOCALIZE, pseudoLocalizeOption);
 				AAPT2CompilationConfiguration config = new AAPT2CompilationConfiguration(flags);
 
-				AAPT2CompileWorkerTaskIdentifier workertaskid = new AAPT2CompileWorkerTaskIdentifier(compilationid);
-				AAPT2CompileWorkerTaskFactory workertask = new AAPT2CompileWorkerTaskFactory();
+				//TODO pre-extract aar input files
 
-				workertask.setInputs(inputs);
-				workertask.setConfiguration(config);
+				AAPT2CompileWorkerTaskIdentifier workertaskid = new AAPT2CompileWorkerTaskIdentifier(compilationid);
+				AAPT2CompileWorkerTaskFactory workertask = new AAPT2CompileWorkerTaskFactory(inputs, config);
+
 				workertask.setVerbose(verboseOption);
 				workertask.setSDKDescriptions(sdkdescriptions);
 

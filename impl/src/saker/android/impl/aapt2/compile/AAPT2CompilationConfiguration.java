@@ -68,6 +68,6 @@ public class AAPT2CompilationConfiguration implements Externalizable {
 
 	@Override
 	public String toString() {
-		return "AAPT2CompilationConfiguration[flags=" + flags + "]";
+		return getClass().getSimpleName() + "[" + flags + "]";
 	}
 }

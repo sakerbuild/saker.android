@@ -17,6 +17,7 @@ import saker.build.task.ParameterizableTask;
 import saker.build.task.TaskContext;
 import saker.build.task.TaskResultDependencyHandle;
 import saker.build.task.TaskResultResolver;
+import saker.build.task.dependencies.TaskOutputChangeDetector;
 import saker.build.task.identifier.TaskIdentifier;
 import saker.build.task.utils.SimpleStructuredObjectTaskResult;
 import saker.build.task.utils.StructuredTaskResult;
@@ -25,6 +26,7 @@ import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
 import saker.build.thirdparty.saker.util.io.FileUtils;
+import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.trace.BuildTrace;
 import saker.maven.classpath.api.MavenClassPathTaskBuilder;
 import saker.maven.classpath.api.MavenClassPathTaskBuilder.EntryBuilder;
@@ -163,6 +165,72 @@ public class AndroidMavenClassPathTaskFactory extends FrontendTaskFactory<Object
 		return sourceacoords;
 	}
 
+	private static class AarExtractTaskOutputFileLocationEqualityChangeDetector
+			implements TaskOutputChangeDetector, Externalizable {
+		private static final long serialVersionUID = 1L;
+
+		private FileLocation fileLocation;
+
+		/**
+		 * For {@link Externalizable}.
+		 */
+		public AarExtractTaskOutputFileLocationEqualityChangeDetector() {
+		}
+
+		public AarExtractTaskOutputFileLocationEqualityChangeDetector(FileLocation fileLocation) {
+			this.fileLocation = fileLocation;
+		}
+
+		@Override
+		public boolean isChanged(Object taskoutput) {
+			if (!(taskoutput instanceof AarExtractTaskOutput)) {
+				return true;
+			}
+			return !Objects.equals(this.fileLocation, ((AarExtractTaskOutput) taskoutput).getFileLocation());
+		}
+
+		@Override
+		public void writeExternal(ObjectOutput out) throws IOException {
+			out.writeObject(fileLocation);
+		}
+
+		@Override
+		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+			fileLocation = SerialUtils.readExternalObject(in);
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((fileLocation == null) ? 0 : fileLocation.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			AarExtractTaskOutputFileLocationEqualityChangeDetector other = (AarExtractTaskOutputFileLocationEqualityChangeDetector) obj;
+			if (fileLocation == null) {
+				if (other.fileLocation != null)
+					return false;
+			} else if (!fileLocation.equals(other.fileLocation))
+				return false;
+			return true;
+		}
+
+		@Override
+		public String toString() {
+			return getClass().getSimpleName() + "[" + fileLocation + "]";
+		}
+
+	}
+
 	public static class ClassesJarFileLocationStructuredTaskResult implements StructuredTaskResult, Externalizable {
 		private static final long serialVersionUID = 1L;
 
@@ -183,7 +251,7 @@ public class AndroidMavenClassPathTaskFactory extends FrontendTaskFactory<Object
 			TaskResultDependencyHandle dephandle = results.getTaskResultDependencyHandle(entryExtractTaskId);
 			AarExtractTaskOutput out = (AarExtractTaskOutput) dephandle.get();
 			FileLocation result = out.getFileLocation();
-			dephandle.setTaskOutputChangeDetector(new EqualityTaskOutputChangeDetector(result));
+			dephandle.setTaskOutputChangeDetector(new AarExtractTaskOutputFileLocationEqualityChangeDetector(result));
 			return result;
 		}
 

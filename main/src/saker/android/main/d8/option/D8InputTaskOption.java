@@ -49,16 +49,7 @@ public abstract class D8InputTaskOption {
 	public abstract Set<D8InputOption> toInputOption(TaskContext taskcontext);
 
 	public static D8InputTaskOption valueOf(SakerPath path) {
-		if (path.isAbsolute()) {
-			return valueOf(ExecutionFileLocation.create(path));
-		}
-		return new D8InputTaskOption() {
-			@Override
-			public Set<D8InputOption> toInputOption(TaskContext taskcontext) {
-				return ImmutableUtils.singletonSet(new FileD8InputOption(
-						ExecutionFileLocation.create(taskcontext.getTaskWorkingDirectoryPath().resolve(path))));
-			}
-		};
+		return valueOf(WildcardPath.valueOf(path));
 	}
 
 	public static D8InputTaskOption valueOf(FileLocation input) {
@@ -85,10 +76,19 @@ public abstract class D8InputTaskOption {
 	public static D8InputTaskOption valueOf(WildcardPath input) {
 		ReducedWildcardPath reduced = input.reduce();
 		if (reduced.getWildcard() == null) {
-			return valueOf(reduced.getFile());
+			SakerPath path = reduced.getFile();
+			if (path.isAbsolute()) {
+				return valueOf(ExecutionFileLocation.create(path));
+			}
+			return new D8InputTaskOption() {
+				@Override
+				public Set<D8InputOption> toInputOption(TaskContext taskcontext) {
+					return ImmutableUtils.singletonSet(new FileD8InputOption(
+							ExecutionFileLocation.create(taskcontext.getTaskWorkingDirectoryPath().resolve(path))));
+				}
+			};
 		}
 		return new D8InputTaskOption() {
-
 			@Override
 			public Set<D8InputOption> toInputOption(TaskContext taskcontext) {
 				FileCollectionStrategy collectionstrategy = WildcardFileCollectionStrategy

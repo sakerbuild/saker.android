@@ -4,6 +4,7 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Collections;
 import java.util.NavigableMap;
 
 import saker.build.file.DirectoryVisitPredicate;
@@ -35,6 +36,9 @@ public class AndroidResourcesFileCollectionStrategy implements FileCollectionStr
 			TaskDirectoryContext taskdirectorycontext) {
 		SakerDirectory workingdir = taskdirectorycontext.getTaskWorkingDirectory();
 		SakerDirectory reldir = getActualDirectory(executiondirectorycontext, workingdir, this.directory);
+		if (reldir == null) {
+			return Collections.emptyNavigableMap();
+		}
 		return reldir.getFilesRecursiveByPath(reldir.getSakerPath(), new AndroidResourcesDirectoryVisitPredicate());
 	}
 

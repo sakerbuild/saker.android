@@ -1,6 +1,7 @@
 package saker.android.impl.aapt2.compile;
 
 import java.io.Externalizable;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -19,6 +20,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 
 import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
 import saker.android.impl.aapt2.AAPT2Utils;
+import saker.android.impl.aapt2.compile.option.AAPT2CompilerInputOption;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.main.aapt2.AAPT2CompileTaskFactory;
 import saker.build.file.SakerDirectory;
@@ -37,6 +39,7 @@ import saker.build.task.TaskFactory;
 import saker.build.task.delta.DeltaType;
 import saker.build.task.dependencies.FileCollectionStrategy;
 import saker.build.task.utils.TaskUtils;
+import saker.build.thirdparty.saker.util.ConcurrentEntryMergeSorter;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.function.Functionals;
@@ -59,14 +62,14 @@ public class AAPT2CompileWorkerTaskFactory
 		implements TaskFactory<AAPT2CompileTaskOutput>, Task<AAPT2CompileTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
-	private Set<FileLocation> inputs;
-
+	private Set<AAPT2CompilerInputOption> inputs;
 	private AAPT2CompilationConfiguration configuration;
-	private transient boolean verbose;
 
 	private NavigableMap<String, ? extends SDKDescription> sdkDescriptions;
 
 	private transient TaskExecutionEnvironmentSelector remoteDispatchableEnvironmentSelector;
+
+	private transient boolean verbose;
 
 	/**
 	 * For {@link Externalizable}.
@@ -74,11 +77,17 @@ public class AAPT2CompileWorkerTaskFactory
 	public AAPT2CompileWorkerTaskFactory() {
 	}
 
+	public AAPT2CompileWorkerTaskFactory(Set<AAPT2CompilerInputOption> inputs,
+			AAPT2CompilationConfiguration configuration) {
+		this.inputs = inputs;
+		this.configuration = configuration;
+	}
+
 	public void setConfiguration(AAPT2CompilationConfiguration configuration) {
 		this.configuration = configuration;
 	}
 
-	public void setInputs(Set<FileLocation> inputs) {
+	public void setInputs(Set<AAPT2CompilerInputOption> inputs) {
 		this.inputs = inputs;
 	}
 
@@ -158,19 +167,55 @@ public class AAPT2CompileWorkerTaskFactory
 			throw new SDKPathNotFoundException("aapt2 executable not found in " + buildtoolssdkref);
 		}
 
+		NavigableMap<SakerPath, SakerFile> directinputresourcefiles = new TreeMap<>();
+
 		LinkedHashSet<FileCollectionStrategy> inputcollectionstrategies = new LinkedHashSet<>();
-		for (FileLocation inputfilelocation : inputs) {
-			inputfilelocation.accept(new FileLocationVisitor() {
+		for (AAPT2CompilerInputOption inoption : inputs) {
+			inoption.accept(new AAPT2CompilerInputOption.Visitor() {
 				@Override
-				public void visit(ExecutionFileLocation loc) {
-					inputcollectionstrategies.add(new AndroidResourcesFileCollectionStrategy(loc.getPath()));
+				public void visitResources(Set<FileLocation> files) {
+					for (FileLocation fl : files) {
+						fl.accept(new FileLocationVisitor() {
+							@Override
+							public void visit(ExecutionFileLocation loc) {
+								SakerPath infilepath = loc.getPath();
+								SakerFile resfile = taskcontext.getTaskUtilities().resolveFileAtPath(infilepath);
+								if (resfile == null) {
+									throw ObjectUtils.sneakyThrow(
+											new FileNotFoundException("Input resource file not found: " + infilepath));
+								}
+								directinputresourcefiles.put(infilepath, resfile);
+							}
+						});
+					}
+				}
+
+				@Override
+				public void visitResourceDirectory(FileLocation dir) {
+					dir.accept(new FileLocationVisitor() {
+						@Override
+						public void visit(ExecutionFileLocation loc) {
+							inputcollectionstrategies.add(new AndroidResourcesFileCollectionStrategy(loc.getPath()));
+						}
+					});
 				}
 			});
 		}
 
+		taskcontext.getTaskUtilities().reportInputFileDependency(AAPT2CompilerTags.INPUT_RESOURCE,
+				directinputresourcefiles.values());
+
 		NavigableMap<SakerPath, SakerFile> collectedfiles = taskcontext.getTaskUtilities()
 				.collectFilesReportInputFileAndAdditionDependency(AAPT2CompilerTags.INPUT_RESOURCE,
 						inputcollectionstrategies);
+
+		if (!directinputresourcefiles.isEmpty()) {
+			ConcurrentEntryMergeSorter<SakerPath, SakerFile> ms = new ConcurrentEntryMergeSorter<>();
+			ms.add(directinputresourcefiles);
+			ms.add(collectedfiles);
+			collectedfiles = ms.createImmutableNavigableMap();
+		}
+		NavigableMap<SakerPath, SakerFile> fcollectedfiles = collectedfiles;
 
 		AAPT2CompilationConfiguration thiscompilationconfig = this.configuration;
 
@@ -201,7 +246,7 @@ public class AAPT2CompileWorkerTaskFactory
 						InputFileState instate = deleteOutputDirectoryForInputPath(taskcontext, outputdir, nstate,
 								prevoutput.inputFilePath);
 						if (instate != null) {
-							SakerFile infile = collectedfiles.get(instate.path);
+							SakerFile infile = fcollectedfiles.get(instate.path);
 							if (infile != null) {
 								inputfiles.put(instate.path, infile);
 							}
@@ -330,7 +375,8 @@ public class AAPT2CompileWorkerTaskFactory
 		}
 		outputdir.synchronize();
 
-		taskcontext.getTaskUtilities().reportOutputFileDependency(AAPT2CompilerTags.OUTPUT_COMPILED, outputfilecontents);
+		taskcontext.getTaskUtilities().reportOutputFileDependency(AAPT2CompilerTags.OUTPUT_COMPILED,
+				outputfilecontents);
 
 		NavigableMap<String, SDKDescription> pinnedsdks = new TreeMap<>(SDKSupportUtils.getSDKNameComparator());
 		for (Entry<String, SDKReference> entry : sdkrefs.entrySet()) {
