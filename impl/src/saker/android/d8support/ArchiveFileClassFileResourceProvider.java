@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import com.android.tools.r8.ClassFileResourceProvider;
 import com.android.tools.r8.ProgramResource;
@@ -35,35 +36,51 @@ public final class ArchiveFileClassFileResourceProvider implements ClassFileReso
 		if (entry == null) {
 			return null;
 		}
-		return new ProgramResource() {
-			@Override
-			public Origin getOrigin() {
-				return new ArchiveEntryOrigin(entry.getName(), archiveOrigin);
-			}
-
-			@Override
-			public Kind getKind() {
-				return Kind.CF;
-			}
-
-			@Override
-			public Set<String> getClassDescriptors() {
-				return Collections.singleton(descriptor);
-			}
-
-			@Override
-			public InputStream getByteStream() throws ResourceException {
-				try {
-					return archiveData.getZipFile().getInputStream(entry);
-				} catch (IOException e) {
-					throw new ResourceException(getOrigin(), e);
-				}
-			}
-		};
+		Origin archiveorigin = archiveOrigin;
+		ZipFile zipfile = archiveData.getZipFile();
+		return new ArchiveEntryProgramResource(descriptor, zipfile, archiveorigin, entry);
 	}
 
 	@Override
 	public Set<String> getClassDescriptors() {
 		return descriptorEntries.navigableKeySet();
+	}
+
+	public final static class ArchiveEntryProgramResource implements ProgramResource {
+		private final String descriptor;
+		private final ZipFile zipfile;
+		private final Origin archiveorigin;
+		private final ZipEntry entry;
+
+		public ArchiveEntryProgramResource(String descriptor, ZipFile zipfile, Origin archiveorigin, ZipEntry entry) {
+			this.descriptor = descriptor;
+			this.zipfile = zipfile;
+			this.archiveorigin = archiveorigin;
+			this.entry = entry;
+		}
+
+		@Override
+		public Origin getOrigin() {
+			return new ArchiveEntryOrigin(entry.getName(), archiveorigin);
+		}
+
+		@Override
+		public Kind getKind() {
+			return Kind.CF;
+		}
+
+		@Override
+		public Set<String> getClassDescriptors() {
+			return Collections.singleton(descriptor);
+		}
+
+		@Override
+		public InputStream getByteStream() throws ResourceException {
+			try {
+				return zipfile.getInputStream(entry);
+			} catch (IOException e) {
+				throw new ResourceException(getOrigin(), e);
+			}
+		}
 	}
 }

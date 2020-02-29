@@ -4,12 +4,15 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Map;
 import java.util.NavigableMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
 import saker.build.file.path.SakerPath;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.sdk.support.api.SDKReference;
+import saker.std.api.file.location.FileLocation;
 
 public class IncrementalD8State implements Externalizable {
 	private static final long serialVersionUID = 1L;
@@ -28,6 +31,8 @@ public class IncrementalD8State implements Externalizable {
 
 	public NavigableMap<SakerPath, D8OutputFileInformation> outputClassIndexInformations;
 
+	public Map<FileLocation, D8InputArchiveInformation> archiveInformations;
+
 	/**
 	 * For {@link Externalizable}.
 	 */
@@ -45,6 +50,7 @@ public class IncrementalD8State implements Externalizable {
 		this.outputDescriptorInformations = new ConcurrentSkipListMap<>(copy.outputDescriptorInformations);
 		this.outputPathInformations = new ConcurrentSkipListMap<>(copy.outputPathInformations);
 		this.outputClassIndexInformations = new ConcurrentSkipListMap<>(copy.outputClassIndexInformations);
+		this.archiveInformations = new ConcurrentHashMap<>(copy.archiveInformations);
 	}
 
 	public void putInput(D8InputFileInformation info) {
@@ -101,6 +107,7 @@ public class IncrementalD8State implements Externalizable {
 		out.writeBoolean(noDesugaring);
 		out.writeBoolean(release);
 		SerialUtils.writeExternalMap(out, outputClassIndexInformations);
+		SerialUtils.writeExternalMap(out, archiveInformations);
 	}
 
 	@Override
@@ -115,6 +122,7 @@ public class IncrementalD8State implements Externalizable {
 		noDesugaring = in.readBoolean();
 		release = in.readBoolean();
 		outputClassIndexInformations = SerialUtils.readExternalImmutableNavigableMap(in);
+		archiveInformations = SerialUtils.readExternalImmutableHashMap(in);
 	}
 
 }

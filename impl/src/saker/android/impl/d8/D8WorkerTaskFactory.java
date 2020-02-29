@@ -9,6 +9,7 @@ import java.util.NavigableSet;
 import java.util.Set;
 
 import saker.android.api.d8.D8TaskOutput;
+import saker.android.impl.d8.option.D8InputOption;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.main.d8.D8TaskFactory;
 import saker.build.file.path.SakerPath;
@@ -35,12 +36,11 @@ import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNotFoundException;
 import saker.sdk.support.api.exc.SDKPathNotFoundException;
-import saker.std.api.file.location.FileLocation;
 
 public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8TaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
-	private Set<FileLocation> inputs;
+	private Set<D8InputOption> inputs;
 	private boolean release;
 	private Integer minApi;
 	private boolean noDesugaring;
@@ -56,7 +56,7 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 	public D8WorkerTaskFactory() {
 	}
 
-	public D8WorkerTaskFactory(Set<FileLocation> inputs) {
+	public D8WorkerTaskFactory(Set<D8InputOption> inputs) {
 		this.inputs = inputs;
 	}
 
@@ -86,11 +86,11 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 				.getSDKBasedClusterExecutionEnvironmentSelector(sdkdescriptions.values());
 	}
 
-	public void setInputs(Set<FileLocation> inputs) {
+	public void setInputs(Set<D8InputOption> inputs) {
 		this.inputs = inputs;
 	}
 
-	public Set<FileLocation> getInputs() {
+	public Set<D8InputOption> getInputs() {
 		return inputs;
 	}
 

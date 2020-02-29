@@ -9,9 +9,11 @@ import java.util.Set;
 import saker.android.impl.AndroidUtils;
 import saker.android.impl.d8.D8WorkerTaskFactory;
 import saker.android.impl.d8.D8WorkerTaskIdentifier;
+import saker.android.impl.d8.option.D8InputOption;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.AndroidFrontendUtils;
+import saker.android.main.d8.option.D8InputTaskOption;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.ParameterizableTask;
 import saker.build.task.TaskContext;
@@ -25,9 +27,6 @@ import saker.compiler.utils.main.CompilationIdentifierTaskOption;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
-import saker.std.api.file.location.FileLocation;
-import saker.std.main.file.option.MultiFileLocationTaskOption;
-import saker.std.main.file.utils.TaskOptionUtils;
 
 public class D8TaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
@@ -39,7 +38,7 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 		return new ParameterizableTask<Object>() {
 
 			@SakerInput(value = { "", "Input" }, required = true)
-			public Collection<MultiFileLocationTaskOption> inputOption;
+			public Collection<D8InputTaskOption> inputOption;
 
 			@SakerInput(value = { "NoDesugaring" })
 			public boolean noDesugaringOption;
@@ -69,9 +68,12 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 				if (compilationid == null) {
 					compilationid = CompilationIdentifier.valueOf("default");
 				}
-				Set<FileLocation> inputs = new LinkedHashSet<>();
-				for (MultiFileLocationTaskOption intaskoption : inputOption) {
-					inputs.addAll(TaskOptionUtils.toFileLocations(intaskoption, taskcontext, null));
+				Set<D8InputOption> inputs = new LinkedHashSet<>();
+				for (D8InputTaskOption intaskoption : inputOption) {
+					if (intaskoption == null) {
+						continue;
+					}
+					inputs.addAll(intaskoption.toInputOption(taskcontext));
 				}
 
 				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils

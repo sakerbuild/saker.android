@@ -8,3 +8,5 @@ saker.zip-api
 	classpath: [0)
 saker.maven.support
 	classpath: [0)
+saker.java.compiler-api
+	classpath: [0)
