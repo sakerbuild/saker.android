@@ -19,17 +19,25 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 
 	public static final String PATH_AAPT2_EXECUTABLE = "exe.aapt2";
 	public static final String PATH_ZIPALIGN_EXECUTABLE = "exe.zipalign";
+	public static final String PATH_AIDL_EXECUTABLE = "exe.aidl";
 
 	public static final String PROPERTY_VERSION = "version";
 
 	private static final SakerPath LIB_D8JAR_PATH = SakerPath.valueOf("lib/d8.jar");
 	private static final SakerPath LIB_APKSIGNERJAR_PATH = SakerPath.valueOf("lib/apksigner.jar");
+
 	private static final SakerPath WINDOWS_EXE_AAPT2_PATH = SakerPath.valueOf("aapt2.exe");
 	private static final SakerPath MACOS_EXE_AAPT2_PATH = SakerPath.valueOf("aapt2");
 	private static final SakerPath LINUX_EXE_AAPT2_PATH = SakerPath.valueOf("aapt2");
+
 	private static final SakerPath WINDOWS_EXE_ZIPALIGN_PATH = SakerPath.valueOf("zipalign.exe");
 	private static final SakerPath MACOS_EXE_ZIPALIGN_PATH = SakerPath.valueOf("zipalign");
 	private static final SakerPath LINUX_EXE_ZIPALIGN_PATH = SakerPath.valueOf("zipalign");
+
+	private static final SakerPath WINDOWS_EXE_AIDL_PATH = SakerPath.valueOf("aidl.exe");
+	private static final SakerPath MACOS_EXE_AIDL_PATH = SakerPath.valueOf("aidl");
+	private static final SakerPath LINUX_EXE_AIDL_PATH = SakerPath.valueOf("aidl");
+
 	private static final SakerPath CORE_LAMBDA_STUBS_PATH = SakerPath.valueOf("core-lambda-stubs.jar");
 
 	public static final String SDK_NAME = "AndroidBuildTools";
@@ -99,6 +107,22 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 					}
 					case AndroidUtils.SDK_OS_TYPE_MACOS: {
 						return basePath.resolve(MACOS_EXE_ZIPALIGN_PATH);
+					}
+					default: {
+						return null;
+					}
+				}
+			}
+			case PATH_AIDL_EXECUTABLE: {
+				switch (osType) {
+					case AndroidUtils.SDK_OS_TYPE_WINDOWS: {
+						return basePath.resolve(WINDOWS_EXE_AIDL_PATH);
+					}
+					case AndroidUtils.SDK_OS_TYPE_LINUX: {
+						return basePath.resolve(LINUX_EXE_AIDL_PATH);
+					}
+					case AndroidUtils.SDK_OS_TYPE_MACOS: {
+						return basePath.resolve(MACOS_EXE_AIDL_PATH);
 					}
 					default: {
 						return null;

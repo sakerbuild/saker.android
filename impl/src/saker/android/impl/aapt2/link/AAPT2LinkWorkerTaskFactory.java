@@ -274,6 +274,7 @@ public class AAPT2LinkWorkerTaskFactory
 	public int getRequestedComputationTokenCount() {
 		return 1;
 	}
+
 	@Override
 	public TaskExecutionEnvironmentSelector getExecutionEnvironmentSelector() {
 		if (remoteDispatchableEnvironmentSelector != null) {
@@ -281,6 +282,7 @@ public class AAPT2LinkWorkerTaskFactory
 		}
 		return TaskFactory.super.getExecutionEnvironmentSelector();
 	}
+
 	@Override
 	public Set<String> getCapabilities() {
 		//TODO re-enable remote dispatchability when local file locations are taken into account
@@ -734,7 +736,7 @@ public class AAPT2LinkWorkerTaskFactory
 		}
 	}
 
-	private void addInputCommandsForLinkerInput(TaskContext taskcontext, TaskExecutionUtilities taskutils,
+	private static void addInputCommandsForLinkerInput(TaskContext taskcontext, TaskExecutionUtilities taskutils,
 			NavigableMap<SakerPath, ContentDescriptor> inputfilecontents, List<String> cmd,
 			AAPT2LinkerInput linkerinput, String prearg, Map<String, FileLocation> packagenamertxtlocations)
 			throws Exception {
@@ -767,7 +769,10 @@ public class AAPT2LinkWorkerTaskFactory
 					throw new IllegalArgumentException(
 							"AAR android manifest doesn't have a package name in " + manifestfile);
 				}
-				packagenamertxtlocations.put(packagename, compilationinput.getRTxtFile());
+				FileLocation prev = packagenamertxtlocations.put(packagename, compilationinput.getRTxtFile());
+				if (prev != null) {
+					throw new IllegalArgumentException("Duplicate input aar package names: " + packagename);
+				}
 			}
 
 			@Override

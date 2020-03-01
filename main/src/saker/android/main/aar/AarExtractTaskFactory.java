@@ -21,8 +21,6 @@ import saker.build.task.utils.SimpleStructuredObjectTaskResult;
 import saker.build.task.utils.StructuredTaskResult;
 import saker.build.task.utils.annot.SakerInput;
 import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
-import saker.build.thirdparty.saker.util.StringUtils;
-import saker.build.thirdparty.saker.util.io.FileUtils;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.trace.BuildTrace;
 import saker.nest.utils.FrontendTaskFactory;

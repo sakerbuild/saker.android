@@ -43,6 +43,7 @@ import saker.build.task.utils.annot.SakerInput;
 import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
 import saker.build.task.utils.dependencies.WildcardFileCollectionStrategy;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.thirdparty.saker.util.io.FileUtils;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.trace.BuildTrace;
 import saker.compiler.utils.api.CompilationIdentifier;
@@ -58,6 +59,7 @@ import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileCollection;
 import saker.std.api.file.location.FileLocation;
+import saker.std.api.util.SakerStandardUtils;
 
 public class AAPT2CompileTaskFactory extends FrontendTaskFactory<AAPT2CompileFrontendTaskOutput> {
 
@@ -116,7 +118,15 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<AAPT2CompileFro
 					intaskoption.accept(new AAPT2CompilerInputTaskOption.Visitor() {
 						@Override
 						public void visit(FileLocation file) {
-							inputs.add(new ResourceDirectoryAAPT2CompilerInputOption(file));
+							if (FileUtils.hasExtensionIgnoreCase(SakerStandardUtils.getFileLocationFileName(file),
+									"aar")) {
+								AAPT2AarCompileWorkerTaskFactory aarcompilertask = new AAPT2AarCompileWorkerTaskFactory(
+										file, compilationconfig);
+								taskcontext.startTask(aarcompilertask, aarcompilertask, null);
+								aarCompilations.add(new SimpleStructuredObjectTaskResult(aarcompilertask));
+							} else {
+								inputs.add(new ResourceDirectoryAAPT2CompilerInputOption(file));
+							}
 						}
 
 						@Override

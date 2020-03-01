@@ -2,9 +2,6 @@ package saker.android.main.aapt2.option;
 
 import java.util.Collection;
 
-import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
-import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
-import saker.android.main.aapt2.option.AAPT2CompilerInputTaskOption.Visitor;
 import saker.build.file.path.SakerPath;
 import saker.build.file.path.WildcardPath;
 import saker.build.file.path.WildcardPath.ReducedWildcardPath;

@@ -16,8 +16,10 @@ public class AndroidPlatformSDKReference implements SDKReference, Externalizable
 
 	public static final String PATH_ANDROID_JAR = "jar.android";
 	public static final String PATH_SOURCES = "sources";
+	public static final String PATH_FRAMEWORK_AIDL = "aidl.framework";
 
 	private static final SakerPath ANDROID_JAR_PATH = SakerPath.valueOf("android.jar");
+	private static final SakerPath FRAMEWORK_AIDL_PATH = SakerPath.valueOf("framework.aidl");
 
 	public static final String SDK_NAME = "AndroidPlatform";
 
@@ -56,6 +58,9 @@ public class AndroidPlatformSDKReference implements SDKReference, Externalizable
 			}
 			case PATH_SOURCES: {
 				return basePath.resolve("../../sources/" + version);
+			}
+			case PATH_FRAMEWORK_AIDL: {
+				return basePath.resolve(FRAMEWORK_AIDL_PATH);
 			}
 			default: {
 				break;
