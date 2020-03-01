@@ -282,7 +282,7 @@ public class AAPT2CompileWorkerTaskFactory
 			inputfiles = new TreeMap<>();
 			localinputfiles = new TreeMap<>();
 
-			ObjectUtils.iterateSortedMapEntriesDual(prevstate.pathOutputFiles, changedoutputfiles,
+			ObjectUtils.iterateSortedMapEntries(prevstate.pathOutputFiles, changedoutputfiles,
 					(filepath, prevoutput, file) -> {
 						InputFileState instate = deleteOutputDirectoryForInputPath(taskcontext, outputdir, nstate,
 								prevoutput.inputFile);

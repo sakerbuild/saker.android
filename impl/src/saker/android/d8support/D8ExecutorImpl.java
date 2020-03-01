@@ -169,7 +169,7 @@ public class D8ExecutorImpl implements D8Executor {
 			inputfiles = new TreeMap<>();
 			inputarchives = new HashSet<>();
 
-			ObjectUtils.iterateSortedMapEntriesDual(prevstate.outputPathInformations, changedoutputfiles,
+			ObjectUtils.iterateSortedMapEntries(prevstate.outputPathInformations, changedoutputfiles,
 					(filepath, prevoutput, file) -> {
 						if (file == null) {
 							//the output file was removed

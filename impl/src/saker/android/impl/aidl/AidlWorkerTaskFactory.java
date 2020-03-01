@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -31,6 +32,8 @@ import saker.build.task.Task;
 import saker.build.task.TaskContext;
 import saker.build.task.TaskExecutionEnvironmentSelector;
 import saker.build.task.TaskFactory;
+import saker.build.task.delta.DeltaType;
+import saker.build.task.utils.TaskUtils;
 import saker.build.task.utils.dependencies.RecursiveIgnoreCaseExtensionFileCollectionStrategy;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
@@ -123,41 +126,121 @@ public class AidlWorkerTaskFactory implements TaskFactory<AidlTaskOutput>, Task<
 		if (exepath == null) {
 			throw new SDKPathNotFoundException("aidl executable not found in SDK: " + buildtoolssdk);
 		}
-
-		SakerPath fwaidlpath = getFrameworkAidlPath(sdkrefs);
+		SDKReference platformssdk = sdkrefs.get(AndroidPlatformSDKReference.SDK_NAME);
+		SakerPath fwaidlpath = getFrameworkAidlPath(platformssdk);
 
 		SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
 		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtPathCreate(builddir,
 				SakerPath.valueOf(AidlTaskFactory.TASK_NAME + "/" + compilationid));
 
-		NavigableMap<SakerPath, InputFileInfo> relativeinputfiles = new TreeMap<>();
+		CompilerState prevstate = taskcontext.getPreviousTaskOutput(CompilerState.class, CompilerState.class);
+
+		NavigableMap<SakerPath, InputFileInfo> collectedabsoluteinputfiles = new TreeMap<>();
+		NavigableMap<SakerPath, InputFileInfo> collectedrelativeinputfiles = new TreeMap<>();
 		for (SakerPath srcdir : sourceDirectories) {
 			NavigableMap<SakerPath, SakerFile> inputfiles = taskcontext.getTaskUtilities()
-					.collectFilesReportInputFileAndAdditionDependency(null,
+					.collectFilesReportInputFileAndAdditionDependency(AidlTaskTags.INPUT_AIDL,
 							RecursiveIgnoreCaseExtensionFileCollectionStrategy.create(srcdir, ".aidl"));
 
 			for (Entry<SakerPath, SakerFile> entry : inputfiles.entrySet()) {
 				SakerPath dirrelative = srcdir.relativize(entry.getKey());
-				InputFileInfo prev = relativeinputfiles.put(dirrelative,
-						new InputFileInfo(entry.getKey(), dirrelative, entry.getValue()));
+				InputFileInfo infileinfo = new InputFileInfo(entry.getKey(), dirrelative, entry.getValue());
+				InputFileInfo prev = collectedrelativeinputfiles.put(dirrelative, infileinfo);
 				if (prev != null) {
 					throw new IllegalArgumentException(
 							"Multiple input aidl files found with source directory relative path: " + dirrelative
 									+ " as " + prev.absolutePath + " and " + entry.getKey());
 				}
+				collectedabsoluteinputfiles.put(entry.getKey(), infileinfo);
 			}
 		}
 
+		if (prevstate != null) {
+			if (!Objects.equals(prevstate.buildToolsSDK, buildtoolssdk)
+					|| !Objects.equals(prevstate.platformsSDK, platformssdk)) {
+				//clean
+				prevstate = null;
+			}
+		}
+
+		NavigableMap<SakerPath, ContentDescriptor> outputdependencies = new ConcurrentSkipListMap<>();
+
+		NavigableMap<SakerPath, InputFileInfo> inputfiles;
+
+		CompilerState nstate;
+		if (prevstate != null) {
+			nstate = new CompilerState(prevstate);
+
+			NavigableMap<SakerPath, SakerFile> changedinputfiles = TaskUtils.collectFilesForTag(
+					taskcontext.getFileDeltas(DeltaType.INPUT_FILE_CHANGE), AidlTaskTags.INPUT_AIDL);
+			NavigableMap<SakerPath, SakerFile> changedoutputfiles = TaskUtils.collectFilesForTag(
+					taskcontext.getFileDeltas(DeltaType.OUTPUT_FILE_CHANGE), AidlTaskTags.OUTPUT_FILE);
+
+			inputfiles = new TreeMap<>();
+
+			ObjectUtils.iterateSortedMapEntries(prevstate.pathOutputs, changedoutputfiles,
+					(filepath, prevoutput, file) -> {
+						InputFileState instate = removeOutputsForInputPath(taskcontext, nstate, prevoutput.inputPath);
+						InputFileInfo ininfo = collectedabsoluteinputfiles.get(instate.path);
+						if (ininfo != null) {
+							inputfiles.put(ininfo.sourceDirectoryRelativePath, ininfo);
+						}
+					});
+
+			ObjectUtils.iterateSortedMapEntries(prevstate.pathInputs, collectedabsoluteinputfiles,
+					(filepath, previnput, infile) -> {
+						if (infile != null) {
+							if (previnput == null) {
+								//an input file was added
+							} else if (changedinputfiles.containsKey(filepath)) {
+								//an input file was changed
+								InputFileState instate = removeOutputsForInputPath(taskcontext, nstate, previnput.path);
+								if (instate != null) {
+									InputFileInfo ininfo = collectedabsoluteinputfiles.get(instate.path);
+									if (ininfo != null) {
+										inputfiles.put(ininfo.sourceDirectoryRelativePath, ininfo);
+									}
+								}
+								return;
+							} else {
+								//unchanged input
+								return;
+							}
+						} else {
+							//an input file was removed
+							removeOutputsForInputPath(taskcontext, nstate, previnput.path);
+							return;
+						}
+						//add the file as input
+
+						inputfiles.put(infile.sourceDirectoryRelativePath, infile);
+					});
+
+			//XXX make more efficient
+			for (Entry<SakerPath, OutputFileState> entry : nstate.pathOutputs.entrySet()) {
+				outputdependencies.put(entry.getKey(), entry.getValue().outputContents);
+			}
+		} else {
+			nstate = new CompilerState();
+			nstate.buildToolsSDK = buildtoolssdk;
+			nstate.platformsSDK = platformssdk;
+			nstate.pathInputs = new ConcurrentSkipListMap<>();
+			nstate.pathOutputs = new ConcurrentSkipListMap<>();
+
+			inputfiles = collectedrelativeinputfiles;
+
+			outputdir.clear();
+		}
+
 		SakerDirectory javaoutdir = outputdir.getDirectoryCreate("java");
-		//TODO make incremental, don't clear everything
-		javaoutdir.clear();
 
 		SakerPath javasourcedirectory = javaoutdir.getSakerPath();
 
 		Path javaoutdirlocalpath = taskcontext.mirror(javaoutdir);
-		NavigableMap<SakerPath, ContentDescriptor> outputdependencies = new ConcurrentSkipListMap<>();
 
-		ThreadUtils.runParallelItems(relativeinputfiles.values(), in -> {
+		ThreadUtils.runParallelItems(inputfiles.values(), in -> {
+			System.out.println("AidlWorkerTaskFactory.run() " + in.sourceDirectoryRelativePath);
+
 			List<String> cmd = new ArrayList<>();
 			cmd.add(exepath.toString());
 			cmd.add(taskcontext.mirror(in.file).toString());
@@ -197,18 +280,39 @@ public class AidlWorkerTaskFactory implements TaskFactory<AidlTaskOutput>, Task<
 					.resolveDirectoryAtRelativePathCreate(javaoutdir, in.sourceDirectoryRelativePath.getParent())
 					.add(outputfile);
 
-			outputdependencies.put(outputfile.getSakerPath(), outputfilecd);
+			SakerPath outfilepath = outputfile.getSakerPath();
+			outputdependencies.put(outfilepath, outputfilecd);
+
+			nstate.pathInputs.put(in.absolutePath,
+					new InputFileState(in.absolutePath, ImmutableUtils.singletonNavigableSet(outfilepath)));
+			nstate.pathOutputs.put(outfilepath, new OutputFileState(in.absolutePath, outputfilecd));
 		});
 
 		javaoutdir.synchronize();
 
-		taskcontext.getTaskUtilities().reportOutputFileDependency(null, outputdependencies);
+		taskcontext.getTaskUtilities().reportOutputFileDependency(AidlTaskTags.OUTPUT_FILE, outputdependencies);
+
+		taskcontext.setTaskOutput(CompilerState.class, nstate);
 
 		return new AidlTaskOutputImpl(javasourcedirectory);
 	}
 
-	private static SakerPath getFrameworkAidlPath(NavigableMap<String, SDKReference> sdkrefs) throws Exception {
-		SDKReference platformssdk = sdkrefs.get(AndroidPlatformSDKReference.SDK_NAME);
+	private static InputFileState removeOutputsForInputPath(TaskContext taskcontext, CompilerState nstate,
+			SakerPath inputpath) {
+		InputFileState instate = nstate.pathInputs.remove(inputpath);
+		if (instate != null) {
+			for (SakerPath outpath : instate.outputPaths) {
+				SakerFile f = taskcontext.getTaskUtilities().resolveAtAbsolutePath(outpath);
+				if (f != null) {
+					f.remove();
+				}
+			}
+			nstate.pathOutputs.keySet().removeAll(instate.outputPaths);
+		}
+		return instate;
+	}
+
+	private static SakerPath getFrameworkAidlPath(SDKReference platformssdk) throws Exception {
 		SakerPath fwaidlpath;
 		if (platformssdk != null) {
 			fwaidlpath = platformssdk.getPath(AndroidPlatformSDKReference.PATH_FRAMEWORK_AIDL);
@@ -336,6 +440,105 @@ public class AidlWorkerTaskFactory implements TaskFactory<AidlTaskOutput>, Task<
 				return false;
 			return true;
 		}
+	}
 
+	private static class InputFileState implements Externalizable {
+		private static final long serialVersionUID = 1L;
+
+		protected SakerPath path;
+		protected NavigableSet<SakerPath> outputPaths;
+
+		/**
+		 * For {@link Externalizable}.
+		 */
+		public InputFileState() {
+		}
+
+		public InputFileState(SakerPath path, NavigableSet<SakerPath> outputPaths) {
+			this.path = path;
+			this.outputPaths = outputPaths;
+		}
+
+		@Override
+		public void writeExternal(ObjectOutput out) throws IOException {
+			out.writeObject(path);
+			SerialUtils.writeExternalCollection(out, outputPaths);
+		}
+
+		@Override
+		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+			path = SerialUtils.readExternalObject(in);
+			outputPaths = SerialUtils.readExternalSortedImmutableNavigableSet(in);
+		}
+
+	}
+
+	private static class OutputFileState implements Externalizable {
+		private static final long serialVersionUID = 1L;
+
+		protected SakerPath inputPath;
+		protected ContentDescriptor outputContents;
+
+		/**
+		 * For {@link Externalizable}.
+		 */
+		public OutputFileState() {
+		}
+
+		public OutputFileState(SakerPath inputPath, ContentDescriptor outputContents) {
+			this.inputPath = inputPath;
+			this.outputContents = outputContents;
+		}
+
+		@Override
+		public void writeExternal(ObjectOutput out) throws IOException {
+			out.writeObject(inputPath);
+			out.writeObject(outputContents);
+		}
+
+		@Override
+		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+			inputPath = SerialUtils.readExternalObject(in);
+			outputContents = SerialUtils.readExternalObject(in);
+		}
+
+	}
+
+	private static class CompilerState implements Externalizable {
+		private static final long serialVersionUID = 1L;
+
+		protected SDKReference buildToolsSDK;
+		protected SDKReference platformsSDK;
+		protected NavigableMap<SakerPath, InputFileState> pathInputs;
+		protected NavigableMap<SakerPath, OutputFileState> pathOutputs;
+
+		/**
+		 * For {@link Externalizable}.
+		 */
+		public CompilerState() {
+		}
+
+		public CompilerState(CompilerState copy) {
+			this.buildToolsSDK = copy.buildToolsSDK;
+			this.platformsSDK = copy.platformsSDK;
+			this.pathInputs = new ConcurrentSkipListMap<>(copy.pathInputs);
+			this.pathOutputs = new ConcurrentSkipListMap<>(copy.pathOutputs);
+		}
+
+		@Override
+		public void writeExternal(ObjectOutput out) throws IOException {
+			out.writeObject(buildToolsSDK);
+			out.writeObject(platformsSDK);
+			SerialUtils.writeExternalMap(out, pathInputs);
+			SerialUtils.writeExternalMap(out, pathOutputs);
+		}
+
+		@Override
+		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+			buildToolsSDK = SerialUtils.readExternalObject(in);
+			platformsSDK = SerialUtils.readExternalObject(in);
+			pathInputs = SerialUtils.readExternalSortedImmutableNavigableMap(in);
+			pathOutputs = SerialUtils.readExternalSortedImmutableNavigableMap(in);
+		}
 	}
 }
