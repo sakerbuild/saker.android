@@ -1,10 +1,16 @@
 package saker.android.impl.aapt2.link;
 
+import java.io.BufferedReader;
 import java.io.Externalizable;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,13 +24,16 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
+import saker.android.api.aapt2.aar.AAPT2AarCompileTaskOutput;
+import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.android.impl.aapt2.AAPT2Utils;
+import saker.android.impl.aapt2.aar.AAPT2AarCompileWorkerTaskFactory;
 import saker.android.impl.aapt2.link.option.AAPT2LinkerInput;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.aapt2.AAPT2LinkTaskFactory;
+import saker.build.file.ByteArraySakerFile;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
 import saker.build.file.content.ContentDescriptor;
@@ -36,6 +45,7 @@ import saker.build.file.provider.LocalFileProvider;
 import saker.build.file.provider.SakerPathFiles;
 import saker.build.runtime.environment.SakerEnvironment;
 import saker.build.runtime.execution.ExecutionContext;
+import saker.build.task.CommonTaskContentDescriptors;
 import saker.build.task.Task;
 import saker.build.task.TaskContext;
 import saker.build.task.TaskExecutionEnvironmentSelector;
@@ -45,6 +55,8 @@ import saker.build.task.TaskFactory;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
+import saker.build.thirdparty.saker.util.function.Functionals;
+import saker.build.thirdparty.saker.util.io.ByteArrayRegion;
 import saker.build.thirdparty.saker.util.io.FileUtils;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.thirdparty.saker.util.io.UnsyncByteArrayOutputStream;
@@ -95,7 +107,6 @@ public class AAPT2LinkWorkerTaskFactory
 	private String customPackage;
 	private NavigableSet<String> extraPackages = Collections.emptyNavigableSet();
 	private List<String> addJavadocAnnotation = Collections.emptyList();
-	private boolean outputTextSymbols;
 	private String renameManifestPackage;
 	private String renameInstrumentationTargetPackage;
 	private NavigableSet<String> noncompressedExtensions = Collections.emptyNavigableSet();
@@ -212,10 +223,6 @@ public class AAPT2LinkWorkerTaskFactory
 				: addJavadocAnnotation;
 	}
 
-	public void setOutputTextSymbols(boolean outputTextSymbols) {
-		this.outputTextSymbols = outputTextSymbols;
-	}
-
 	public void setRenameManifestPackage(String renameManifestPackage) {
 		this.renameManifestPackage = renameManifestPackage;
 	}
@@ -263,25 +270,25 @@ public class AAPT2LinkWorkerTaskFactory
 		this.manifest = manifest;
 	}
 
-	//TODO reenable computation tokens when aar worker is started in frontend
-//	@Override
-//	public int getRequestedComputationTokenCount() {
-//		return 1;
-//	}
-//	@Override
-//	public TaskExecutionEnvironmentSelector getExecutionEnvironmentSelector() {
-//		if (remoteDispatchableEnvironmentSelector != null) {
-//			return remoteDispatchableEnvironmentSelector;
-//		}
-//		return TaskFactory.super.getExecutionEnvironmentSelector();
-//	}
-//	@Override
-//	public Set<String> getCapabilities() {
+	@Override
+	public int getRequestedComputationTokenCount() {
+		return 1;
+	}
+	@Override
+	public TaskExecutionEnvironmentSelector getExecutionEnvironmentSelector() {
+		if (remoteDispatchableEnvironmentSelector != null) {
+			return remoteDispatchableEnvironmentSelector;
+		}
+		return TaskFactory.super.getExecutionEnvironmentSelector();
+	}
+	@Override
+	public Set<String> getCapabilities() {
+		//TODO re-enable remote dispatchability when local file locations are taken into account
 //		if (remoteDispatchableEnvironmentSelector != null) {
 //			return ImmutableUtils.singletonNavigableSet(CAPABILITY_REMOTE_DISPATCHABLE);
 //		}
-//		return TaskFactory.super.getCapabilities();
-//	}
+		return TaskFactory.super.getCapabilities();
+	}
 
 	@Override
 	public Task<? extends AAPT2LinkTaskOutput> createTask(ExecutionContext executioncontext) {
@@ -337,25 +344,28 @@ public class AAPT2LinkWorkerTaskFactory
 		Path outputmaindexproguardruleslocalpath = getOutputPathIfEnabledForFileName(outputdirmirror,
 				generateMainDexProguardRules, "rules_main.pro");
 		Path outputemitidslocalpath = getOutputPathIfEnabledForFileName(outputdirmirror, emitIds, "emit_ids.txt");
-		Path outputtextsymbolslocalpath = getOutputPathIfEnabledForFileName(outputdirmirror, outputTextSymbols,
-				"R.txt");
+		Path outputtextsymbolslocalpath = outputdirmirror.resolve("R.txt");
 
 		Path javaoutputdirpath = taskcontext.mirror(javaoutdir);
 
 		NavigableMap<String, Path> splitoutputapkpaths = new TreeMap<>();
 
+		Map<String, FileLocation> packagenamertxtlocations = new TreeMap<>();
+
 		ArrayList<String> cmd = new ArrayList<>();
 		cmd.add("link");
 		//XXX  parallelize if necessary
 		for (AAPT2LinkerInput linkerinput : input) {
-			addInputCommandsForLinkerInput(taskcontext, taskutils, inputfilecontents, cmd, linkerinput, null);
+			addInputCommandsForLinkerInput(taskcontext, taskutils, inputfilecontents, cmd, linkerinput, null,
+					packagenamertxtlocations);
 		}
 		if (!ObjectUtils.isNullOrEmpty(overlay)) {
 			for (AAPT2LinkerInput linkerinput : overlay) {
-				addInputCommandsForLinkerInput(taskcontext, taskutils, inputfilecontents, cmd, linkerinput, "-R");
+				addInputCommandsForLinkerInput(taskcontext, taskutils, inputfilecontents, cmd, linkerinput, "-R",
+						packagenamertxtlocations);
 			}
 		}
-		
+
 		cmd.add("-o");
 		cmd.add(outputapkfilelocalpath.toString());
 
@@ -541,6 +551,76 @@ public class AAPT2LinkWorkerTaskFactory
 			outputfilecontents.put(rjavafile.getSakerPath(), rjavafilecontents);
 		}
 
+		if (!packagenamertxtlocations.isEmpty()) {
+			SakerFile outrtxtfile = outputdir.get("R.txt");
+			if (outrtxtfile == null) {
+				throw new IllegalStateException("AAPT2 Generated R.txt not found.");
+			}
+			SymbolTable rtxtsymbols;
+			try (InputStream rtxtin = outrtxtfile.openInputStream()) {
+				rtxtsymbols = readRSymbolTable(rtxtin);
+			}
+
+			for (Entry<String, FileLocation> entry : packagenamertxtlocations.entrySet()) {
+				FileLocation rtxtfile = entry.getValue();
+				if (rtxtfile == null) {
+					continue;
+				}
+				String ls = System.lineSeparator();
+
+				String pkgname = entry.getKey();
+				SymbolTable packagersymbols = readFileRSymbolTable(taskcontext, rtxtfile);
+				ByteArrayRegion rjavabytes;
+				try (UnsyncByteArrayOutputStream baos = new UnsyncByteArrayOutputStream()) {
+					try (OutputStreamWriter writer = new OutputStreamWriter(baos, StandardCharsets.UTF_8)) {
+						writer.append("package ");
+						writer.append(pkgname);
+						writer.append(";");
+						writer.append(ls);
+						writer.append("public class R {");
+						writer.append(ls);
+						for (Entry<String, NavigableMap<String, RSymbolEntry>> rentry : packagersymbols.entries
+								.entrySet()) {
+							String restypes = rentry.getKey();
+
+							writer.append("\tpublic static class ");
+							writer.append(restypes);
+							writer.append("{");
+							writer.append(ls);
+
+							for (RSymbolEntry symbolentry : rentry.getValue().values()) {
+								RSymbolEntry fixsymbol = rtxtsymbols.getSymbol(restypes, symbolentry.name);
+								if (fixsymbol == null) {
+									throw new IllegalStateException(
+											"R symbol not found: " + restypes + " " + symbolentry.name);
+								}
+								writer.append("\t\tpublic static final ");
+								writer.append(symbolentry.type);
+								writer.append(" ");
+								writer.append(symbolentry.name);
+								writer.append(" = ");
+								writer.append(fixsymbol.value);
+								writer.append(";");
+								writer.append(ls);
+							}
+
+							writer.append("\t}");
+							writer.append(ls);
+						}
+						writer.append("}");
+						writer.append(ls);
+					}
+					rjavabytes = baos.toByteArrayRegion();
+				}
+				ByteArraySakerFile rjavafile = new ByteArraySakerFile("R.java", rjavabytes);
+
+				taskcontext.getTaskUtilities()
+						.resolveDirectoryAtRelativePathCreate(javaoutdir, SakerPath.valueOf(pkgname.replace('.', '/')))
+						.add(rjavafile);
+				outputfilecontents.put(rjavafile.getSakerPath(), rjavafile.getContentDescriptor());
+			}
+		}
+
 		outputdir.synchronize();
 
 		taskutils.reportOutputFileDependency(null, outputfilecontents);
@@ -558,20 +638,141 @@ public class AAPT2LinkWorkerTaskFactory
 		return result;
 	}
 
+	private static SymbolTable readFileRSymbolTable(TaskContext taskcontext, FileLocation file) {
+		if (file == null) {
+			return null;
+		}
+		SymbolTable[] result = { null };
+		file.accept(new FileLocationVisitor() {
+			@Override
+			public void visit(LocalFileLocation loc) {
+				try (InputStream is = LocalFileProvider.getInstance().openInputStream(loc.getLocalPath())) {
+					result[0] = readRSymbolTable(is);
+				} catch (Exception e) {
+					throw ObjectUtils.sneakyThrow(e);
+				}
+				taskcontext.getTaskUtilities().getReportExecutionDependency(
+						SakerStandardUtils.createLocalFileContentDescriptorExecutionProperty(loc.getLocalPath(),
+								taskcontext.getTaskId()));
+			}
+
+			@Override
+			public void visit(ExecutionFileLocation loc) {
+				SakerFile f = taskcontext.getTaskUtilities().resolveFileAtPath(loc.getPath());
+				if (f == null) {
+					taskcontext.reportInputFileDependency(null, loc.getPath(),
+							CommonTaskContentDescriptors.IS_NOT_FILE);
+					throw ObjectUtils.sneakyThrow(new FileNotFoundException("R.txt not found at: " + loc.getPath()));
+				}
+				try (InputStream is = f.openInputStream()) {
+					result[0] = readRSymbolTable(is);
+				} catch (Exception e) {
+					throw ObjectUtils.sneakyThrow(e);
+				}
+			}
+
+		});
+		return result[0];
+	}
+
+	private static SymbolTable readRSymbolTable(InputStream is) throws Exception {
+		SymbolTable rtxtsymbols = new SymbolTable();
+		try (InputStream rtxtin = is;
+				BufferedReader reader = new BufferedReader(new InputStreamReader(rtxtin, StandardCharsets.UTF_8))) {
+			for (String line; (line = reader.readLine()) != null;) {
+				RSymbolEntry symbolentry = createAaptRTxtSymbolEntryFromLine(line);
+
+				NavigableMap<String, RSymbolEntry> symbolentries = rtxtsymbols.entries
+						.computeIfAbsent(symbolentry.resourceType, Functionals.treeMapComputer());
+				symbolentries.put(symbolentry.name, symbolentry);
+			}
+		}
+		return rtxtsymbols;
+	}
+
+	private static RSymbolEntry createAaptRTxtSymbolEntryFromLine(String line) {
+		int idx1 = line.indexOf(' ');
+		int idx2 = line.indexOf(' ', idx1 + 1);
+		int idx3 = line.indexOf(' ', idx2 + 1);
+
+		String type = line.substring(0, idx1);
+		String restype = line.substring(idx1 + 1, idx2);
+		String name = line.substring(idx2 + 1, idx3);
+		String value = line.substring(idx3 + 1);
+		RSymbolEntry symbolentry = new RSymbolEntry(type, restype, name, value);
+		return symbolentry;
+	}
+
+	private static class SymbolTable {
+		protected Map<String, NavigableMap<String, RSymbolEntry>> entries = new TreeMap<>();
+
+		public RSymbolEntry getSymbol(String restype, String name) {
+			NavigableMap<String, RSymbolEntry> table = entries.get(restype);
+			if (table == null) {
+				return null;
+			}
+			return table.get(name);
+		}
+	}
+
+	private static class RSymbolEntry {
+		protected String type;
+		protected String resourceType;
+		protected String name;
+		protected String value;
+
+		public RSymbolEntry(String type, String resourceType, String name, String value) {
+			this.type = type;
+			this.resourceType = resourceType;
+			this.name = name;
+			this.value = value;
+		}
+
+		@Override
+		public String toString() {
+			return type + " " + resourceType + " " + name + " " + value;
+		}
+	}
+
 	private void addInputCommandsForLinkerInput(TaskContext taskcontext, TaskExecutionUtilities taskutils,
 			NavigableMap<SakerPath, ContentDescriptor> inputfilecontents, List<String> cmd,
-			AAPT2LinkerInput linkerinput, String prearg) {
+			AAPT2LinkerInput linkerinput, String prearg, Map<String, FileLocation> packagenamertxtlocations)
+			throws Exception {
 		linkerinput.accept(new AAPT2LinkerInput.Visitor() {
 			@Override
-			public void visit(AAPT2CompileTaskOutput compilationinput) {
+			public void visit(AAPT2CompileWorkerTaskOutput compilationinput) {
 				for (SakerPath inpath : compilationinput.getOutputPaths()) {
 					handleExecutionInputFile(inpath);
 				}
 			}
 
 			@Override
+			public void visit(AAPT2AarCompileTaskOutput compilationinput) {
+				//TODO generate R.java files for the aar results
+				NavigableSet<SakerPath> outpaths = compilationinput.getOutputPaths();
+				if (!ObjectUtils.isNullOrEmpty(outpaths)) {
+					for (SakerPath inpath : outpaths) {
+						handleExecutionInputFile(inpath);
+					}
+				}
+				FileLocation manifestfile = compilationinput.getAndroidManifestXmlFile();
+				String packagename;
+				try {
+					packagename = AAPT2AarCompileWorkerTaskFactory.getAndroidManifestPackageName(taskcontext,
+							manifestfile);
+				} catch (Exception e) {
+					throw ObjectUtils.sneakyThrow(e);
+				}
+				if (packagename == null) {
+					throw new IllegalArgumentException(
+							"AAR android manifest doesn't have a package name in " + manifestfile);
+				}
+				packagenamertxtlocations.put(packagename, compilationinput.getRTxtFile());
+			}
+
+			@Override
 			public void visit(FileLocation inputfile) {
-				String inputfname = SakerStandardUtils.getFileLocationFileName(inputfile);
+//				String inputfname = SakerStandardUtils.getFileLocationFileName(inputfile);
 //				if (FileUtils.hasExtensionIgnoreCase(inputfname, "aar")) {
 //					AAPT2AarStaticLibraryWorkerTaskFactory inworker = new AAPT2AarStaticLibraryWorkerTaskFactory(
 //							inputfile, new AAPT2CompilationConfiguration(EnumSet.noneOf(AAPT2CompilerFlag.class)));
@@ -642,15 +843,14 @@ public class AAPT2LinkWorkerTaskFactory
 		return outputpath;
 	}
 
-	private static Path getOutputPathIfEnabledForFileName(Path outputdirmirror, boolean genproguardrules,
-			String fname) {
-		Path outputproguardrulespath;
-		if (genproguardrules) {
-			outputproguardrulespath = outputdirmirror.resolve(fname);
+	private static Path getOutputPathIfEnabledForFileName(Path outputdirmirror, boolean flag, String fname) {
+		Path outputpath;
+		if (flag) {
+			outputpath = outputdirmirror.resolve(fname);
 		} else {
-			outputproguardrulespath = null;
+			outputpath = null;
 		}
-		return outputproguardrulespath;
+		return outputpath;
 	}
 
 	private static void addArgumentIfNonNull(ArrayList<String> cmd, String argname, Object arg) {
@@ -700,7 +900,6 @@ public class AAPT2LinkWorkerTaskFactory
 		out.writeObject(customPackage);
 		SerialUtils.writeExternalCollection(out, extraPackages);
 		SerialUtils.writeExternalCollection(out, addJavadocAnnotation);
-		out.writeBoolean(outputTextSymbols);
 		out.writeObject(renameManifestPackage);
 		out.writeObject(renameInstrumentationTargetPackage);
 		SerialUtils.writeExternalCollection(out, noncompressedExtensions);
@@ -740,7 +939,6 @@ public class AAPT2LinkWorkerTaskFactory
 		customPackage = (String) in.readObject();
 		extraPackages = SerialUtils.readExternalSortedImmutableNavigableSet(in);
 		addJavadocAnnotation = SerialUtils.readExternalImmutableList(in);
-		outputTextSymbols = in.readBoolean();
 		renameManifestPackage = (String) in.readObject();
 		renameInstrumentationTargetPackage = (String) in.readObject();
 		noncompressedExtensions = SerialUtils.readExternalSortedImmutableNavigableSet(in);
@@ -843,8 +1041,6 @@ public class AAPT2LinkWorkerTaskFactory
 			if (other.noncompressedExtensions != null)
 				return false;
 		} else if (!noncompressedExtensions.equals(other.noncompressedExtensions))
-			return false;
-		if (outputTextSymbols != other.outputTextSymbols)
 			return false;
 		if (overlay == null) {
 			if (other.overlay != null)

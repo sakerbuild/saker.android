@@ -7,18 +7,17 @@ import java.io.ObjectOutput;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 
-import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
+import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.compiler.utils.api.CompilationIdentifier;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.api.SDKSupportUtils;
 
-final class AAPT2CompileTaskOutputImpl implements AAPT2CompileTaskOutput, Externalizable {
+final class AAPT2CompileTaskOutputImpl implements AAPT2CompileWorkerTaskOutput, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private CompilationIdentifier compilationId;
-	private SakerPath outputDirectoryPath;
 	private NavigableSet<SakerPath> outputFilePaths;
 	private NavigableMap<String, SDKDescription> sdks;
 
@@ -28,9 +27,8 @@ final class AAPT2CompileTaskOutputImpl implements AAPT2CompileTaskOutput, Extern
 	public AAPT2CompileTaskOutputImpl() {
 	}
 
-	public AAPT2CompileTaskOutputImpl(SakerPath outputDirectoryPath, NavigableSet<SakerPath> outputfiles,
-			CompilationIdentifier compilationid, NavigableMap<String, SDKDescription> sdks) {
-		this.outputDirectoryPath = outputDirectoryPath;
+	public AAPT2CompileTaskOutputImpl(NavigableSet<SakerPath> outputfiles, CompilationIdentifier compilationid,
+			NavigableMap<String, SDKDescription> sdks) {
 		this.outputFilePaths = outputfiles;
 		this.compilationId = compilationid;
 		this.sdks = sdks;
@@ -53,7 +51,6 @@ final class AAPT2CompileTaskOutputImpl implements AAPT2CompileTaskOutput, Extern
 
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
-		out.writeObject(outputDirectoryPath);
 		SerialUtils.writeExternalCollection(out, outputFilePaths);
 		out.writeObject(compilationId);
 		SerialUtils.writeExternalMap(out, sdks);
@@ -61,7 +58,6 @@ final class AAPT2CompileTaskOutputImpl implements AAPT2CompileTaskOutput, Extern
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		outputDirectoryPath = (SakerPath) in.readObject();
 		outputFilePaths = SerialUtils.readExternalImmutableNavigableSet(in);
 		compilationId = (CompilationIdentifier) in.readObject();
 		sdks = SerialUtils.readExternalSortedImmutableNavigableMap(in, SDKSupportUtils.getSDKNameComparator());
@@ -72,7 +68,6 @@ final class AAPT2CompileTaskOutputImpl implements AAPT2CompileTaskOutput, Extern
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((compilationId == null) ? 0 : compilationId.hashCode());
-		result = prime * result + ((outputDirectoryPath == null) ? 0 : outputDirectoryPath.hashCode());
 		result = prime * result + ((outputFilePaths == null) ? 0 : outputFilePaths.hashCode());
 		result = prime * result + ((sdks == null) ? 0 : sdks.hashCode());
 		return result;
@@ -91,11 +86,6 @@ final class AAPT2CompileTaskOutputImpl implements AAPT2CompileTaskOutput, Extern
 			if (other.compilationId != null)
 				return false;
 		} else if (!compilationId.equals(other.compilationId))
-			return false;
-		if (outputDirectoryPath == null) {
-			if (other.outputDirectoryPath != null)
-				return false;
-		} else if (!outputDirectoryPath.equals(other.outputDirectoryPath))
 			return false;
 		if (outputFilePaths == null) {
 			if (other.outputFilePaths != null)

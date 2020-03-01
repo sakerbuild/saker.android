@@ -5,32 +5,28 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 
-import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
+import saker.android.api.aapt2.aar.AAPT2AarCompileTaskOutput;
+import saker.android.api.aapt2.compile.AAPT2CompileFrontendTaskOutput;
+import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.android.impl.AndroidUtils;
-import saker.android.impl.aapt2.aar.AAPT2AarStaticLibraryWorkerTaskFactory;
-import saker.android.impl.aapt2.compile.AAPT2CompilationConfiguration;
 import saker.android.impl.aapt2.link.AAPT2LinkWorkerTaskFactory;
 import saker.android.impl.aapt2.link.AAPT2LinkWorkerTaskIdentifier;
 import saker.android.impl.aapt2.link.AAPT2LinkerFlag;
 import saker.android.impl.aapt2.link.option.AAPT2LinkerInput;
+import saker.android.impl.aapt2.link.option.AarCompilationAAPT2LinkerInput;
 import saker.android.impl.aapt2.link.option.CompilationAAPT2LinkerInput;
 import saker.android.impl.aapt2.link.option.FileAAPT2LinkerInput;
 import saker.android.impl.aapt2.link.option.LinkAAPT2LinkerInput;
-import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
-import saker.android.impl.classpath.LiteralStructuredTaskResult;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.AndroidFrontendUtils;
@@ -40,14 +36,10 @@ import saker.build.file.SakerFile;
 import saker.build.file.path.SakerPath;
 import saker.build.file.path.WildcardPath;
 import saker.build.runtime.execution.ExecutionContext;
-import saker.build.runtime.execution.SakerLog;
 import saker.build.task.CommonTaskContentDescriptors;
 import saker.build.task.ParameterizableTask;
 import saker.build.task.TaskContext;
-import saker.build.task.TaskFactory;
-import saker.build.task.TaskResultDependencyHandle;
 import saker.build.task.TaskResultResolver;
-import saker.build.task.dependencies.CommonTaskOutputChangeDetector;
 import saker.build.task.dependencies.FileCollectionStrategy;
 import saker.build.task.identifier.TaskIdentifier;
 import saker.build.task.utils.SimpleStructuredObjectTaskResult;
@@ -57,17 +49,12 @@ import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
 import saker.build.task.utils.dependencies.WildcardFileCollectionStrategy;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
-import saker.build.thirdparty.saker.util.StringUtils;
-import saker.build.thirdparty.saker.util.io.FileUtils;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.trace.BuildTrace;
 import saker.compiler.utils.api.CompilationIdentifier;
 import saker.compiler.utils.main.CompilationIdentifierTaskOption;
 import saker.maven.support.api.ArtifactCoordinates;
-import saker.maven.support.api.MavenOperationConfiguration;
-import saker.maven.support.api.dependency.ResolvedDependencyArtifact;
 import saker.maven.support.api.localize.ArtifactLocalizationTaskOutput;
-import saker.maven.support.api.localize.ArtifactLocalizationUtils;
 import saker.maven.support.api.localize.ArtifactLocalizationWorkerTaskOutput;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
@@ -76,7 +63,6 @@ import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileCollection;
 import saker.std.api.file.location.FileLocation;
 import saker.std.api.file.location.LocalFileLocation;
-import saker.std.api.util.SakerStandardUtils;
 import saker.std.main.file.option.FileLocationTaskOption;
 import saker.std.main.file.utils.TaskOptionUtils;
 
@@ -145,9 +131,6 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 			public Collection<String> extraPackagesOption;
 			@SakerInput(value = { "JavadocAnnotations" })
 			public Collection<String> javadocAnnotationsOption;
-
-			@SakerInput(value = { "CreateTextSymbols" })
-			public boolean createTextSymbolsOption;
 
 			@SakerInput(value = { "RenameManifestPackage" })
 			public String renameManifestPackageOption;
@@ -232,8 +215,6 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 					compilationid = CompilationIdentifier.valueOf("default");
 				}
 
-				AAPT2CompilationConfiguration libcompileconfiguration = new AAPT2CompilationConfiguration();
-				libcompileconfiguration.setFlags(Collections.emptySet());
 				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
 						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
 				sdkdescriptions.putIfAbsent(AndroidBuildToolsSDKReference.SDK_NAME,
@@ -242,15 +223,8 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 
 				Set<AAPT2LinkerInput> inputset = new LinkedHashSet<>();
 				Set<AAPT2LinkerInput> overlayset = new LinkedHashSet<>();
-				Set<TaskIdentifier> inputstaticlibtasks = new HashSet<>();
-				Set<TaskIdentifier> overlaystaticlibtasks = new HashSet<>();
-				addLinkerInputOptions(taskcontext, inputset, inputstaticlibtasks, inputOption, libcompileconfiguration,
-						sdkdescriptions);
-				addLinkerInputOptions(taskcontext, overlayset, overlaystaticlibtasks, overlayOption,
-						libcompileconfiguration, sdkdescriptions);
-
-				addStaticLibraryInputOptions(taskcontext, inputset, inputstaticlibtasks);
-				addStaticLibraryInputOptions(taskcontext, overlayset, overlaystaticlibtasks);
+				addLinkerInputOptions(taskcontext, inputset, inputOption);
+				addLinkerInputOptions(taskcontext, overlayset, overlayOption);
 
 				AAPT2LinkWorkerTaskIdentifier workertaskid = new AAPT2LinkWorkerTaskIdentifier(compilationid);
 				AAPT2LinkWorkerTaskFactory workertask = new AAPT2LinkWorkerTaskFactory();
@@ -278,7 +252,6 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 				workertask.setCustomPackage(customPackageOption);
 				workertask.setExtraPackages(ImmutableUtils.makeImmutableNavigableSet(extraPackagesOption));
 				workertask.setAddJavadocAnnotation(ImmutableUtils.makeImmutableList(javadocAnnotationsOption));
-				workertask.setOutputTextSymbols(createTextSymbolsOption);
 				workertask.setRenameManifestPackage(renameManifestPackageOption);
 				workertask.setRenameInstrumentationTargetPackage(renameInstrumentationTargetPackageOption);
 				workertask.setNoncompressedExtensions(
@@ -341,8 +314,7 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 	}
 
 	private static void addLinkerInputOptions(TaskContext taskcontext, Set<AAPT2LinkerInput> inputset,
-			Set<TaskIdentifier> inputstaticlibtasks, Collection<AAPT2LinkerInputTaskOption> inoptions,
-			AAPT2CompilationConfiguration configuration, NavigableMap<String, SDKDescription> sdkdescriptions) {
+			Collection<AAPT2LinkerInputTaskOption> inoptions) {
 		if (inoptions == null) {
 			return;
 		}
@@ -353,50 +325,32 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 			}
 			inoption.accept(new AAPT2LinkerInputTaskOption.Visitor() {
 				@Override
-				public void visit(MavenOperationConfiguration config,
-						Collection<? extends ResolvedDependencyArtifact> input) {
-					Set<ArtifactCoordinates> coordinates = new LinkedHashSet<>();
-					for (ResolvedDependencyArtifact in : input) {
-						ArtifactCoordinates coords = in.getCoordinates();
-						if (!"aar".equals(coords.getExtension())) {
-							continue;
-						}
-						coordinates.add(coords);
-					}
-					if (coordinates.isEmpty()) {
-						SakerLog.info().verbose().taskScriptPosition(taskcontext)
-								.println("No input artifacts found with aar extension.");
-						return;
-					}
-					TaskFactory<? extends ArtifactLocalizationTaskOutput> taskfactory = ArtifactLocalizationUtils
-							.createLocalizeArtifactsTaskFactory(config, coordinates);
-					TaskIdentifier taskid = ArtifactLocalizationUtils.createLocalizeArtifactsTaskIdentifier(config,
-							coordinates);
-					//TODO keep insertion order for input artifacts in input set
-					taskcontext.startTask(taskid, taskfactory, null);
-
-					//TODO this user.dir/.m2/repository should depend on an environment property or something
-					String repohash = StringUtils
-							.toHexString(FileUtils.hashString(Objects.toString(config.getLocalRepositoryPath(),
-									System.getProperty("user.dir") + "/.m2/repository")));
-
-					for (ArtifactCoordinates coords : coordinates) {
-						addAarInputOption(taskcontext,
-								new ArtifactLocalizationOutputFileLocationStructuredTaskResult(taskid, coords),
-								inputset, inputstaticlibtasks, SakerPath.valueOf(repohash).resolve(coords.getGroupId(),
-										coords.getArtifactId(), coords.getVersion()),
-								configuration, sdkdescriptions);
-					}
-				}
-
-				@Override
 				public void visit(AAPT2LinkTaskOutput linkinput) {
 					inputset.add(new LinkAAPT2LinkerInput(linkinput));
 				}
 
 				@Override
-				public void visit(AAPT2CompileTaskOutput compilationinput) {
+				public void visit(AAPT2CompileWorkerTaskOutput compilationinput) {
 					inputset.add(new CompilationAAPT2LinkerInput(compilationinput));
+				}
+
+				@Override
+				public void visit(AAPT2AarCompileTaskOutput compilationinput) {
+					inputset.add(new AarCompilationAAPT2LinkerInput(compilationinput));
+				}
+
+				@Override
+				public void visit(AAPT2CompileFrontendTaskOutput compilationinput) {
+					visit((AAPT2CompileWorkerTaskOutput) taskcontext
+							.getTaskResult(compilationinput.getWorkerTaskIdentifier()));
+					Collection<StructuredTaskResult> aarcompilations = compilationinput.getAarCompilations();
+					if (!ObjectUtils.isNullOrEmpty(aarcompilations)) {
+						for (StructuredTaskResult aarctaskresult : aarcompilations) {
+							AAPT2AarCompileTaskOutput compiletaskout = (AAPT2AarCompileTaskOutput) aarctaskresult
+									.toResult(taskcontext);
+							visit(compiletaskout);
+						}
+					}
 				}
 
 				@Override
@@ -422,50 +376,9 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 
 				@Override
 				public void visit(FileLocation file) {
-					if (FileUtils.hasExtensionIgnoreCase(SakerStandardUtils.getFileLocationFileName(file), "aar")) {
-						addAarInputOption(taskcontext, new LiteralStructuredTaskResult(file), inputset,
-								inputstaticlibtasks,
-								SakerPath.valueOf(StringUtils.toHexString(FileUtils.hashString(
-										AarEntryExtractWorkerTaskFactory.getFileLocationPath(file).toString()))),
-								configuration, sdkdescriptions);
-					} else {
-						inputset.add(new FileAAPT2LinkerInput(file));
-					}
+					inputset.add(new FileAAPT2LinkerInput(file));
 				}
 			});
-		}
-	}
-
-	private static void addAarInputOption(TaskContext taskcontext, StructuredTaskResult filelocation,
-			Set<AAPT2LinkerInput> inputset, Set<TaskIdentifier> inputstaticlibtasks, SakerPath taskidhash,
-			AAPT2CompilationConfiguration configuration, NavigableMap<String, SDKDescription> sdkdescriptions) {
-		//XXX better static lib worker task configuration. include verbosity as well
-
-		AAPT2AarStaticLibraryWorkerTaskFactory workertask = new AAPT2AarStaticLibraryWorkerTaskFactory(filelocation,
-				configuration);
-		workertask.setSDKDescriptions(sdkdescriptions);
-
-		taskcontext.startTask(workertask, workertask, null);
-		inputstaticlibtasks.add(workertask);
-	}
-
-	private static void addStaticLibraryInputOptions(TaskContext taskcontext, Set<AAPT2LinkerInput> inputset,
-			Set<TaskIdentifier> inputstaticlibtasks) {
-		for (TaskIdentifier staticlibtask : inputstaticlibtasks) {
-			TaskResultDependencyHandle dephandle = taskcontext.getTaskResultDependencyHandle(staticlibtask);
-			//we don't care about changes in the static library task result
-
-			AAPT2LinkTaskOutput linktaskoutput = (AAPT2LinkTaskOutput) dephandle.get();
-			if (linktaskoutput == null) {
-				dephandle.setTaskOutputChangeDetector(new EqualityTaskOutputChangeDetector(null));
-				//the aar doesn't contain any resources or otherwise static library related contents.
-				//don't pass as linker input
-				continue;
-			} else {
-				dephandle.setTaskOutputChangeDetector(CommonTaskOutputChangeDetector.NEVER);
-			}
-
-			inputset.add(new LinkAAPT2LinkerInput(linktaskoutput));
 		}
 	}
 

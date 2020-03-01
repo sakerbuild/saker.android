@@ -4,21 +4,23 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Objects;
 
-import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
+import saker.android.api.aapt2.aar.AAPT2AarCompileTaskOutput;
 
-public class CompilationAAPT2LinkerInput implements AAPT2LinkerInput, Externalizable {
+public class AarCompilationAAPT2LinkerInput implements AAPT2LinkerInput, Externalizable {
 	private static final long serialVersionUID = 1L;
 
-	private AAPT2CompileWorkerTaskOutput compilationOutput;
+	private AAPT2AarCompileTaskOutput compilationOutput;
 
 	/**
 	 * For {@link Externalizable}.
 	 */
-	public CompilationAAPT2LinkerInput() {
+	public AarCompilationAAPT2LinkerInput() {
 	}
 
-	public CompilationAAPT2LinkerInput(AAPT2CompileWorkerTaskOutput compilationOutput) {
+	public AarCompilationAAPT2LinkerInput(AAPT2AarCompileTaskOutput compilationOutput) {
+		Objects.requireNonNull(compilationOutput, "compilation output");
 		this.compilationOutput = compilationOutput;
 	}
 
@@ -34,7 +36,7 @@ public class CompilationAAPT2LinkerInput implements AAPT2LinkerInput, Externaliz
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		compilationOutput = (AAPT2CompileWorkerTaskOutput) in.readObject();
+		compilationOutput = (AAPT2AarCompileTaskOutput) in.readObject();
 	}
 
 	@Override
@@ -53,7 +55,7 @@ public class CompilationAAPT2LinkerInput implements AAPT2LinkerInput, Externaliz
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		CompilationAAPT2LinkerInput other = (CompilationAAPT2LinkerInput) obj;
+		AarCompilationAAPT2LinkerInput other = (AarCompilationAAPT2LinkerInput) obj;
 		if (!compilationOutput.equals(other.compilationOutput))
 			return false;
 		return true;

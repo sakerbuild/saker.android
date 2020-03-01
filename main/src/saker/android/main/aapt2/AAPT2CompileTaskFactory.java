@@ -1,24 +1,25 @@
 package saker.android.main.aapt2;
 
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.NavigableMap;
-import java.util.Objects;
 import java.util.Set;
 
-import saker.android.api.aar.AarExtractTaskOutput;
+import saker.android.api.aapt2.compile.AAPT2CompileFrontendTaskOutput;
 import saker.android.impl.AndroidUtils;
+import saker.android.impl.aapt2.aar.AAPT2AarCompileWorkerTaskFactory;
 import saker.android.impl.aapt2.compile.AAPT2CompilationConfiguration;
 import saker.android.impl.aapt2.compile.AAPT2CompileWorkerTaskFactory;
 import saker.android.impl.aapt2.compile.AAPT2CompileWorkerTaskIdentifier;
 import saker.android.impl.aapt2.compile.AAPT2CompilerFlag;
 import saker.android.impl.aapt2.compile.option.AAPT2CompilerInputOption;
 import saker.android.impl.aapt2.compile.option.ResourceDirectoryAAPT2CompilerInputOption;
-import saker.android.impl.aapt2.compile.option.ResourcesAAPT2CompilerInputOption;
-import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
-import saker.android.impl.aar.AarEntryNotFoundException;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.AndroidFrontendUtils;
@@ -36,12 +37,13 @@ import saker.build.task.TaskFactory;
 import saker.build.task.dependencies.FileCollectionStrategy;
 import saker.build.task.identifier.TaskIdentifier;
 import saker.build.task.utils.SimpleStructuredObjectTaskResult;
+import saker.build.task.utils.StructuredObjectTaskResult;
+import saker.build.task.utils.StructuredTaskResult;
 import saker.build.task.utils.annot.SakerInput;
 import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
 import saker.build.task.utils.dependencies.WildcardFileCollectionStrategy;
 import saker.build.thirdparty.saker.util.ObjectUtils;
-import saker.build.thirdparty.saker.util.StringUtils;
-import saker.build.thirdparty.saker.util.io.FileUtils;
+import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.trace.BuildTrace;
 import saker.compiler.utils.api.CompilationIdentifier;
 import saker.compiler.utils.main.CompilationIdentifierTaskOption;
@@ -57,14 +59,15 @@ import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileCollection;
 import saker.std.api.file.location.FileLocation;
 
-public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
+public class AAPT2CompileTaskFactory extends FrontendTaskFactory<AAPT2CompileFrontendTaskOutput> {
+
 	private static final long serialVersionUID = 1L;
 
 	public static final String TASK_NAME = "saker.android.aapt2.compile";
 
 	@Override
-	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
-		return new ParameterizableTask<Object>() {
+	public ParameterizableTask<? extends AAPT2CompileFrontendTaskOutput> createTask(ExecutionContext executioncontext) {
+		return new ParameterizableTask<AAPT2CompileFrontendTaskOutput>() {
 
 			@SakerInput(value = { "", "Input" }, required = true)
 			public Collection<AAPT2CompilerInputTaskOption> inputOption;
@@ -86,7 +89,7 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 			public boolean verboseOption;
 
 			@Override
-			public Object run(TaskContext taskcontext) throws Exception {
+			public AAPT2CompileFrontendTaskOutput run(TaskContext taskcontext) throws Exception {
 				if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 					BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 				}
@@ -94,8 +97,21 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 				if (compilationid == null) {
 					compilationid = CompilationIdentifier.valueOf("default");
 				}
+
+				EnumSet<AAPT2CompilerFlag> flags = EnumSet.noneOf(AAPT2CompilerFlag.class);
+				addFlagIfSet(flags, AAPT2CompilerFlag.LEGACY, legacyOption);
+				addFlagIfSet(flags, AAPT2CompilerFlag.NO_CRUNCH, noCrunchOption);
+				addFlagIfSet(flags, AAPT2CompilerFlag.PSEUDO_LOCALIZE, pseudoLocalizeOption);
+				AAPT2CompilationConfiguration compilationconfig = new AAPT2CompilationConfiguration(flags);
+
+				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
+						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
+				sdkdescriptions.putIfAbsent(AndroidBuildToolsSDKReference.SDK_NAME,
+						AndroidUtils.DEFAULT_BUILD_TOOLS_SDK);
+				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);
+
 				Set<AAPT2CompilerInputOption> inputs = new LinkedHashSet<>();
-				Set<TaskIdentifier> resextracttaskids = new LinkedHashSet<>();
+				Collection<StructuredTaskResult> aarCompilations = new LinkedHashSet<>();
 				for (AAPT2CompilerInputTaskOption intaskoption : inputOption) {
 					intaskoption.accept(new AAPT2CompilerInputTaskOption.Visitor() {
 						@Override
@@ -149,68 +165,32 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 							//TODO keep insertion order for input artifacts in input set
 							taskcontext.startTask(taskid, taskfactory, null);
 
-							//TODO this user.dir/.m2/repository should depend on an environment property or something
-							String repohash = StringUtils
-									.toHexString(FileUtils.hashString(Objects.toString(config.getLocalRepositoryPath(),
-											System.getProperty("user.dir") + "/.m2/repository")));
-
 							for (ArtifactCoordinates coords : coordinates) {
-								AarEntryExtractWorkerTaskFactory extractworkertaskid = new AarEntryExtractWorkerTaskFactory(
-										new ArtifactLocalizationOutputFileLocationStructuredTaskResult(taskid, coords),
-										SakerPath.valueOf(repohash).resolve(coords.getGroupId(), coords.getArtifactId(),
-												coords.getVersion()),
-										"res", AarEntryExtractWorkerTaskFactory.OUTPUT_KIND_BUNDLE_STORAGE);
-								TaskIdentifier extracttaskid = extractworkertaskid.createTaskId();
-								taskcontext.startTask(extracttaskid, extractworkertaskid, null);
-								resextracttaskids.add(extracttaskid);
+								ArtifactLocalizationOutputFileLocationStructuredTaskResult artifactfilelocationtaskresult = new ArtifactLocalizationOutputFileLocationStructuredTaskResult(
+										taskid, coords);
+
+								AAPT2AarCompileWorkerTaskFactory aarcompilertask = new AAPT2AarCompileWorkerTaskFactory(
+										artifactfilelocationtaskresult, compilationconfig);
+								aarcompilertask.setSDKDescriptions(sdkdescriptions);
+								aarcompilertask.setVerbose(verboseOption);
+								aarCompilations.add(new SimpleStructuredObjectTaskResult(aarcompilertask));
+								taskcontext.startTask(aarcompilertask, aarcompilertask, null);
 							}
 						}
 
 					});
 				}
-				for (TaskIdentifier extracttaskid : resextracttaskids) {
-					AarExtractTaskOutput extractout = (AarExtractTaskOutput) taskcontext.getTaskResult(extracttaskid);
-					if (extractout == null) {
-						//contains no res
-						continue;
-					}
-					Set<FileLocation> resfiles;
-					try {
-						resfiles = extractout.getDirectoryFileLocations();
-					} catch (AarEntryNotFoundException e) {
-						//TODO warning or something
-						continue;
-					}
-					if (resfiles == null) {
-						//TODO warning or something
-						continue;
-					}
-					inputs.add(new ResourcesAAPT2CompilerInputOption(resfiles));
-				}
-
-				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
-						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
-				sdkdescriptions.putIfAbsent(AndroidBuildToolsSDKReference.SDK_NAME,
-						AndroidUtils.DEFAULT_BUILD_TOOLS_SDK);
-				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);
-
-				EnumSet<AAPT2CompilerFlag> flags = EnumSet.noneOf(AAPT2CompilerFlag.class);
-				addFlagIfSet(flags, AAPT2CompilerFlag.LEGACY, legacyOption);
-				addFlagIfSet(flags, AAPT2CompilerFlag.NO_CRUNCH, noCrunchOption);
-				addFlagIfSet(flags, AAPT2CompilerFlag.PSEUDO_LOCALIZE, pseudoLocalizeOption);
-				AAPT2CompilationConfiguration config = new AAPT2CompilationConfiguration(flags);
-
-				//TODO pre-extract aar input files
 
 				AAPT2CompileWorkerTaskIdentifier workertaskid = new AAPT2CompileWorkerTaskIdentifier(compilationid);
-				AAPT2CompileWorkerTaskFactory workertask = new AAPT2CompileWorkerTaskFactory(inputs, config);
+				AAPT2CompileWorkerTaskFactory workertask = new AAPT2CompileWorkerTaskFactory(inputs, compilationconfig);
 
 				workertask.setVerbose(verboseOption);
 				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);
 
-				SimpleStructuredObjectTaskResult result = new SimpleStructuredObjectTaskResult(workertaskid);
+				AAPT2CompileFrontendTaskOutputImpl result = new AAPT2CompileFrontendTaskOutputImpl(workertaskid,
+						aarCompilations);
 				taskcontext.reportSelfTaskOutputChangeDetector(new EqualityTaskOutputChangeDetector(result));
 				return result;
 			}
@@ -221,5 +201,84 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<Object> {
 		if (flag) {
 			flags.add(en);
 		}
+	}
+
+	private static final class AAPT2CompileFrontendTaskOutputImpl
+			implements AAPT2CompileFrontendTaskOutput, StructuredObjectTaskResult, Externalizable {
+		private static final long serialVersionUID = 1L;
+
+		private AAPT2CompileWorkerTaskIdentifier workerTaskId;
+		private Collection<StructuredTaskResult> aarCompilations;
+
+		/**
+		 * For {@link Externalizable}.
+		 */
+		public AAPT2CompileFrontendTaskOutputImpl() {
+		}
+
+		AAPT2CompileFrontendTaskOutputImpl(AAPT2CompileWorkerTaskIdentifier workertaskid,
+				Collection<StructuredTaskResult> aarCompilations) {
+			this.aarCompilations = aarCompilations;
+			this.workerTaskId = workertaskid;
+		}
+
+		@Override
+		public TaskIdentifier getTaskIdentifier() {
+			return workerTaskId;
+		}
+
+		@Override
+		public TaskIdentifier getWorkerTaskIdentifier() {
+			return workerTaskId;
+		}
+
+		@Override
+		public Collection<StructuredTaskResult> getAarCompilations() {
+			return aarCompilations;
+		}
+
+		@Override
+		public void writeExternal(ObjectOutput out) throws IOException {
+			out.writeObject(workerTaskId);
+			SerialUtils.writeExternalCollection(out, aarCompilations);
+		}
+
+		@Override
+		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+			workerTaskId = SerialUtils.readExternalObject(in);
+			aarCompilations = SerialUtils.readExternalImmutableLinkedHashSet(in);
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + ((aarCompilations == null) ? 0 : aarCompilations.hashCode());
+			result = prime * result + ((workerTaskId == null) ? 0 : workerTaskId.hashCode());
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			AAPT2CompileFrontendTaskOutputImpl other = (AAPT2CompileFrontendTaskOutputImpl) obj;
+			if (aarCompilations == null) {
+				if (other.aarCompilations != null)
+					return false;
+			} else if (!aarCompilations.equals(other.aarCompilations))
+				return false;
+			if (workerTaskId == null) {
+				if (other.workerTaskId != null)
+					return false;
+			} else if (!workerTaskId.equals(other.workerTaskId))
+				return false;
+			return true;
+		}
+
 	}
 }

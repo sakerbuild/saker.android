@@ -132,10 +132,10 @@ public class AndroidMavenClassPathTaskFactory extends FrontendTaskFactory<Object
 				LocalFileLocation artifactlocalfilelocation = LocalFileLocation
 						.create(artifactlocalizationresult.getLocalPath());
 
-				//TODO this user.dir/.m2/repository should depend on an environment property or something
+				//TODO this user.home/.m2/repository should depend on an environment property or something
 				String repohash = StringUtils
 						.toHexString(FileUtils.hashString(Objects.toString(depoutmavenconfig.getLocalRepositoryPath(),
-								System.getProperty("user.dir") + "/.m2/repository")));
+								System.getProperty("user.home") + "/.m2/repository")));
 				SakerPath extractoutputrelativepath = SakerPath.valueOf(TASK_NAME).resolve(repohash)
 						.resolve(coords.getGroupId(), coords.getArtifactId(), coords.getVersion());
 

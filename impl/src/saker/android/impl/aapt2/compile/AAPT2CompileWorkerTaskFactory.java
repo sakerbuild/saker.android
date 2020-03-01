@@ -17,7 +17,7 @@ import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
-import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
+import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
 import saker.android.impl.aapt2.AAPT2Utils;
 import saker.android.impl.aapt2.compile.option.AAPT2CompilerInputOption;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
@@ -58,7 +58,7 @@ import saker.std.api.file.location.LocalFileLocation;
 import saker.std.api.util.SakerStandardUtils;
 
 public class AAPT2CompileWorkerTaskFactory
-		implements TaskFactory<AAPT2CompileTaskOutput>, Task<AAPT2CompileTaskOutput>, Externalizable {
+		implements TaskFactory<AAPT2CompileWorkerTaskOutput>, Task<AAPT2CompileWorkerTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private Set<AAPT2CompilerInputOption> inputs;
@@ -127,7 +127,7 @@ public class AAPT2CompileWorkerTaskFactory
 	}
 
 	@Override
-	public Task<? extends AAPT2CompileTaskOutput> createTask(ExecutionContext executioncontext) {
+	public Task<? extends AAPT2CompileWorkerTaskOutput> createTask(ExecutionContext executioncontext) {
 		return this;
 	}
 
@@ -142,7 +142,7 @@ public class AAPT2CompileWorkerTaskFactory
 	}
 
 	@Override
-	public AAPT2CompileTaskOutput run(TaskContext taskcontext) throws Exception {
+	public AAPT2CompileWorkerTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 		}
@@ -474,7 +474,7 @@ public class AAPT2CompileWorkerTaskFactory
 
 		taskcontext.setTaskOutput(CompileState.class, nstate);
 
-		return new AAPT2CompileTaskOutputImpl(outputdirpath,
+		return new AAPT2CompileTaskOutputImpl(
 				ImmutableUtils.makeImmutableNavigableSet(outputfilecontents.navigableKeySet()), compilationid,
 				pinnedsdks);
 	}

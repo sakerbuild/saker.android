@@ -1,16 +1,12 @@
 package saker.android.main.aapt2.option;
 
-import java.util.Collection;
-
-import saker.android.api.aapt2.compile.AAPT2CompileTaskOutput;
+import saker.android.api.aapt2.aar.AAPT2AarCompileTaskOutput;
+import saker.android.api.aapt2.compile.AAPT2CompileFrontendTaskOutput;
+import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.file.path.WildcardPath;
 import saker.build.file.path.WildcardPath.ReducedWildcardPath;
-import saker.build.thirdparty.saker.util.ImmutableUtils;
-import saker.maven.support.api.MavenOperationConfiguration;
-import saker.maven.support.api.dependency.MavenDependencyResolutionTaskOutput;
-import saker.maven.support.api.dependency.ResolvedDependencyArtifact;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileCollection;
 import saker.std.api.file.location.FileLocation;
@@ -27,14 +23,35 @@ public abstract class AAPT2LinkerInputTaskOption {
 
 		public void visit(WildcardPath wildcard);
 
-		public void visit(AAPT2CompileTaskOutput compilationinput);
+		public void visit(AAPT2CompileWorkerTaskOutput compilationinput);
+
+		public void visit(AAPT2AarCompileTaskOutput compilationinput);
+
+		public void visit(AAPT2CompileFrontendTaskOutput compilationinput);
 
 		public void visit(AAPT2LinkTaskOutput linkinput);
 
-		public void visit(MavenOperationConfiguration config, Collection<? extends ResolvedDependencyArtifact> input);
 	}
 
-	public static AAPT2LinkerInputTaskOption valueOf(AAPT2CompileTaskOutput output) {
+	public static AAPT2LinkerInputTaskOption valueOf(AAPT2CompileWorkerTaskOutput output) {
+		return new AAPT2LinkerInputTaskOption() {
+			@Override
+			public void accept(Visitor visitor) {
+				visitor.visit(output);
+			}
+		};
+	}
+
+	public static AAPT2LinkerInputTaskOption valueOf(AAPT2CompileFrontendTaskOutput output) {
+		return new AAPT2LinkerInputTaskOption() {
+			@Override
+			public void accept(Visitor visitor) {
+				visitor.visit(output);
+			}
+		};
+	}
+
+	public static AAPT2LinkerInputTaskOption valueOf(AAPT2AarCompileTaskOutput output) {
 		return new AAPT2LinkerInputTaskOption() {
 			@Override
 			public void accept(Visitor visitor) {
@@ -100,22 +117,4 @@ public abstract class AAPT2LinkerInputTaskOption {
 		};
 	}
 
-	public static AAPT2LinkerInputTaskOption valueOf(ResolvedDependencyArtifact input) {
-		return createForResolvedArtifacts(input.getConfiguration(), ImmutableUtils.singletonSet(input));
-	}
-
-	public static AAPT2LinkerInputTaskOption valueOf(MavenDependencyResolutionTaskOutput input) {
-		Collection<ResolvedDependencyArtifact> resolvedartifacts = input.getResolvedArtifacts();
-		return createForResolvedArtifacts(input.getConfiguration(), resolvedartifacts);
-	}
-
-	private static AAPT2LinkerInputTaskOption createForResolvedArtifacts(MavenOperationConfiguration config,
-			Collection<? extends ResolvedDependencyArtifact> input) {
-		return new AAPT2LinkerInputTaskOption() {
-			@Override
-			public void accept(Visitor visitor) {
-				visitor.visit(config, input);
-			}
-		};
-	}
 }
