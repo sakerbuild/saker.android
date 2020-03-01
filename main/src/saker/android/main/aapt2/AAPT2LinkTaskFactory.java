@@ -346,6 +346,7 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 		if (inoptions == null) {
 			return;
 		}
+		//TODO remove aar input support
 		for (AAPT2LinkerInputTaskOption inoption : inoptions) {
 			if (inoption == null) {
 				continue;
@@ -468,7 +469,7 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 		}
 	}
 
-	private static class ArtifactLocalizationOutputFileLocationStructuredTaskResult
+	public static class ArtifactLocalizationOutputFileLocationStructuredTaskResult
 			implements StructuredTaskResult, Externalizable {
 		private static final long serialVersionUID = 1L;
 

@@ -355,6 +355,7 @@ public class AAPT2LinkWorkerTaskFactory
 				addInputCommandsForLinkerInput(taskcontext, taskutils, inputfilecontents, cmd, linkerinput, "-R");
 			}
 		}
+		
 		cmd.add("-o");
 		cmd.add(outputapkfilelocalpath.toString());
 

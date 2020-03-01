@@ -27,6 +27,7 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
 import saker.android.api.aar.AarExtractTaskOutput;
+import saker.android.impl.classpath.LiteralStructuredTaskResult;
 import saker.build.file.ByteArraySakerFile;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
@@ -47,6 +48,7 @@ import saker.build.task.TaskContext;
 import saker.build.task.TaskExecutionUtilities;
 import saker.build.task.TaskFactory;
 import saker.build.task.identifier.TaskIdentifier;
+import saker.build.task.utils.StructuredTaskResult;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
@@ -71,7 +73,7 @@ public class AarEntryExtractWorkerTaskFactory
 	public static final int OUTPUT_KIND_EXECUTION = 1;
 	public static final int OUTPUT_KIND_BUNDLE_STORAGE = 2;
 
-	protected FileLocation inputFile;
+	protected StructuredTaskResult inputFile;
 	protected SakerPath outputRelativePath;
 	protected String entryName;
 
@@ -84,14 +86,15 @@ public class AarEntryExtractWorkerTaskFactory
 	}
 
 	public AarEntryExtractWorkerTaskFactory(FileLocation inputFile, String entry) {
-		this(inputFile, createGeneralAarExtractOutputRelativePath(inputFile), entry, inferOutPathKind(inputFile));
+		this(new LiteralStructuredTaskResult(inputFile), createGeneralAarExtractOutputRelativePath(inputFile), entry,
+				inferOutPathKind(inputFile));
 	}
 
 	public AarEntryExtractWorkerTaskFactory(FileLocation inputFile, SakerPath outputRelativePath, String entry) {
-		this(inputFile, outputRelativePath, entry, inferOutPathKind(inputFile));
+		this(new LiteralStructuredTaskResult(inputFile), outputRelativePath, entry, inferOutPathKind(inputFile));
 	}
 
-	public AarEntryExtractWorkerTaskFactory(FileLocation inputFile, SakerPath outputRelativePath, String entry,
+	public AarEntryExtractWorkerTaskFactory(StructuredTaskResult inputFile, SakerPath outputRelativePath, String entry,
 			int outPathKind) {
 		this.inputFile = inputFile;
 		this.outputRelativePath = outputRelativePath;
@@ -155,7 +158,7 @@ public class AarEntryExtractWorkerTaskFactory
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 		}
 
-		FileLocation inputfile = inputFile;
+		FileLocation inputfile = (FileLocation) inputFile.toResult(taskcontext);
 
 		AarExtractTaskOutput[] result = { null };
 		inputfile.accept(new FileLocationVisitor() {
