@@ -1,5 +1,7 @@
 # saker.android
 
+![Build status](https://img.shields.io/azure-devops/build/sakerbuild/2e8d0e95-2787-42aa-85b5-ccb3424ada66/20/master)
+
 Android support for the saker.build system
 
 ## Build instructions
