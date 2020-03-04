@@ -568,49 +568,13 @@ public class AAPT2LinkWorkerTaskFactory
 				if (rtxtfile == null) {
 					continue;
 				}
-				String ls = System.lineSeparator();
 
 				String pkgname = entry.getKey();
 				SymbolTable packagersymbols = readFileRSymbolTable(taskcontext, rtxtfile);
 				ByteArrayRegion rjavabytes;
 				try (UnsyncByteArrayOutputStream baos = new UnsyncByteArrayOutputStream()) {
 					try (OutputStreamWriter writer = new OutputStreamWriter(baos, StandardCharsets.UTF_8)) {
-						writer.append("package ");
-						writer.append(pkgname);
-						writer.append(";");
-						writer.append(ls);
-						writer.append("public class R {");
-						writer.append(ls);
-						for (Entry<String, NavigableMap<String, RSymbolEntry>> rentry : packagersymbols.entries
-								.entrySet()) {
-							String restypes = rentry.getKey();
-
-							writer.append("\tpublic static class ");
-							writer.append(restypes);
-							writer.append("{");
-							writer.append(ls);
-
-							for (RSymbolEntry symbolentry : rentry.getValue().values()) {
-								RSymbolEntry fixsymbol = rtxtsymbols.getSymbol(restypes, symbolentry.name);
-								if (fixsymbol == null) {
-									throw new IllegalStateException(
-											"R symbol not found: " + restypes + " " + symbolentry.name);
-								}
-								writer.append("\t\tpublic static final ");
-								writer.append(symbolentry.type);
-								writer.append(" ");
-								writer.append(symbolentry.name);
-								writer.append(" = ");
-								writer.append(fixsymbol.value);
-								writer.append(";");
-								writer.append(ls);
-							}
-
-							writer.append("\t}");
-							writer.append(ls);
-						}
-						writer.append("}");
-						writer.append(ls);
+						writeRJavaForPackageRSymbols(rtxtsymbols, pkgname, packagersymbols, writer);
 					}
 					rjavabytes = baos.toByteArrayRegion();
 				}
@@ -638,6 +602,45 @@ public class AAPT2LinkWorkerTaskFactory
 		result.setTextSymbolsPath(outputtextsymbolspath);
 		result.setSplits(splitoutpaths);
 		return result;
+	}
+
+	private static void writeRJavaForPackageRSymbols(SymbolTable rtxtsymbols, String pkgname,
+			SymbolTable packagersymbols, OutputStreamWriter writer) throws IOException {
+		String ls = System.lineSeparator();
+		writer.append("package ");
+		writer.append(pkgname);
+		writer.append(";");
+		writer.append(ls);
+		writer.append("public class R {");
+		writer.append(ls);
+		for (Entry<String, NavigableMap<String, RSymbolEntry>> rentry : packagersymbols.entries.entrySet()) {
+			String restypes = rentry.getKey();
+
+			writer.append("\tpublic static class ");
+			writer.append(restypes);
+			writer.append("{");
+			writer.append(ls);
+
+			for (RSymbolEntry symbolentry : rentry.getValue().values()) {
+				RSymbolEntry fixsymbol = rtxtsymbols.getSymbol(restypes, symbolentry.name);
+				if (fixsymbol == null) {
+					throw new IllegalStateException("R symbol not found: " + restypes + " " + symbolentry.name);
+				}
+				writer.append("\t\tpublic static final ");
+				writer.append(symbolentry.type);
+				writer.append(" ");
+				writer.append(symbolentry.name);
+				writer.append(" = ");
+				writer.append(fixsymbol.value);
+				writer.append(";");
+				writer.append(ls);
+			}
+
+			writer.append("\t}");
+			writer.append(ls);
+		}
+		writer.append("}");
+		writer.append(ls);
 	}
 
 	private static SymbolTable readFileRSymbolTable(TaskContext taskcontext, FileLocation file) {

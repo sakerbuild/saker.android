@@ -239,8 +239,6 @@ public class AidlWorkerTaskFactory implements TaskFactory<AidlTaskOutput>, Task<
 		Path javaoutdirlocalpath = taskcontext.mirror(javaoutdir);
 
 		ThreadUtils.runParallelItems(inputfiles.values(), in -> {
-			System.out.println("AidlWorkerTaskFactory.run() " + in.sourceDirectoryRelativePath);
-
 			List<String> cmd = new ArrayList<>();
 			cmd.add(exepath.toString());
 			cmd.add(taskcontext.mirror(in.file).toString());
@@ -288,7 +286,7 @@ public class AidlWorkerTaskFactory implements TaskFactory<AidlTaskOutput>, Task<
 			nstate.pathOutputs.put(outfilepath, new OutputFileState(in.absolutePath, outputfilecd));
 		});
 
-		javaoutdir.synchronize();
+		outputdir.synchronize();
 
 		taskcontext.getTaskUtilities().reportOutputFileDependency(AidlTaskTags.OUTPUT_FILE, outputdependencies);
 

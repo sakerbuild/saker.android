@@ -1,6 +1,7 @@
 package saker.android.main.classpath;
 
 import java.io.Externalizable;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
@@ -11,8 +12,11 @@ import java.util.Set;
 
 import saker.android.api.aar.AarExtractTaskOutput;
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
+import saker.build.exception.InvalidPathFormatException;
+import saker.build.file.SakerFile;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
+import saker.build.task.CommonTaskContentDescriptors;
 import saker.build.task.ParameterizableTask;
 import saker.build.task.TaskContext;
 import saker.build.task.TaskResultDependencyHandle;
@@ -37,24 +41,23 @@ import saker.maven.support.api.dependency.ResolvedDependencyArtifact;
 import saker.maven.support.api.localize.ArtifactLocalizationTaskOutput;
 import saker.maven.support.api.localize.ArtifactLocalizationUtils;
 import saker.maven.support.api.localize.ArtifactLocalizationWorkerTaskOutput;
-import saker.maven.support.main.configuration.option.MavenConfigurationTaskOption;
 import saker.nest.utils.FrontendTaskFactory;
+import saker.std.api.file.location.ExecutionFileLocation;
+import saker.std.api.file.location.FileCollection;
 import saker.std.api.file.location.FileLocation;
 import saker.std.api.file.location.LocalFileLocation;
+import saker.std.api.util.SakerStandardUtils;
 
-public class AndroidMavenClassPathTaskFactory extends FrontendTaskFactory<Object> {
+public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
-	public static final String TASK_NAME = "saker.android.classpath.maven";
+	public static final String TASK_NAME = "saker.android.classpath";
 
 	@Override
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
 		return new ParameterizableTask<Object>() {
-			@SakerInput(value = { "", "Artifact", "Artifacts" }, required = true)
+			@SakerInput(value = { "", "AAR", "AARs", "Artifact", "Artifacts" }, required = true)
 			public Object artifacts;
-
-			@SakerInput(value = { "Configuration" })
-			public MavenConfigurationTaskOption configuration;
 
 			@Override
 			public Object run(TaskContext taskcontext) throws Exception {
@@ -67,28 +70,13 @@ public class AndroidMavenClassPathTaskFactory extends FrontendTaskFactory<Object
 				}
 
 				MavenClassPathTaskBuilder cpbuilder = MavenClassPathTaskBuilder.newBuilder();
-				if (configuration != null) {
-					cpbuilder.setConfiguration(configuration.createConfiguration());
-				}
 
-				if (artifacts instanceof MavenDependencyResolutionTaskOutput) {
-					MavenDependencyResolutionTaskOutput depoutput = (MavenDependencyResolutionTaskOutput) artifacts;
-					MavenOperationConfiguration depoutmavenconfig = depoutput.getConfiguration();
-					cpbuilder.setConfiguration(depoutmavenconfig);
-					Collection<ArtifactCoordinates> departifactcoordinates = depoutput.getArtifactCoordinates();
-
-					handleArtifactCoordinates(taskcontext, cpbuilder, depoutmavenconfig, departifactcoordinates);
-				} else if (artifacts instanceof ResolvedDependencyArtifact) {
-					ResolvedDependencyArtifact departifact = (ResolvedDependencyArtifact) artifacts;
-					MavenOperationConfiguration depoutmavenconfig = departifact.getConfiguration();
-
-					cpbuilder.setConfiguration(depoutmavenconfig);
-					Collection<ArtifactCoordinates> departifactcoordinates = ImmutableUtils
-							.singletonSet(departifact.getCoordinates());
-
-					handleArtifactCoordinates(taskcontext, cpbuilder, depoutmavenconfig, departifactcoordinates);
+				if (artifacts instanceof Iterable) {
+					for (Object elem : ((Iterable<?>) artifacts)) {
+						handleInputElement(taskcontext, cpbuilder, elem);
+					}
 				} else {
-					throw new UnsupportedOperationException("Unrecognized input: " + artifacts);
+					handleInputElement(taskcontext, cpbuilder, artifacts);
 				}
 
 				TaskIdentifier workertaskid = cpbuilder.buildTaskIdentifier();
@@ -98,7 +86,71 @@ public class AndroidMavenClassPathTaskFactory extends FrontendTaskFactory<Object
 				taskcontext.reportSelfTaskOutputChangeDetector(new EqualityTaskOutputChangeDetector(result));
 				return result;
 			}
+
 		};
+	}
+
+	private static void handleInputElement(TaskContext taskcontext, MavenClassPathTaskBuilder cpbuilder, Object elem)
+			throws FileNotFoundException {
+		if (elem instanceof MavenDependencyResolutionTaskOutput) {
+			MavenDependencyResolutionTaskOutput depoutput = (MavenDependencyResolutionTaskOutput) elem;
+			MavenOperationConfiguration depoutmavenconfig = depoutput.getConfiguration();
+			cpbuilder.setConfiguration(depoutmavenconfig);
+			Collection<ArtifactCoordinates> departifactcoordinates = depoutput.getArtifactCoordinates();
+
+			handleArtifactCoordinates(taskcontext, cpbuilder, depoutmavenconfig, departifactcoordinates);
+		} else if (elem instanceof ResolvedDependencyArtifact) {
+			ResolvedDependencyArtifact departifact = (ResolvedDependencyArtifact) elem;
+			MavenOperationConfiguration depoutmavenconfig = departifact.getConfiguration();
+
+			cpbuilder.setConfiguration(depoutmavenconfig);
+			Collection<ArtifactCoordinates> departifactcoordinates = ImmutableUtils
+					.singletonSet(departifact.getCoordinates());
+
+			handleArtifactCoordinates(taskcontext, cpbuilder, depoutmavenconfig, departifactcoordinates);
+		} else if (elem instanceof FileLocation) {
+			FileLocation fl = (FileLocation) elem;
+			handleInputFileLocation(taskcontext, cpbuilder, fl);
+		} else if (elem instanceof FileCollection) {
+			FileCollection filecollection = (FileCollection) elem;
+			for (FileLocation fl : filecollection) {
+				handleInputFileLocation(taskcontext, cpbuilder, fl);
+			}
+		} else {
+			String elemstr = elem.toString();
+			SakerPath execpath;
+			try {
+				execpath = taskcontext.getTaskWorkingDirectoryPath().tryResolve(SakerPath.valueOf(elemstr));
+			} catch (InvalidPathFormatException e) {
+				throw new IllegalArgumentException("Failed to parse input classpath path: " + elemstr);
+			}
+			// check for existence as it may be an invalid path
+			SakerFile infile = taskcontext.getTaskUtilities().resolveAtPath(execpath);
+			if (infile == null) {
+				throw new FileNotFoundException("Input classpath not found: " + execpath);
+			}
+			taskcontext.reportInputFileDependency(null, execpath, CommonTaskContentDescriptors.PRESENT);
+			handleInputFileLocation(taskcontext, cpbuilder, ExecutionFileLocation.create(execpath));
+		}
+	}
+
+	private static void handleInputFileLocation(TaskContext taskcontext, MavenClassPathTaskBuilder cpbuilder,
+			FileLocation fl) {
+		if (FileUtils.hasExtensionIgnoreCase(SakerStandardUtils.getFileLocationFileName(fl), "aar")) {
+			EntryBuilder entrybuilder = MavenClassPathTaskBuilder.EntryBuilder.newBuilder();
+			AarEntryExtractWorkerTaskFactory extracttask = new AarEntryExtractWorkerTaskFactory(fl,
+					AarEntryExtractWorkerTaskFactory.ENTRY_NAME_CLASSES_JAR);
+			TaskIdentifier entryExtractTaskId = extracttask.createTaskId();
+			taskcontext.startTask(entryExtractTaskId, extracttask, null);
+
+			//TODO handle libs/*.jar
+
+			//TODO set implementation version key
+			entrybuilder.setInput(new ClassesJarFileLocationStructuredTaskResult(entryExtractTaskId));
+			cpbuilder.add(entrybuilder);
+		} else {
+			cpbuilder.add(EntryBuilder.newBuilder().setInput(fl));
+		}
 	}
 
 	private static void handleArtifactCoordinates(TaskContext taskcontext, MavenClassPathTaskBuilder cpbuilder,
@@ -144,6 +196,8 @@ public class AndroidMavenClassPathTaskFactory extends FrontendTaskFactory<Object
 						AarEntryExtractWorkerTaskFactory.ENTRY_NAME_CLASSES_JAR);
 				TaskIdentifier entryExtractTaskId = extracttask.createTaskId();
 				taskcontext.startTask(entryExtractTaskId, extracttask, null);
+
+				//TODO handle libs/*.jar
 
 				//TODO set implementation version key
 
