@@ -12,6 +12,7 @@ import java.util.Set;
 
 import saker.android.api.aar.AarExtractTaskOutput;
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
+import saker.android.impl.aar.AarEntryNotFoundException;
 import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.SakerFile;
 import saker.build.file.path.SakerPath;
@@ -134,6 +135,30 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 		}
 	}
 
+	private static void handleAarLibraries(TaskContext taskcontext,
+			AarEntryExtractWorkerTaskFactory classesextractworker, FileLocation fl,
+			MavenClassPathTaskBuilder cpbuilder) {
+		AarEntryExtractWorkerTaskFactory extracttask = new AarEntryExtractWorkerTaskFactory(fl,
+				classesextractworker.getOutputRelativePath(),
+				AarEntryExtractWorkerTaskFactory.ENTRY_NAME_LIBRARIES_DIRECTORY);
+		TaskIdentifier entryExtractTaskId = extracttask.createTaskId();
+
+		//TODO run libs extractions in parallel 
+		AarExtractTaskOutput libextractout = taskcontext.getTaskUtilities().runTaskResult(entryExtractTaskId,
+				extracttask);
+		//TODO install an appropriate task output change detector
+		try {
+			Set<FileLocation> libfilelocations = libextractout.getDirectoryFileLocations();
+			if (libfilelocations != null) {
+				for (FileLocation libjarfilelocation : libfilelocations) {
+					cpbuilder.add(EntryBuilder.newBuilder().setInput(libjarfilelocation));
+				}
+			}
+		} catch (AarEntryNotFoundException e) {
+			//ignore
+		}
+	}
+
 	private static void handleInputFileLocation(TaskContext taskcontext, MavenClassPathTaskBuilder cpbuilder,
 			FileLocation fl) {
 		if (FileUtils.hasExtensionIgnoreCase(SakerStandardUtils.getFileLocationFileName(fl), "aar")) {
@@ -143,7 +168,7 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 			TaskIdentifier entryExtractTaskId = extracttask.createTaskId();
 			taskcontext.startTask(entryExtractTaskId, extracttask, null);
 
-			//TODO handle libs/*.jar
+			handleAarLibraries(taskcontext, extracttask, fl, cpbuilder);
 
 			//TODO set implementation version key
 			entrybuilder.setInput(new ClassesJarFileLocationStructuredTaskResult(entryExtractTaskId));
@@ -197,7 +222,7 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 				TaskIdentifier entryExtractTaskId = extracttask.createTaskId();
 				taskcontext.startTask(entryExtractTaskId, extracttask, null);
 
-				//TODO handle libs/*.jar
+				handleAarLibraries(taskcontext, extracttask, artifactlocalfilelocation, cpbuilder);
 
 				//TODO set implementation version key
 

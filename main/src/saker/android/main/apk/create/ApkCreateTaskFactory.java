@@ -46,7 +46,7 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
 		return new ParameterizableTask<Object>() {
 
-			@SakerInput(value = { "Resources" }, required = true)
+			@SakerInput(value = { "", "Resources" }, required = true)
 			public ApkResourcesTaskOption resourcesOption;
 
 			@SakerInput(value = { "Classes" }, required = true)

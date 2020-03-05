@@ -158,7 +158,7 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 				throw new IllegalArgumentException("AAR res entry is not a folder: " + inputfilelocation);
 			}
 		} catch (AarEntryNotFoundException e) {
-			return new AAPT2AarCompileTaskOutputImpl(null, rtxtfile, manifestfile);
+			return new AAPT2AarCompileTaskOutputImpl(inputfilelocation, null, rtxtfile, manifestfile);
 		}
 
 		Set<AAPT2CompilerInputOption> compileworkerinput = new HashSet<>();
@@ -173,7 +173,7 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 		AAPT2CompileWorkerTaskOutput compileoutput = taskcontext.getTaskUtilities().runTaskResult(compileworkertaskid,
 				compileworkertask);
 
-		return new AAPT2AarCompileTaskOutputImpl(compileoutput, rtxtfile, manifestfile);
+		return new AAPT2AarCompileTaskOutputImpl(inputfilelocation, compileoutput, rtxtfile, manifestfile);
 	}
 
 	public static String getAndroidManifestPackageName(TaskContext taskcontext, FileLocation manifestfile)
@@ -290,6 +290,7 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 	private static final class AAPT2AarCompileTaskOutputImpl implements AAPT2AarCompileTaskOutput, Externalizable {
 		private static final long serialVersionUID = 1L;
 
+		private FileLocation aarFile;
 		private AAPT2CompileWorkerTaskOutput compileOutput;
 		private FileLocation rTxtFile;
 		private FileLocation androidManifestFile;
@@ -300,11 +301,17 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 		public AAPT2AarCompileTaskOutputImpl() {
 		}
 
-		public AAPT2AarCompileTaskOutputImpl(AAPT2CompileWorkerTaskOutput compileOutput, FileLocation rTxtFile,
-				FileLocation androidManifestFile) {
+		public AAPT2AarCompileTaskOutputImpl(FileLocation aarFile, AAPT2CompileWorkerTaskOutput compileOutput,
+				FileLocation rTxtFile, FileLocation androidManifestFile) {
+			this.aarFile = aarFile;
 			this.compileOutput = compileOutput;
 			this.rTxtFile = rTxtFile;
 			this.androidManifestFile = androidManifestFile;
+		}
+
+		@Override
+		public FileLocation getAarFile() {
+			return aarFile;
 		}
 
 		@Override
@@ -324,6 +331,7 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 
 		@Override
 		public void writeExternal(ObjectOutput out) throws IOException {
+			out.writeObject(aarFile);
 			out.writeObject(compileOutput);
 			out.writeObject(rTxtFile);
 			out.writeObject(androidManifestFile);
@@ -331,6 +339,7 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 
 		@Override
 		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+			aarFile = SerialUtils.readExternalObject(in);
 			compileOutput = SerialUtils.readExternalObject(in);
 			rTxtFile = SerialUtils.readExternalObject(in);
 			androidManifestFile = SerialUtils.readExternalObject(in);

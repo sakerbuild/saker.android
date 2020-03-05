@@ -4,9 +4,11 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.Collection;
 import java.util.List;
 import java.util.NavigableMap;
 
+import saker.android.api.aapt2.link.AAPT2LinkInputLibrary;
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
@@ -24,6 +26,8 @@ final class AAPT2LinkTaskOutputImpl implements AAPT2LinkTaskOutput, Externalizab
 	private SakerPath idMappingsPath;
 	private SakerPath textSymbolsPath;
 	private NavigableMap<String, SakerPath> splits;
+
+	private List<AAPT2LinkInputLibrary> inputLibraries;
 
 	/**
 	 * For {@link Externalizable}.
@@ -58,6 +62,15 @@ final class AAPT2LinkTaskOutputImpl implements AAPT2LinkTaskOutput, Externalizab
 
 	public void setSplits(NavigableMap<String, SakerPath> splits) {
 		this.splits = splits;
+	}
+
+	public void setInputLibraries(List<AAPT2LinkInputLibrary> inputLibraries) {
+		this.inputLibraries = inputLibraries;
+	}
+
+	@Override
+	public Collection<AAPT2LinkInputLibrary> getInputLibraries() {
+		return inputLibraries;
 	}
 
 	@Override
@@ -110,6 +123,7 @@ final class AAPT2LinkTaskOutputImpl implements AAPT2LinkTaskOutput, Externalizab
 		out.writeObject(textSymbolsPath);
 		SerialUtils.writeExternalMap(out, splits);
 		SerialUtils.writeExternalCollection(out, javaSourceDirectories);
+		SerialUtils.writeExternalCollection(out, inputLibraries);
 	}
 
 	@Override
@@ -122,6 +136,7 @@ final class AAPT2LinkTaskOutputImpl implements AAPT2LinkTaskOutput, Externalizab
 		textSymbolsPath = (SakerPath) in.readObject();
 		splits = SerialUtils.readExternalSortedImmutableNavigableMap(in);
 		javaSourceDirectories = SerialUtils.readExternalImmutableList(in);
+		inputLibraries = SerialUtils.readExternalImmutableList(in);
 	}
 
 	@Override
@@ -155,6 +170,11 @@ final class AAPT2LinkTaskOutputImpl implements AAPT2LinkTaskOutput, Externalizab
 			if (other.identifier != null)
 				return false;
 		} else if (!identifier.equals(other.identifier))
+			return false;
+		if (inputLibraries == null) {
+			if (other.inputLibraries != null)
+				return false;
+		} else if (!inputLibraries.equals(other.inputLibraries))
 			return false;
 		if (javaSourceDirectories == null) {
 			if (other.javaSourceDirectories != null)

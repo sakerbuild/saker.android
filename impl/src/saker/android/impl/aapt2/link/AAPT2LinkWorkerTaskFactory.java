@@ -13,6 +13,7 @@ import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 import saker.android.api.aapt2.aar.AAPT2AarCompileTaskOutput;
 import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
+import saker.android.api.aapt2.link.AAPT2LinkInputLibrary;
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.android.impl.aapt2.AAPT2Utils;
 import saker.android.impl.aapt2.aar.AAPT2AarCompileWorkerTaskFactory;
@@ -354,17 +356,19 @@ public class AAPT2LinkWorkerTaskFactory
 
 		Map<String, FileLocation> packagenamertxtlocations = new TreeMap<>();
 
+		List<AAPT2LinkInputLibrary> inputlibraries = new ArrayList<>();
+
 		ArrayList<String> cmd = new ArrayList<>();
 		cmd.add("link");
 		//XXX  parallelize if necessary
 		for (AAPT2LinkerInput linkerinput : input) {
 			addInputCommandsForLinkerInput(taskcontext, taskutils, inputfilecontents, cmd, linkerinput, null,
-					packagenamertxtlocations);
+					packagenamertxtlocations, inputlibraries);
 		}
 		if (!ObjectUtils.isNullOrEmpty(overlay)) {
 			for (AAPT2LinkerInput linkerinput : overlay) {
 				addInputCommandsForLinkerInput(taskcontext, taskutils, inputfilecontents, cmd, linkerinput, "-R",
-						packagenamertxtlocations);
+						packagenamertxtlocations, inputlibraries);
 			}
 		}
 
@@ -601,6 +605,7 @@ public class AAPT2LinkWorkerTaskFactory
 		result.setIDMappingsPath(outputemitidspath);
 		result.setTextSymbolsPath(outputtextsymbolspath);
 		result.setSplits(splitoutpaths);
+		result.setInputLibraries(inputlibraries);
 		return result;
 	}
 
@@ -708,6 +713,36 @@ public class AAPT2LinkWorkerTaskFactory
 		return symbolentry;
 	}
 
+	private static final class AAPT2LinkInputLibraryImpl implements AAPT2LinkInputLibrary, Externalizable {
+		private static final long serialVersionUID = 1L;
+		private FileLocation aarfile;
+
+		/**
+		 * For {@link Externalizable}.
+		 */
+		public AAPT2LinkInputLibraryImpl() {
+		}
+
+		private AAPT2LinkInputLibraryImpl(FileLocation aarfile) {
+			this.aarfile = aarfile;
+		}
+
+		@Override
+		public FileLocation getAarFile() {
+			return aarfile;
+		}
+
+		@Override
+		public void writeExternal(ObjectOutput out) throws IOException {
+			out.writeObject(aarfile);
+		}
+
+		@Override
+		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+			aarfile = SerialUtils.readExternalObject(in);
+		}
+	}
+
 	private static class SymbolTable {
 		protected Map<String, NavigableMap<String, RSymbolEntry>> entries = new TreeMap<>();
 
@@ -741,8 +776,8 @@ public class AAPT2LinkWorkerTaskFactory
 
 	private static void addInputCommandsForLinkerInput(TaskContext taskcontext, TaskExecutionUtilities taskutils,
 			NavigableMap<SakerPath, ContentDescriptor> inputfilecontents, List<String> cmd,
-			AAPT2LinkerInput linkerinput, String prearg, Map<String, FileLocation> packagenamertxtlocations)
-			throws Exception {
+			AAPT2LinkerInput linkerinput, String prearg, Map<String, FileLocation> packagenamertxtlocations,
+			Collection<? super AAPT2LinkInputLibrary> outlinkinputlibs) throws Exception {
 		linkerinput.accept(new AAPT2LinkerInput.Visitor() {
 			@Override
 			public void visit(AAPT2CompileWorkerTaskOutput compilationinput) {
@@ -775,6 +810,9 @@ public class AAPT2LinkWorkerTaskFactory
 				FileLocation prev = packagenamertxtlocations.put(packagename, compilationinput.getRTxtFile());
 				if (prev != null) {
 					throw new IllegalArgumentException("Duplicate input aar package names: " + packagename);
+				}
+				if (outlinkinputlibs != null) {
+					outlinkinputlibs.add(new AAPT2LinkInputLibraryImpl(compilationinput.getAarFile()));
 				}
 			}
 

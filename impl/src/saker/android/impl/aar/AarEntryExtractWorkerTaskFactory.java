@@ -69,6 +69,7 @@ public class AarEntryExtractWorkerTaskFactory
 	private static final long serialVersionUID = 1L;
 
 	public static final String ENTRY_NAME_CLASSES_JAR = "classes.jar";
+	public static final String ENTRY_NAME_LIBRARIES_DIRECTORY = "libs";
 
 	public static final int OUTPUT_KIND_EXECUTION = 1;
 	public static final int OUTPUT_KIND_BUNDLE_STORAGE = 2;
