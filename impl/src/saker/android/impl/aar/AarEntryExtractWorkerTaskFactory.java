@@ -156,8 +156,8 @@ public class AarEntryExtractWorkerTaskFactory
 	@Override
 	public AarExtractTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
-			//TODO use different build trace classification as this task may show up too many times
-			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
+			//CLASSIFICATION_TRANSFORMATION is available from 0.8.10, however as it is a constant, it can be inlined without runtime errors
+			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_TRANSFORMATION);
 		}
 
 		FileLocation inputfile = (FileLocation) inputFile.toResult(taskcontext);
