@@ -7,7 +7,10 @@ import java.io.ObjectOutput;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.NavigableMap;
+import java.util.Set;
 
+import saker.android.api.aapt2.link.AAPT2LinkInputLibrary;
+import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.android.main.apk.create.option.ApkClassesTaskOption;
 import saker.android.main.apk.create.option.ApkResourcesTaskOption;
 import saker.build.exception.InvalidPathFormatException;
@@ -15,6 +18,7 @@ import saker.build.file.DirectoryVisitPredicate;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
 import saker.build.file.path.SakerPath;
+import saker.build.file.path.WildcardPath;
 import saker.build.file.provider.SakerPathFiles;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.runtime.execution.ExecutionDirectoryContext;
@@ -28,13 +32,21 @@ import saker.build.task.identifier.TaskIdentifier;
 import saker.build.task.utils.SimpleStructuredObjectTaskResult;
 import saker.build.task.utils.annot.SakerInput;
 import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
+import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.trace.BuildTrace;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.std.api.file.location.ExecutionFileLocation;
+import saker.std.api.file.location.FileLocation;
+import saker.zip.api.create.IncludeResourceMapping;
 import saker.zip.api.create.ZipCreationTaskBuilder;
 
 public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
+	private static final IncludeResourceMapping INCLUDE_RESOURCE_MAPPING_ASSETS = IncludeResourceMapping
+			.wildcardIncludeFilter(WildcardPath.valueOf("assets/**"));
+	private static final SakerPath PATH_JNI = SakerPath.valueOf("jni");
+	private static final SakerPath PATH_LIB = SakerPath.valueOf("lib");
+
 	private static final long serialVersionUID = 1L;
 
 	public static final String TASK_NAME = "saker.apk.create";
@@ -47,7 +59,7 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 		return new ParameterizableTask<Object>() {
 
 			@SakerInput(value = { "", "Resources" }, required = true)
-			public ApkResourcesTaskOption resourcesOption;
+			public Collection<ApkResourcesTaskOption> resourcesOption;
 
 			@SakerInput(value = { "Classes" }, required = true)
 			public ApkClassesTaskOption classesOption;
@@ -95,7 +107,43 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 						}
 					}
 				}
-				resourcesOption.applyTo(taskbuilder);
+				for (ApkResourcesTaskOption resoption : resourcesOption) {
+					if (resoption == null) {
+						continue;
+					}
+					resoption.accept(new ApkResourcesTaskOption.Visitor() {
+						@Override
+						public void visit(AAPT2LinkTaskOutput linkoutput) {
+							taskbuilder.addIncludeArchive(ExecutionFileLocation.create(linkoutput.getAPKPath()), null);
+							Collection<AAPT2LinkInputLibrary> inputlibs = linkoutput.getInputLibraries();
+							if (!ObjectUtils.isNullOrEmpty(inputlibs)) {
+								for (AAPT2LinkInputLibrary ilib : inputlibs) {
+									FileLocation aar = ilib.getAarFile();
+									//include all assets
+									taskbuilder.addIncludeArchive(aar, INCLUDE_RESOURCE_MAPPING_ASSETS);
+									//include all libs
+									taskbuilder.addIncludeArchive(aar, new IncludeResourceMapping() {
+										@Override
+										public Set<SakerPath> mapResourcePath(SakerPath archivepath,
+												boolean directory) {
+											if (archivepath.getNameCount() < 2 || !archivepath.startsWith(PATH_JNI)) {
+												return null;
+											}
+											return ImmutableUtils
+													.singletonNavigableSet(PATH_LIB.append(archivepath.subPath(1)));
+										}
+									});
+								}
+							}
+						}
+
+						@Override
+						public void visit(SakerPath path) {
+							taskbuilder.addIncludeArchive(ExecutionFileLocation
+									.create(taskcontext.getTaskWorkingDirectoryPath().tryResolve(path)), null);
+						}
+					});
+				}
 				if (classesOption != null) {
 					classesOption.applyTo(taskbuilder);
 				}

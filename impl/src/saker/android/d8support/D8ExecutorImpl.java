@@ -84,6 +84,7 @@ import saker.java.compiler.api.classpath.JavaClassPath;
 import saker.java.compiler.api.classpath.SDKClassPath;
 import saker.java.compiler.api.compile.JavaCompilationWorkerTaskIdentifier;
 import saker.java.compiler.api.compile.JavaCompilerWorkerTaskOutput;
+import saker.java.compiler.api.compile.SakerJavaCompilerUtils;
 import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.SDKSupportUtils;
 import saker.std.api.file.location.ExecutionFileLocation;
@@ -711,7 +712,7 @@ public class D8ExecutorImpl implements D8Executor {
 					if (cdforinputpath != null) {
 						inputArchives.put(LocalFileLocation.create(inputpath), cdforinputpath);
 					} else {
-						// TODO Auto-generated method stub
+						// TODO support local class files
 						throw new UnsupportedOperationException("local class files not yet supported: " + inputpath);
 					}
 				}
@@ -758,6 +759,8 @@ public class D8ExecutorImpl implements D8Executor {
 			ExecutionFileLocation filelocation = ExecutionFileLocation.create(output.getClassDirectory());
 			visit(filelocation);
 			JavaClassPath cp = output.getClassPath();
+			depresult.setTaskOutputChangeDetector(
+					SakerJavaCompilerUtils.getCompilerOutputClassPathTaskOutputChangeDetector(cp));
 			if (cp != null) {
 				visit(cp);
 			}
