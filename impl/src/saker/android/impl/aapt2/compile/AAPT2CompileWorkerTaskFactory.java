@@ -69,6 +69,7 @@ public class AAPT2CompileWorkerTaskFactory
 	private transient TaskExecutionEnvironmentSelector remoteDispatchableEnvironmentSelector;
 
 	private transient boolean verbose;
+	private transient String displayName;
 
 	/**
 	 * For {@link Externalizable}.
@@ -92,6 +93,10 @@ public class AAPT2CompileWorkerTaskFactory
 
 	public void setVerbose(boolean verbose) {
 		this.verbose = verbose;
+	}
+
+	public void setDisplayName(String displayName) {
+		this.displayName = displayName;
 	}
 
 	public void setSDKDescriptions(NavigableMap<String, ? extends SDKDescription> sdkdescriptions) {
@@ -152,7 +157,12 @@ public class AAPT2CompileWorkerTaskFactory
 		AAPT2CompileWorkerTaskIdentifier taskid = (AAPT2CompileWorkerTaskIdentifier) taskcontext.getTaskId();
 
 		CompilationIdentifier compilationid = taskid.getCompilationIdentifier();
-		taskcontext.setStandardOutDisplayIdentifier(AAPT2CompileTaskFactory.TASK_NAME + ":" + compilationid);
+		String displaystr = ObjectUtils.nullDefault(displayName, compilationid::toString);
+		taskcontext.setStandardOutDisplayIdentifier("aapt2.compile:" + displaystr);
+		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
+			BuildTrace.setDisplayInformation("aapt2.compile:" + displaystr,
+					AAPT2CompileTaskFactory.TASK_NAME + ":" + displaystr);
+		}
 
 		SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
 		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtPathCreate(builddir,
@@ -593,6 +603,7 @@ public class AAPT2CompileWorkerTaskFactory
 		out.writeObject(remoteDispatchableEnvironmentSelector);
 
 		out.writeBoolean(verbose);
+		out.writeObject(displayName);
 	}
 
 	@Override
@@ -604,6 +615,7 @@ public class AAPT2CompileWorkerTaskFactory
 		remoteDispatchableEnvironmentSelector = (TaskExecutionEnvironmentSelector) in.readObject();
 
 		verbose = in.readBoolean();
+		displayName = SerialUtils.readExternalObject(in);
 	}
 
 	@Override

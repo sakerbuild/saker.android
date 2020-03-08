@@ -108,8 +108,10 @@ public class ZipAlignWorkerTaskFactory
 	public ZipAlignTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
+			String fname = outputPath.getFileName();
+			BuildTrace.setDisplayInformation("zipalign:" + fname, ZipAlignTaskFactory.TASK_NAME + ":" + fname);
 		}
-		taskcontext.setStandardOutDisplayIdentifier(ZipAlignTaskFactory.TASK_NAME + ":" + outputPath.getFileName());
+		taskcontext.setStandardOutDisplayIdentifier("zipalign:" + outputPath.getFileName());
 
 		Path[] inputfilelocalpath = { null };
 		inputFile.accept(new FileLocationVisitor() {

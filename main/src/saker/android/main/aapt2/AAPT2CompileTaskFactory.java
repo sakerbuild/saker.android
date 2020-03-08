@@ -20,6 +20,7 @@ import saker.android.impl.aapt2.compile.AAPT2CompileWorkerTaskIdentifier;
 import saker.android.impl.aapt2.compile.AAPT2CompilerFlag;
 import saker.android.impl.aapt2.compile.option.AAPT2CompilerInputOption;
 import saker.android.impl.aapt2.compile.option.ResourceDirectoryAAPT2CompilerInputOption;
+import saker.android.impl.classpath.LiteralStructuredTaskResult;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.AndroidFrontendUtils;
@@ -120,10 +121,8 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<AAPT2CompileFro
 						public void visit(FileLocation file) {
 							if (FileUtils.hasExtensionIgnoreCase(SakerStandardUtils.getFileLocationFileName(file),
 									"aar")) {
-								AAPT2AarCompileWorkerTaskFactory aarcompilertask = new AAPT2AarCompileWorkerTaskFactory(
-										file, compilationconfig);
-								taskcontext.startTask(aarcompilertask, aarcompilertask, null);
-								aarCompilations.add(new SimpleStructuredObjectTaskResult(aarcompilertask));
+								aarCompilations.add(startAarCompilationTask(taskcontext, compilationconfig,
+										new LiteralStructuredTaskResult(file)));
 							} else {
 								inputs.add(new ResourceDirectoryAAPT2CompilerInputOption(file));
 							}
@@ -179,15 +178,21 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<AAPT2CompileFro
 								ArtifactLocalizationOutputFileLocationStructuredTaskResult artifactfilelocationtaskresult = new ArtifactLocalizationOutputFileLocationStructuredTaskResult(
 										taskid, coords);
 
-								AAPT2AarCompileWorkerTaskFactory aarcompilertask = new AAPT2AarCompileWorkerTaskFactory(
-										artifactfilelocationtaskresult, compilationconfig);
-								aarcompilertask.setSDKDescriptions(sdkdescriptions);
-								aarcompilertask.setVerbose(verboseOption);
-								aarCompilations.add(new SimpleStructuredObjectTaskResult(aarcompilertask));
-								taskcontext.startTask(aarcompilertask, aarcompilertask, null);
+								aarCompilations.add(startAarCompilationTask(taskcontext, compilationconfig,
+										artifactfilelocationtaskresult));
 							}
 						}
 
+						private StructuredTaskResult startAarCompilationTask(TaskContext taskcontext,
+								AAPT2CompilationConfiguration compilationconfig, StructuredTaskResult input) {
+							AAPT2AarCompileWorkerTaskFactory aarcompilertask = new AAPT2AarCompileWorkerTaskFactory(
+									input, compilationconfig);
+							aarcompilertask.setSDKDescriptions(sdkdescriptions);
+							aarcompilertask.setVerbose(verboseOption);
+							taskcontext.startTask(aarcompilertask, aarcompilertask, null);
+
+							return new SimpleStructuredObjectTaskResult(aarcompilertask);
+						}
 					});
 				}
 

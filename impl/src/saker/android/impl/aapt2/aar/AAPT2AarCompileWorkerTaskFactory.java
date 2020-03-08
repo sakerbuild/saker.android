@@ -30,7 +30,6 @@ import saker.android.impl.aapt2.compile.option.AAPT2CompilerInputOption;
 import saker.android.impl.aapt2.compile.option.ResourcesAAPT2CompilerInputOption;
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.android.impl.aar.AarEntryNotFoundException;
-import saker.android.impl.classpath.LiteralStructuredTaskResult;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.build.file.SakerFile;
 import saker.build.file.path.SakerPath;
@@ -75,10 +74,6 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 	public AAPT2AarCompileWorkerTaskFactory() {
 	}
 
-	public AAPT2AarCompileWorkerTaskFactory(FileLocation input, AAPT2CompilationConfiguration configuration) {
-		this(new LiteralStructuredTaskResult(input), configuration);
-	}
-
 	public AAPT2AarCompileWorkerTaskFactory(StructuredTaskResult input, AAPT2CompilationConfiguration configuration) {
 		this.input = input;
 		this.configuration = configuration;
@@ -110,13 +105,16 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 	@Override
 	public AAPT2AarCompileTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
-			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
+			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 		}
 
-		//TODO better displayid
-		taskcontext.setStandardOutDisplayIdentifier("saker.android.aapt2.aar");
+		taskcontext.setStandardOutDisplayIdentifier("aapt2.aar");
 
 		FileLocation inputfilelocation = (FileLocation) input.toResult(taskcontext);
+		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
+			String fname = SakerStandardUtils.getFileLocationFileName(inputfilelocation);
+			BuildTrace.setDisplayInformation("aapt2.aar:" + fname, "saker.android.aapt2.aar:" + fname);
+		}
 
 		AarEntryExtractWorkerTaskFactory resworker = new AarEntryExtractWorkerTaskFactory(inputfilelocation, "res");
 		TaskIdentifier resworkertaskid = resworker.createTaskId();
@@ -166,6 +164,7 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 
 		AAPT2CompileWorkerTaskFactory compileworkertask = new AAPT2CompileWorkerTaskFactory(compileworkerinput,
 				configuration);
+		compileworkertask.setDisplayName(SakerStandardUtils.getFileLocationFileName(inputfilelocation));
 		compileworkertask.setVerbose(verbose);
 		compileworkertask.setSDKDescriptions(sdkDescriptions);
 		AAPT2CompileWorkerTaskIdentifier compileworkertaskid = new AAPT2CompileWorkerTaskIdentifier(
@@ -291,9 +290,9 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 		private static final long serialVersionUID = 1L;
 
 		private FileLocation aarFile;
-		private AAPT2CompileWorkerTaskOutput compileOutput;
 		private FileLocation rTxtFile;
 		private FileLocation androidManifestFile;
+		private NavigableSet<SakerPath> outputPaths;
 
 		/**
 		 * For {@link Externalizable}.
@@ -304,7 +303,7 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 		public AAPT2AarCompileTaskOutputImpl(FileLocation aarFile, AAPT2CompileWorkerTaskOutput compileOutput,
 				FileLocation rTxtFile, FileLocation androidManifestFile) {
 			this.aarFile = aarFile;
-			this.compileOutput = compileOutput;
+			this.outputPaths = compileOutput == null ? Collections.emptyNavigableSet() : compileOutput.getOutputPaths();
 			this.rTxtFile = rTxtFile;
 			this.androidManifestFile = androidManifestFile;
 		}
@@ -316,7 +315,7 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 
 		@Override
 		public NavigableSet<SakerPath> getOutputPaths() {
-			return compileOutput == null ? Collections.emptyNavigableSet() : compileOutput.getOutputPaths();
+			return outputPaths;
 		}
 
 		@Override
@@ -332,17 +331,17 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 		@Override
 		public void writeExternal(ObjectOutput out) throws IOException {
 			out.writeObject(aarFile);
-			out.writeObject(compileOutput);
 			out.writeObject(rTxtFile);
 			out.writeObject(androidManifestFile);
+			SerialUtils.writeExternalCollection(out, outputPaths);
 		}
 
 		@Override
 		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 			aarFile = SerialUtils.readExternalObject(in);
-			compileOutput = SerialUtils.readExternalObject(in);
 			rTxtFile = SerialUtils.readExternalObject(in);
 			androidManifestFile = SerialUtils.readExternalObject(in);
+			outputPaths = SerialUtils.readExternalSortedImmutableNavigableSet(in);
 		}
 	}
 }

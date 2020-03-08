@@ -165,8 +165,10 @@ public class SignApkWorkerTaskFactory
 	public SignApkTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
+			String fname = outputPath.getFileName();
+			BuildTrace.setDisplayInformation("apk.sign:" + fname, SignApkTaskFactory.TASK_NAME + ":" + fname);
 		}
-		taskcontext.setStandardOutDisplayIdentifier(SignApkTaskFactory.TASK_NAME + ":" + outputPath.getFileName());
+		taskcontext.setStandardOutDisplayIdentifier("apk.sign:" + outputPath.getFileName());
 
 		Path[] inputfilelocalpath = { null };
 		inputFile.accept(new FileLocationVisitor() {

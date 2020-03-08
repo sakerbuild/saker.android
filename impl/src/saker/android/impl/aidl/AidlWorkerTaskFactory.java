@@ -109,7 +109,10 @@ public class AidlWorkerTaskFactory implements TaskFactory<AidlTaskOutput>, Task<
 		AidlWorkerTaskIdentifier taskid = (AidlWorkerTaskIdentifier) taskcontext.getTaskId();
 
 		CompilationIdentifier compilationid = taskid.getCompilationIdentifier();
-		taskcontext.setStandardOutDisplayIdentifier(AidlTaskFactory.TASK_NAME + ":" + compilationid);
+		taskcontext.setStandardOutDisplayIdentifier("aidl:" + compilationid);
+		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
+			BuildTrace.setDisplayInformation("aidl:" + compilationid, AidlTaskFactory.TASK_NAME + ":" + compilationid);
+		}
 
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
 

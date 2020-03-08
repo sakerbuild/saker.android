@@ -308,7 +308,11 @@ public class AAPT2LinkWorkerTaskFactory
 		AAPT2LinkWorkerTaskIdentifier taskid = (AAPT2LinkWorkerTaskIdentifier) taskcontext.getTaskId();
 
 		CompilationIdentifier compilationid = taskid.getCompilationIdentifier();
-		taskcontext.setStandardOutDisplayIdentifier(AAPT2LinkTaskFactory.TASK_NAME + ":" + compilationid);
+		taskcontext.setStandardOutDisplayIdentifier("aapt2.link:" + compilationid);
+		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
+			BuildTrace.setDisplayInformation("aapt2.link:" + compilationid,
+					AAPT2LinkTaskFactory.TASK_NAME + ":" + compilationid);
+		}
 
 		SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
 		TaskExecutionUtilities taskutils = taskcontext.getTaskUtilities();

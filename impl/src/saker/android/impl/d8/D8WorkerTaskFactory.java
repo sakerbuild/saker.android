@@ -31,6 +31,7 @@ import saker.build.thirdparty.saker.util.io.IOUtils;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.trace.BuildTrace;
 import saker.build.util.cache.CacheKey;
+import saker.compiler.utils.api.CompilationIdentifier;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.SDKSupportUtils;
@@ -139,7 +140,11 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 
 		D8WorkerTaskIdentifier taskid = (D8WorkerTaskIdentifier) taskcontext.getTaskId();
 
-		taskcontext.setStandardOutDisplayIdentifier(D8TaskFactory.TASK_NAME + ":" + taskid.getCompilationIdentifier());
+		CompilationIdentifier compilationid = taskid.getCompilationIdentifier();
+		taskcontext.setStandardOutDisplayIdentifier("d8:" + compilationid);
+		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
+			BuildTrace.setDisplayInformation("d8:" + compilationid, D8TaskFactory.TASK_NAME + ":" + compilationid);
+		}
 
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
 		D8Executor executor = environment.getCachedData(new D8ExecutorCacheKey(environment,
