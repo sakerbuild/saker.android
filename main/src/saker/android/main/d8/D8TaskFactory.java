@@ -1,6 +1,7 @@
 package saker.android.main.d8;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -65,15 +66,36 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 				}
 
 				CompilationIdentifier compilationid = CompilationIdentifierTaskOption.getIdentifier(identifier);
+				Set<CompilationIdentifier> inferredidentifiers;
 				if (compilationid == null) {
-					compilationid = CompilationIdentifier.valueOf("default");
+					inferredidentifiers = new HashSet<>();
+				} else {
+					inferredidentifiers = null;
 				}
 				Set<D8InputOption> inputs = new LinkedHashSet<>();
 				for (D8InputTaskOption intaskoption : inputOption) {
 					if (intaskoption == null) {
 						continue;
 					}
-					inputs.addAll(intaskoption.toInputOption(taskcontext));
+					if (inferredidentifiers != null) {
+						CompilationIdentifier inferred = intaskoption.inferCompilationIdentifier();
+						if (inferred != null) {
+							inferredidentifiers.add(inferred);
+						} else {
+							//don't infer.
+							// only use inferred identifier if there's a single input
+							inferredidentifiers = null;
+						}
+					}
+					Set<D8InputOption> inoptions = intaskoption.toInputOption(taskcontext);
+					inputs.addAll(inoptions);
+				}
+				if (compilationid == null) {
+					if (inferredidentifiers != null && inferredidentifiers.size() == 1) {
+						compilationid = inferredidentifiers.iterator().next();
+					} else {
+						compilationid = CompilationIdentifier.valueOf("default");
+					}
 				}
 
 				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils

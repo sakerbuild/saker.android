@@ -152,6 +152,7 @@ public class D8ExecutorImpl implements D8Executor {
 		NavigableMap<SakerPath, InputSakerFileInfo> collectedinputfileinfos = inputvisitor.collectedInputFileInfos;
 
 		ConcurrentSkipListMap<SakerPath, ContentDescriptor> outputintermediatedependencies = new ConcurrentSkipListMap<>();
+		ConcurrentSkipListMap<SakerPath, ContentDescriptor> outputintermediatearchivedependencies = new ConcurrentSkipListMap<>();
 		NavigableMap<SakerPath, InputSakerFileInfo> inputfiles;
 		Set<D8InputArchiveInformation> inputarchives;
 		IncrementalD8State nstate;
@@ -166,6 +167,9 @@ public class D8ExecutorImpl implements D8Executor {
 					.collectFilesForTag(taskcontext.getFileDeltas(DeltaType.INPUT_FILE_CHANGE), D8TaskTags.INPUT_FILE);
 			NavigableMap<SakerPath, SakerFile> changedoutputfiles = TaskUtils.collectFilesForTag(
 					taskcontext.getFileDeltas(DeltaType.OUTPUT_FILE_CHANGE), D8TaskTags.OUTPUT_INTERMEDIATE_DEX_FILE);
+			NavigableMap<SakerPath, SakerFile> changedarchiveoutputfiles = TaskUtils.collectFilesForTag(
+					taskcontext.getFileDeltas(DeltaType.OUTPUT_FILE_CHANGE),
+					D8TaskTags.OUTPUT_INTERMEDIATE_ARCHIVE_DEX_FILE);
 
 			inputfiles = new TreeMap<>();
 			inputarchives = new HashSet<>();
@@ -223,7 +227,7 @@ public class D8ExecutorImpl implements D8Executor {
 				//    or
 				//any of the output dex files changed for the archive
 				if (!entry.getValue().getContents().equals(currentinputcd) || SakerPathFiles.hasPathOrSubPath(
-						changedoutputfiles.navigableKeySet(), entry.getValue().getOutputDirectoryPath())) {
+						changedarchiveoutputfiles.navigableKeySet(), entry.getValue().getOutputDirectoryPath())) {
 					//remove
 					D8InputArchiveInformation prevoutputarchiveinfo = nstate.archiveInformations.remove(archivefileloc);
 					if (prevoutputarchiveinfo != null) {
@@ -238,7 +242,7 @@ public class D8ExecutorImpl implements D8Executor {
 					//the archive is up to date. add the dependencies to be reported
 					SakerPath archiveoutdirpath = entry.getValue().getOutputDirectoryPath();
 					for (Entry<String, ContentDescriptor> dexentry : entry.getValue().getOutputDexFiles().entrySet()) {
-						outputintermediatedependencies.put(archiveoutdirpath.resolve(dexentry.getKey()),
+						outputintermediatearchivedependencies.put(archiveoutdirpath.resolve(dexentry.getKey()),
 								dexentry.getValue());
 					}
 				}
@@ -345,7 +349,7 @@ public class D8ExecutorImpl implements D8Executor {
 							archiveoutdir.add(nfile);
 							ContentDescriptor dexoutcd = nfile.getContentDescriptor();
 							outputfiles.put(idxfilename, dexoutcd);
-							outputintermediatedependencies.put(nfile.getSakerPath(), dexoutcd);
+							outputintermediatearchivedependencies.put(nfile.getSakerPath(), dexoutcd);
 						}
 					});
 
@@ -509,6 +513,8 @@ public class D8ExecutorImpl implements D8Executor {
 
 			taskcontext.getTaskUtilities().reportOutputFileDependency(D8TaskTags.OUTPUT_INTERMEDIATE_DEX_FILE,
 					outputintermediatedependencies);
+			taskcontext.getTaskUtilities().reportOutputFileDependency(D8TaskTags.OUTPUT_INTERMEDIATE_ARCHIVE_DEX_FILE,
+					outputintermediatearchivedependencies);
 			taskcontext.getTaskUtilities().reportOutputFileDependency(D8TaskTags.OUTPUT_CLASSES_DEX_FILE,
 					outputclassesfiledependencies);
 

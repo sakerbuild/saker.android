@@ -24,6 +24,7 @@ import saker.build.task.utils.StructuredListTaskResult;
 import saker.build.task.utils.dependencies.WildcardFileCollectionStrategy;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.compiler.utils.api.CompilationIdentifier;
 import saker.java.compiler.api.classpath.ClassPathReference;
 import saker.java.compiler.api.classpath.JavaClassPath;
 import saker.java.compiler.api.classpath.JavaClassPathBuilder;
@@ -47,6 +48,10 @@ import saker.std.api.file.location.LocalFileLocation;
 
 public abstract class D8InputTaskOption {
 	public abstract Set<D8InputOption> toInputOption(TaskContext taskcontext);
+
+	public CompilationIdentifier inferCompilationIdentifier() {
+		return null;
+	}
 
 	public static D8InputTaskOption valueOf(SakerPath path) {
 		return valueOf(WildcardPath.valueOf(path));
@@ -191,6 +196,17 @@ public abstract class D8InputTaskOption {
 
 				return ImmutableUtils.singletonSet(new JavaCompilationD8InputOption(compiletaskid));
 			}
+
+			@Override
+			public CompilationIdentifier inferCompilationIdentifier() {
+				try {
+					return CompilationIdentifier.valueOf(input.getTaskIdentifier().getPassIdentifier());
+				} catch (Exception e) {
+					// the identifier may have an illegal format.
+					// not under normal circumstances, but handle anyway
+					return null;
+				}
+			}
 		};
 	}
 
@@ -200,6 +216,17 @@ public abstract class D8InputTaskOption {
 			public Set<D8InputOption> toInputOption(TaskContext taskcontext) {
 				return ImmutableUtils
 						.singletonSet(new JavaCompilationD8InputOption(input.getCompilationTaskIdentifier()));
+			}
+
+			@Override
+			public CompilationIdentifier inferCompilationIdentifier() {
+				try {
+					return CompilationIdentifier.valueOf(input.getCompilationTaskIdentifier().getPassIdentifier());
+				} catch (Exception e) {
+					// the identifier may have an illegal format.
+					// not under normal circumstances, but handle anyway
+					return null;
+				}
 			}
 		};
 	}

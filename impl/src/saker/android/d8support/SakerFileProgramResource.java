@@ -2,6 +2,7 @@ package saker.android.d8support;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Objects;
 import java.util.Set;
 
 import com.android.tools.r8.ProgramResource;
@@ -17,6 +18,10 @@ public abstract class SakerFileProgramResource implements ProgramResource {
 	protected final Set<String> classDescriptors;
 
 	public SakerFileProgramResource(SakerPath filePath, SakerFile file, Set<String> classDescriptors) {
+		Objects.requireNonNull(filePath, "file path");
+		if (file == null) {
+			throw new NullPointerException("null file for path: " + filePath);
+		}
 		this.filePath = filePath;
 		this.file = file;
 		this.classDescriptors = classDescriptors;
