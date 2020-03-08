@@ -44,6 +44,7 @@ import saker.zip.api.create.ZipCreationTaskBuilder;
 public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 	private static final IncludeResourceMapping INCLUDE_RESOURCE_MAPPING_ASSETS = IncludeResourceMapping
 			.wildcardIncludeFilter(WildcardPath.valueOf("assets/**"));
+	private static final IncludeResourceMapping INCLUDE_RESOURCE_MAPPING_JNI_TO_LIB = new JniToLibIncludeResourceMapping();
 	private static final SakerPath PATH_JNI = SakerPath.valueOf("jni");
 	private static final SakerPath PATH_LIB = SakerPath.valueOf("lib");
 
@@ -122,17 +123,7 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 									//include all assets
 									taskbuilder.addIncludeArchive(aar, INCLUDE_RESOURCE_MAPPING_ASSETS);
 									//include all libs
-									taskbuilder.addIncludeArchive(aar, new IncludeResourceMapping() {
-										@Override
-										public Set<SakerPath> mapResourcePath(SakerPath archivepath,
-												boolean directory) {
-											if (archivepath.getNameCount() < 2 || !archivepath.startsWith(PATH_JNI)) {
-												return null;
-											}
-											return ImmutableUtils
-													.singletonNavigableSet(PATH_LIB.append(archivepath.subPath(1)));
-										}
-									});
+									taskbuilder.addIncludeArchive(aar, INCLUDE_RESOURCE_MAPPING_JNI_TO_LIB);
 								}
 							}
 						}
@@ -157,6 +148,42 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 				return result;
 			}
 		};
+	}
+
+	private static final class JniToLibIncludeResourceMapping implements IncludeResourceMapping, Externalizable {
+		private static final long serialVersionUID = 1L;
+
+		/**
+		 * For {@link Externalizable}.
+		 */
+		public JniToLibIncludeResourceMapping() {
+		}
+
+		@Override
+		public Set<SakerPath> mapResourcePath(SakerPath archivepath, boolean directory) {
+			if (archivepath.getNameCount() < 2 || !archivepath.startsWith(PATH_JNI)) {
+				return null;
+			}
+			return ImmutableUtils.singletonNavigableSet(PATH_LIB.append(archivepath.subPath(1)));
+		}
+
+		@Override
+		public void writeExternal(ObjectOutput out) throws IOException {
+		}
+
+		@Override
+		public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
+		}
+
+		@Override
+		public int hashCode() {
+			return getClass().getName().hashCode();
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			return ObjectUtils.isSameClass(this, obj);
+		}
 	}
 
 	public static class AssetFilesFileCollectionStrategy implements FileCollectionStrategy, Externalizable {
