@@ -57,7 +57,7 @@ compile(
 			lib/d8_api_29.jar,
 			lib/apksigner_api_29.jar,
 		],
-		Identifier: "saker.android",
+		Identifier: "saker.android{ $testapicompile[enabled] ? "-testing" : "" }",
 		CompilerOptions: global(saker.android.COMPILER_OPTIONS),
 	)
 	
@@ -76,18 +76,18 @@ compile(
 	)
 	foreach $ver in [24, 25, 26, 27, 28] {
 		saker.java.compile(
-		SourceDirectories: [
-			main/src/,
-			api/src/,
-			impl/src/,
-		],
-		ClassPath: $basecp + [
-			lib/d8_api_29.jar,
-			"lib/apksigner_api_{ $ver }.jar",
-		],
-		Identifier: "saker.android-apksigner_{ $ver }_compat",
-		CompilerOptions: global(saker.android.COMPILER_OPTIONS),
-	)
+			SourceDirectories: [
+				main/src/,
+				api/src/,
+				impl/src/,
+			],
+			ClassPath: $basecp + [
+				lib/d8_api_29.jar,
+				"lib/apksigner_api_{ $ver }.jar",
+			],
+			Identifier: "saker.android-apksigner_{ $ver }_compat",
+			CompilerOptions: global(saker.android.COMPILER_OPTIONS),
+		)
 	}
 }
 export(
@@ -202,6 +202,74 @@ export(
 install() {
 	$export = include(export)
 	nest.local.install($export[bundlepaths])
+}
+
+test() {
+	$testapi = include(_testapicompile, enabled: true)
+	$export = include(export, compile: include(compile, testapicompile: $testapi))
+	
+	$testcompile = saker.java.compile(
+		SourceDirectories: [
+			test/src/,
+		],
+		ClassPath: [
+			$testapi[javac],
+			saker.java.classpath.bundle([
+				"saker.build-test-runner-v{ static(VERSION_saker.build) }",
+				"saker.build-test-utils-v{ static(VERSION_saker.build) }",
+				"saker.nest-test-utils-v{ static(VERSION_saker.nest )}"
+			]),
+		],
+		Identifier: saker.android-tests,
+	)
+	
+	$test = saker.java.test(
+		TestRunnerClassPath: [
+			saker.java.classpath.bundle("saker.build-test-runner-v{ static(VERSION_saker.build) }"),
+		],
+		ClassPath: [
+			$testapi[javac], 
+		],
+		DependencyClassPath: [
+			$export[compile][javac],
+		],
+		TestInvokerClass: testing.saker.SakerJavaTestingInvoker,
+		TestClassPath:	[
+			$testcompile[ClassDirectory],
+			saker.java.classpath.bundle([
+				"saker.build-test-utils-v{ static(VERSION_saker.build) }",
+				"saker.nest-test-utils-v{ static(VERSION_saker.nest )}",
+			]),
+		],
+		TestClasses: [
+			**.*Test
+		],
+		NonDeterministicTests: [
+			**,
+		],
+		TestClassParameters: {
+			**: {
+				RepositoryJarPath: nest.bundle.localize("saker.nest-test-v{ static(VERSION_saker.nest) }")[BundleLocalPaths][0],
+				RepositoryParameterBundles: "{ 
+						foreach $path in $export[bundlepaths]: "{ std.file.mirror($path) };" 
+					}",
+				AndroidSDKLocationEnvironmentUserParameter: std.param.env(saker.android.sdk.install.location),
+			}
+		},
+		TestInvokerParameters: {
+			SakerJarPath: std.file.mirror($testapi[instrumentedjar]),
+			TimeoutMillis: 120000,
+			TestsBaseBuildDirectory: std.file.mirror.path(std.file.place(test/build)),
+		},
+		IgnoreFileChanges: [
+			std.file.place(test/build),
+		],
+		#ProcessJVMParameters: [ "-agentlib:jdwp=transport=dt_socket,address=localhost:5432,server=y,suspend=y,quiet=y" ],
+		MaxJVMCount: 1,
+		FailFast: true,
+		AbortOnFail: true,
+		Verbose: true,
+	)
 }
 
 _testapicompile(

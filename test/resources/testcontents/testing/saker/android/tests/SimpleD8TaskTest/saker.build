@@ -1,0 +1,2 @@
+$javac = saker.java.compile(src)
+$d8 = saker.android.d8($javac)
