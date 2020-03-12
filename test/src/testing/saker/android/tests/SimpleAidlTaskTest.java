@@ -10,8 +10,6 @@ public class SimpleAidlTaskTest extends BaseAndroidTestCase {
 
 	@Override
 	protected void runNestTaskTestImpl() throws Throwable {
-		touchLocalFileForIncrementalTesting(getMirrorDirectory()
-				.resolve("bd_/saker.android.aidl/aidl/java/com/example/android/IRemoteService.java"));
 		SakerPath javaoutpath = PATH_BUILD_DIRECTORY
 				.resolve("saker.android.aidl/aidl/java/com/example/android/IRemoteService.java");
 
