@@ -1,0 +1,5 @@
+$compile = saker.android.aapt2.compile(res)
+saker.android.aapt2.link(
+	$compile,
+	Manifest: AndroidManifest.xml,
+)
