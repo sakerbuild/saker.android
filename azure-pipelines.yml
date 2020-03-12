@@ -27,7 +27,7 @@ steps:
   displayName: 'Publish build trace'
   inputs:
     pathtoPublish: build/build_test.trace
-    artifactName: trace
+    artifactName: 'trace_$(imageName)'
 - script: java -jar saker.build.jar -bd build -trace pwd://build/build_export.trace -trace-artifacts-embed export
   displayName: 'Export library JAR'
 - task: PublishBuildArtifacts@1
@@ -35,4 +35,4 @@ steps:
   displayName: 'Publish build trace'
   inputs:
     pathtoPublish: build/build_export.trace
-    artifactName: trace
+    artifactName: 'trace_$(imageName)'

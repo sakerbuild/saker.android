@@ -23,12 +23,14 @@ public class SimpleAAPT2LinkTaskTest extends BaseAndroidTestCase {
 
 		files.putFile(strxmlpath, files.getAllBytes(strxmlpath).toString().replace("Example", "Modified"));
 		runScriptTask("build");
+		assertNotEmpty(getMetric().getRunTaskIdResults());
 		ByteArrayRegion bytes2 = files.getAllBytes(apkoutpath);
 		//assert that the output file changed
 		assertFalse(bytes1.regionEquals(bytes2));
 
 		files.putFile(manifestpath, files.getAllBytes(manifestpath).toString().replace("21", "23"));
 		runScriptTask("build");
+		assertNotEmpty(getMetric().getRunTaskIdResults());
 		ByteArrayRegion bytes3 = files.getAllBytes(apkoutpath);
 		assertFalse(bytes2.regionEquals(bytes3));
 	}

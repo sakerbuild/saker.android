@@ -21,6 +21,7 @@ public class SimpleAAPT2CompileTaskTest extends BaseAndroidTestCase {
 
 		files.putFile(xmlpath, files.getAllBytes(xmlpath).toString().replace("Example", "Modified"));
 		runScriptTask("build");
+		assertNotEmpty(getMetric().getRunTaskIdResults());
 		ByteArrayRegion bytes2 = files.getAllBytes(resoutpath);
 		//assert that the output file changed
 		assertFalse(bytes1.regionEquals(bytes2));
