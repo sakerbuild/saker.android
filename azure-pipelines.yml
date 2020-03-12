@@ -13,29 +13,26 @@ strategy:
 pool:
   vmImage: $(imageName)
 
-jobs:
-- job: Build_$(imageName)
-  steps:
-  - script: curl https://api.nest.saker.build/bundle/download/saker.build-v$(curl -s https://mirror.nest.saker.build/badges/saker.build/latest.txt) -o saker.build.jar
-    displayName: 'Download saker.build'
-    condition: or( eq( variables['Agent.OS'], 'Linux' ), eq( variables['Agent.OS'], 'Darwin' ) )
-  - script: powershell $ProgressPreference='silentlyContinue';Invoke-WebRequest "https://api.nest.saker.build/bundle/download/saker.build-v$((Invoke-WebRequest "https://mirror.nest.saker.build/badges/saker.build/latest.txt" -UseBasicParsing).Content)" -OutFile saker.build.jar
-    displayName: 'Download saker.build'
-    condition: eq( variables['Agent.OS'], 'Windows_NT' )
-  - script: java -jar saker.build.jar -bd build -trace pwd://build/build_test.trace -trace-artifacts-embed test
-    displayName: 'Test'
-  - task: PublishBuildArtifacts@1
-    condition: always()
-    displayName: 'Publish build trace'
-    inputs:
-      pathtoPublish: build/build_test.trace
-      artifactName: trace
-  - script: java -jar saker.build.jar -bd build -trace pwd://build/build_export.trace -trace-artifacts-embed export
-    displayName: 'Export library JAR'
-  - task: PublishBuildArtifacts@1
-    condition: always()
-    displayName: 'Publish build trace'
-    inputs:
-      pathtoPublish: build/build_export.trace
-      artifactName: trace
-      
+steps:
+- script: curl https://api.nest.saker.build/bundle/download/saker.build-v$(curl -s https://mirror.nest.saker.build/badges/saker.build/latest.txt) -o saker.build.jar
+  displayName: 'Download saker.build'
+  condition: or( eq( variables['Agent.OS'], 'Linux' ), eq( variables['Agent.OS'], 'Darwin' ) )
+- script: powershell $ProgressPreference='silentlyContinue';Invoke-WebRequest "https://api.nest.saker.build/bundle/download/saker.build-v$((Invoke-WebRequest "https://mirror.nest.saker.build/badges/saker.build/latest.txt" -UseBasicParsing).Content)" -OutFile saker.build.jar
+  displayName: 'Download saker.build'
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+- script: java -jar saker.build.jar -bd build -trace pwd://build/build_test.trace -trace-artifacts-embed test
+  displayName: 'Test'
+- task: PublishBuildArtifacts@1
+  condition: always()
+  displayName: 'Publish build trace'
+  inputs:
+    pathtoPublish: build/build_test.trace
+    artifactName: trace
+- script: java -jar saker.build.jar -bd build -trace pwd://build/build_export.trace -trace-artifacts-embed export
+  displayName: 'Export library JAR'
+- task: PublishBuildArtifacts@1
+  condition: always()
+  displayName: 'Publish build trace'
+  inputs:
+    pathtoPublish: build/build_export.trace
+    artifactName: trace
