@@ -1,14 +1,27 @@
 trigger:
 - master
 
+strategy:
+  matrix:
+    linux:
+      imageName: 'ubuntu-latest'
+    mac:
+      imageName: 'macos-latest'
+    windows:
+      imageName: 'windows-latest'
+
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: $(imageName)
 
 jobs:
-- job: Export_library
+- job: Build_$(imageName)
   steps:
   - script: curl https://api.nest.saker.build/bundle/download/saker.build-v$(curl -s https://mirror.nest.saker.build/badges/saker.build/latest.txt) -o saker.build.jar
     displayName: 'Download saker.build'
+    condition: or( eq( variables['Agent.OS'], 'Linux' ), eq( variables['Agent.OS'], 'Darwin' ) )
+  - script: powershell $ProgressPreference='silentlyContinue';Invoke-WebRequest "https://api.nest.saker.build/bundle/download/saker.build-v$((Invoke-WebRequest "https://mirror.nest.saker.build/badges/saker.build/latest.txt" -UseBasicParsing).Content)" -OutFile saker.build.jar
+    displayName: 'Download saker.build'
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )
   - script: java -jar saker.build.jar -bd build -trace pwd://build/build_test.trace -trace-artifacts-embed test
     displayName: 'Test'
   - task: PublishBuildArtifacts@1
