@@ -1,0 +1,13 @@
+build(
+	out cdir,
+){
+	$javac = saker.java.compile(
+		SourceDirectories: src,
+		BootClassPath: saker.android.classpath.platform(),
+		SDKs: {
+			AndroidPlatform: saker.android.sdk.platform(),
+			AndroidBuildTools: saker.android.sdk.buildtools(),
+		}
+	)
+	$cdir = $javac[ClassDirectory]
+}
