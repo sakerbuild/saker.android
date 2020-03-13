@@ -1,0 +1,29 @@
+build(
+	out apkpath,
+){
+	$compile = saker.android.aapt2.compile(res)
+	$aaptlink = saker.android.aapt2.link(
+		$compile,
+		Manifest: AndroidManifest.xml,
+	)
+	
+	$javac = saker.java.compile(
+		SourceDirectories: [
+			src
+		] + $aaptlink[JavaSourceDirectories],,
+		BootClassPath: saker.android.classpath.platform(),
+		SDKs: {
+			AndroidPlatform: saker.android.sdk.platform(),
+			AndroidBuildTools: saker.android.sdk.buildtools(),
+		}
+	)
+	
+	$d8 = saker.android.d8($javac)
+	
+	$apk = saker.apk.create(
+		Resources: $aaptlink,
+		Classes: $d8,
+	)
+	$aligned = saker.android.zipalign($apk)
+	$apkpath = $aligned[Path]
+}
