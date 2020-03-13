@@ -1,0 +1,15 @@
+build(
+	out cdir,
+){
+	$compile = saker.android.aapt2.compile(res)
+	$aaptlink = saker.android.aapt2.link(
+		$compile,
+		Manifest: AndroidManifest.xml,
+	)
+	$javac = saker.java.compile(
+		[
+			src
+		] + $aaptlink[JavaSourceDirectories],
+	)
+	$cdir = $javac[ClassDirectory]
+}
