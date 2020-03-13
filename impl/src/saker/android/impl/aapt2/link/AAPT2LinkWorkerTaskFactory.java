@@ -43,6 +43,7 @@ import saker.build.file.content.HashContentDescriptor;
 import saker.build.file.path.ProviderHolderPathKey;
 import saker.build.file.path.SakerPath;
 import saker.build.file.provider.FileEntry;
+import saker.build.file.provider.FileHashResult;
 import saker.build.file.provider.LocalFileProvider;
 import saker.build.file.provider.SakerPathFiles;
 import saker.build.runtime.environment.SakerEnvironment;
@@ -877,19 +878,23 @@ public class AAPT2LinkWorkerTaskFactory
 	}
 
 	private static SakerPath discoverOutputFile(TaskContext taskcontext, SakerDirectory outputdir, Path outputfilepath,
-			Map<SakerPath, ContentDescriptor> outputfilecontents, LocalFileProvider fp) throws IOException {
+			Map<SakerPath, ContentDescriptor> outputfilecontents, LocalFileProvider fp) throws Exception {
 		if (outputfilepath == null) {
 			return null;
 		}
 		ProviderHolderPathKey outpathkey = fp.getPathKey(outputfilepath);
 		taskcontext.invalidate(outpathkey);
+		
+		FileHashResult hash = fp.hash(outputfilepath, FileUtils.DEFAULT_FILE_HASH_ALGORITHM);
 
+		//Use a hash content descriptor to avoid accidental unnoticed file changes with large granularity file systems
+		ContentDescriptor outputfilecd = HashContentDescriptor.createWithHash(hash);
 		SakerFile outfile = taskcontext.getTaskUtilities().createProviderPathFile(outpathkey.getPath().getFileName(),
-				outpathkey);
+				outpathkey, outputfilecd);
 		outputdir.add(outfile);
 
 		SakerPath outputpath = outfile.getSakerPath();
-		outputfilecontents.put(outputpath, outfile.getContentDescriptor());
+		outputfilecontents.put(outputpath, outputfilecd);
 		return outputpath;
 	}
 

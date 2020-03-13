@@ -97,7 +97,8 @@ public class CompiledAAPT2FileContentDescriptor implements ContentDescriptor, Ex
 
 	@Override
 	public String toString() {
-		return getClass().getSimpleName() + "[" + outputDirectoryRelativePath + "/" + outputFileName + "]";
+		return getClass().getSimpleName() + "[" + inputContents + " --- " + outputDirectoryRelativePath + "/"
+				+ outputFileName + "]";
 	}
 
 }
