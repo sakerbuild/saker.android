@@ -8,43 +8,192 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.ref.WeakReference;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NavigableMap;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
+import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.build.file.path.SakerPath;
+import saker.build.file.provider.FileHashResult;
+import saker.build.file.provider.LocalFileProvider;
 import saker.build.runtime.environment.SakerEnvironment;
 import saker.build.thirdparty.saker.util.DateUtils;
-import saker.build.thirdparty.saker.util.ImmutableUtils;
+import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.thirdparty.saker.util.StringUtils;
+import saker.build.thirdparty.saker.util.classloader.MultiDataClassLoader;
+import saker.build.thirdparty.saker.util.classloader.SubDirectoryClassLoaderDataFinder;
+import saker.build.thirdparty.saker.util.io.FileUtils;
 import saker.build.thirdparty.saker.util.io.IOUtils;
 import saker.build.thirdparty.saker.util.io.StreamUtils;
 import saker.build.util.cache.CacheKey;
+import saker.nest.bundle.NestBundleClassLoader;
+import saker.sdk.support.api.SDKReference;
+import saker.sdk.support.api.exc.SDKNotFoundException;
+import saker.sdk.support.api.exc.SDKPathNotFoundException;
 
 public class AAPT2Utils {
 	private AAPT2Utils() {
 		throw new UnsupportedOperationException();
 	}
 
-	public static int invokeAAPT2WithArguments(SakerEnvironment environment, SakerPath exepath, List<String> args,
-			OutputStream output) throws Exception {
+	/**
+	 * Tells whether or not the aapt2_jni library from the android build-tools SDK
+	 * can be used.
+	 * <p>
+	 * Currently we set this to <code>false</code>, as loading the library somewhy
+	 * crashes on macOS. (May crash on other operating systems as well, but we
+	 * haven't tested that.)
+	 * <p>
+	 * If this issue gets fixed then we can set this to <code>true</code> and
+	 * implement the rest of the functionality.
+	 */
+	// !!!!! this feature should be toggleable if implemented !!!!!
+	private static final boolean AAPT2_JNI_LIB_USAGE_ENABLED = false;
+
+	//maps dll local paths to executors
+	private static final ConcurrentSkipListMap<SakerPath, Optional<AAPT2Executor>> jniAAPT2Executors = new ConcurrentSkipListMap<>();
+	private static final ConcurrentSkipListMap<Path, Optional<AAPT2Executor>> cachedDllAAPT2Executors = new ConcurrentSkipListMap<>();
+
+	public static AAPT2Executor getAAPT2Executor(SakerEnvironment environment,
+			NavigableMap<String, SDKReference> sdkrefs) throws Exception {
+		SDKReference buildtoolssdk = sdkrefs.get(AndroidBuildToolsSDKReference.SDK_NAME);
+		if (buildtoolssdk == null) {
+			throw new SDKNotFoundException("Android build tools SDK not found for aapt2 invocation.");
+		}
+		if (AAPT2_JNI_LIB_USAGE_ENABLED) {
+			SakerPath dllpath;
+			if ("x86".equalsIgnoreCase(System.getProperty("os.arch"))) {
+				dllpath = buildtoolssdk.getPath(AndroidBuildToolsSDKReference.PATH_LIB_JNI_AAPT2);
+			} else {
+				dllpath = buildtoolssdk.getPath(AndroidBuildToolsSDKReference.PATH_LIB64_JNI_AAPT2);
+			}
+			if (dllpath != null) {
+				AAPT2Executor dllexecutor = ObjectUtils.getOptional(getDllAAPT2Executor(dllpath));
+				if (dllexecutor != null) {
+					return dllexecutor;
+				}
+				// fallback to executable based execution
+			}
+		}
+		SakerPath exepath = buildtoolssdk.getPath(AndroidBuildToolsSDKReference.PATH_AAPT2_EXECUTABLE);
+		if (exepath == null) {
+			throw new SDKPathNotFoundException("aapt2 executable not found in " + buildtoolssdk);
+		}
 		Boolean supportsdaemon = environment
 				.getEnvironmentPropertyCurrentValue(new AAPT2DaemonSupportedEnvironmentProperty(exepath));
 		if (Boolean.TRUE.equals(supportsdaemon)) {
-			try {
-				return invokeAAPT2WithArgumentsWithDaemon(environment, exepath, args, output);
-			} catch (AAPT2DaemonStartException e) {
-				//continue, try without daemon
-			}
+			return new AAPT2Executor() {
+				@Override
+				public int invokeAAPT2WithArguments(List<String> args, OutputStream output) throws Exception {
+					return invokeAAPT2WithDaemonOrExecutable(environment, exepath, args, output);
+				}
+			};	
 		}
-		
-		//TODO we could use the libaapt2_jni libraries in the build tools if present. However, it's only 32bit for windows
-		//     we also need sure to not load it multiple times in a single JVM, so may need to extract it to the bundle storage location
+		return new AAPT2Executor() {
+			@Override
+			public int invokeAAPT2WithArguments(List<String> args, OutputStream output) throws Exception {
+				return invokeAAPT2WithExecutable(exepath, args, output);
+			}
+		};
+	}
 
+	private static Optional<AAPT2Executor> getDllAAPT2Executor(SakerPath dllpath) {
+		Optional<AAPT2Executor> execcutor = jniAAPT2Executors.get(dllpath);
+		if (execcutor != null) {
+			return execcutor;
+		}
+		FileHashResult hash;
+		try {
+			hash = LocalFileProvider.getInstance().hash(dllpath, FileUtils.DEFAULT_FILE_HASH_ALGORITHM);
+			ClassLoader thiscl = AAPT2Utils.class.getClassLoader();
+			NestBundleClassLoader cl = (NestBundleClassLoader) thiscl;
+			Path bundlestoragepath = cl.getBundle().getBundleStoragePath().resolve("sdk_aapt2_jni")
+					.resolve(StringUtils.toHexString(hash.getHash()));
+			Path cacheddllpath = bundlestoragepath.resolve(System.mapLibraryName("aapt2_jni"));
+			execcutor = cachedDllAAPT2Executors.get(cacheddllpath);
+			if (execcutor != null) {
+				return execcutor;
+			}
+			Files.createDirectories(bundlestoragepath);
+			synchronized (("load_aapt2_jni" + cacheddllpath).intern()) {
+				execcutor = cachedDllAAPT2Executors.get(cacheddllpath);
+				if (execcutor != null) {
+					return execcutor;
+				}
+				AAPT2Executor result = null;
+				try {
+					if (!Files.isRegularFile(cacheddllpath)) {
+						Path tempdllpath = cacheddllpath
+								.resolveSibling(cacheddllpath.getFileName() + "_" + UUID.randomUUID());
+						try {
+							try {
+								Files.copy(LocalFileProvider.toRealPath(dllpath), tempdllpath);
+							} catch (Exception e) {
+								e.printStackTrace();
+								// failed to copy the dll
+								return null;
+							}
+							Files.move(tempdllpath, cacheddllpath);
+						} catch (Exception e) {
+							e.printStackTrace();
+							// failed to move the dll to its final path
+							if (!Files.isRegularFile(cacheddllpath)) {
+								// failed to load the dll to the bundle storage
+								return null;
+							}
+							// else the file already exists at path, we can continue
+						} finally {
+							try {
+								Files.deleteIfExists(tempdllpath);
+							} catch (Exception e) {
+								// ignore
+							}
+						}
+					}
+
+					MultiDataClassLoader jnisupportcl = new MultiDataClassLoader(thiscl,
+							SubDirectoryClassLoaderDataFinder.create("aapt2jnisupport", thiscl));
+					try {
+						Class<?> aapt2jniclass = Class.forName("com.android.tools.aapt2.Aapt2Jni", false, jnisupportcl);
+						result = (AAPT2Executor) aapt2jniclass.getMethod("init", Path.class).invoke(null, cacheddllpath);
+					} catch (LinkageError | Exception e) {
+						e.printStackTrace();
+						return null;
+					}
+					return Optional.of(result);
+				} finally {
+					cachedDllAAPT2Executors.put(cacheddllpath, Optional.ofNullable(result));
+				}
+			}
+		} catch (Exception e) {
+			return null;
+		}
+	}
+	
+	private static int invokeAAPT2WithDaemonOrExecutable(SakerEnvironment environment, SakerPath exepath,
+			List<String> args, OutputStream output) throws Exception, IOException, InterruptedException {
+		try {
+			return invokeAAPT2WithArgumentsWithDaemon(environment, exepath, args, output);
+		} catch (AAPT2DaemonStartException e) {
+			// continue, try without daemon
+		}
+
+		return invokeAAPT2WithExecutable(exepath, args, output);
+	}
+
+	private static int invokeAAPT2WithExecutable(SakerPath exepath, List<String> args, OutputStream output)
+			throws IOException, InterruptedException {
 		//TODO use @argument-file when input files are too many to fit on the command line
 		//     (not necessary with daemon)
-
+		
 		ArrayList<String> fullcmd = new ArrayList<>(1 + args.size());
 		fullcmd.add(exepath.toString());
 		fullcmd.addAll(args);
@@ -54,11 +203,6 @@ public class AAPT2Utils {
 		IOUtils.close(proc.getOutputStream());
 		StreamUtils.copyStream(proc.getInputStream(), output);
 		return proc.waitFor();
-	}
-
-	public static int invokeAAPT2WithArguments(SakerEnvironment environment, SakerPath exepath, String[] args,
-			OutputStream output) throws Exception {
-		return invokeAAPT2WithArguments(environment, exepath, ImmutableUtils.asUnmodifiableArrayList(args), output);
 	}
 
 	private static int invokeAAPT2WithArgumentsWithDaemon(SakerEnvironment environment, SakerPath exepath,

@@ -20,6 +20,9 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 	public static final String PATH_AAPT2_EXECUTABLE = "exe.aapt2";
 	public static final String PATH_ZIPALIGN_EXECUTABLE = "exe.zipalign";
 	public static final String PATH_AIDL_EXECUTABLE = "exe.aidl";
+	
+	public static final String PATH_LIB_JNI_AAPT2 = "lib.jni.aapt2";
+	public static final String PATH_LIB64_JNI_AAPT2 = "lib.jni64.aapt2";
 
 	public static final String PROPERTY_VERSION = "version";
 
@@ -132,11 +135,42 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 			case PATH_CORE_LAMBDA_STUBS_JAR: {
 				return basePath.resolve(CORE_LAMBDA_STUBS_PATH);
 			}
+			case PATH_LIB_JNI_AAPT2: {
+				String libfn = getAAPT2LibraryFileName();
+				if (libfn != null) {
+					return basePath.resolve(libfn);
+				}
+				break;
+			}
+			case PATH_LIB64_JNI_AAPT2: {
+				String libfn = getAAPT2LibraryFileName();
+				if (libfn != null) {
+					return basePath.resolve("lib64").resolve(libfn);
+				}
+				break;
+			}
 			default: {
 				break;
 			}
 		}
 		return null;
+	}
+
+	private String getAAPT2LibraryFileName() {
+		switch (osType) {
+			case AndroidUtils.SDK_OS_TYPE_WINDOWS: {
+				return "libaapt2_jni.dll";
+			}
+			case AndroidUtils.SDK_OS_TYPE_LINUX: {
+				return "libaapt2_jni.so";
+			}
+			case AndroidUtils.SDK_OS_TYPE_MACOS: {
+				return "libaapt2_jni.dylib";
+			}
+			default: {
+				return null;
+			}
+		}
 	}
 
 	@Override
@@ -199,4 +233,5 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 		return getClass().getSimpleName() + "[" + basePath + "]";
 	}
 
+	
 }

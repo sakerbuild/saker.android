@@ -29,6 +29,7 @@ import saker.android.api.aapt2.aar.AAPT2AarCompileTaskOutput;
 import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
 import saker.android.api.aapt2.link.AAPT2LinkInputLibrary;
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
+import saker.android.impl.aapt2.AAPT2Executor;
 import saker.android.impl.aapt2.AAPT2Utils;
 import saker.android.impl.aapt2.aar.AAPT2AarCompileWorkerTaskFactory;
 import saker.android.impl.aapt2.link.option.AAPT2LinkerInput;
@@ -502,7 +503,8 @@ public class AAPT2LinkWorkerTaskFactory
 		UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
 
 		try {
-			int res = AAPT2Utils.invokeAAPT2WithArguments(environment, exepath, cmd, procout);
+			AAPT2Executor executor = AAPT2Utils.getAAPT2Executor(environment, sdkrefs);
+			int res = executor.invokeAAPT2WithArguments(cmd, procout);
 			if (res != 0) {
 				throw new IOException("aapt2 linking failed.");
 			}

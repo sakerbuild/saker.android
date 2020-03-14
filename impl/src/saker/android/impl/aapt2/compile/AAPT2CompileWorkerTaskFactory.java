@@ -18,6 +18,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 
 import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
+import saker.android.impl.aapt2.AAPT2Executor;
 import saker.android.impl.aapt2.AAPT2Utils;
 import saker.android.impl.aapt2.compile.option.AAPT2CompilerInputOption;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
@@ -424,7 +425,8 @@ public class AAPT2CompileWorkerTaskFactory
 
 				UnsyncByteArrayOutputStream procout = new UnsyncByteArrayOutputStream();
 				try {
-					int res = AAPT2Utils.invokeAAPT2WithArguments(environment, exepath, cmd, procout);
+					AAPT2Executor executor = AAPT2Utils.getAAPT2Executor(environment, sdkrefs);
+					int res = executor.invokeAAPT2WithArguments(cmd, procout);
 					if (res != 0) {
 						throw new IOException("aapt2 compilation failed.");
 					}

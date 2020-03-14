@@ -157,6 +157,13 @@ export(
 				Resources: saker/android/d8support/**,
 				TargetDirectory: d8support,
 			},
+			### Disabled, as jni based aapt2 invocation is not used
+			{
+				Directory: $compile[javac][ClassDirectory],
+				Resources: com/android/**,
+				TargetDirectory: aapt2jnisupport,
+			},
+			###
 			{
 				Directory: $compile[javac][ClassDirectory],
 				Resources: saker/android/apksignersupport/**,
