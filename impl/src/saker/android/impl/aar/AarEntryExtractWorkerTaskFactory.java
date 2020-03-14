@@ -87,12 +87,12 @@ public class AarEntryExtractWorkerTaskFactory
 	}
 
 	public AarEntryExtractWorkerTaskFactory(FileLocation inputFile, String entry) {
-		this(new LiteralStructuredTaskResult(inputFile), createGeneralAarExtractOutputRelativePath(inputFile), entry,
+		this(LiteralStructuredTaskResult.create(inputFile), createGeneralAarExtractOutputRelativePath(inputFile), entry,
 				inferOutPathKind(inputFile));
 	}
 
 	public AarEntryExtractWorkerTaskFactory(FileLocation inputFile, SakerPath outputRelativePath, String entry) {
-		this(new LiteralStructuredTaskResult(inputFile), outputRelativePath, entry, inferOutPathKind(inputFile));
+		this(LiteralStructuredTaskResult.create(inputFile), outputRelativePath, entry, inferOutPathKind(inputFile));
 	}
 
 	public AarEntryExtractWorkerTaskFactory(StructuredTaskResult inputFile, SakerPath outputRelativePath, String entry,

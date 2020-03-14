@@ -23,6 +23,7 @@ import saker.build.trace.BuildTrace;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
+import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileLocation;
 import saker.std.api.util.SakerStandardUtils;
 import saker.std.main.file.option.FileLocationTaskOption;
@@ -60,7 +61,19 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 				if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 					BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 				}
-				FileLocation apkfilelocation = apkOption.getInputFileLocation();
+				FileLocation[] apkfilelocation = { null };
+				apkOption.accept(new SignApkInputTaskOption.Visitor() {
+
+					@Override
+					public void visit(SakerPath path) {
+						visit(ExecutionFileLocation.create(taskcontext.getTaskWorkingDirectoryPath().tryResolve(path)));
+					}
+
+					@Override
+					public void visit(FileLocation file) {
+						apkfilelocation[0] = file;
+					}
+				});
 				SakerPath outputpath = outputOption;
 				if (outputpath != null) {
 					if (!outputpath.isForwardRelative()) {
@@ -69,7 +82,7 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 						return null;
 					}
 				} else {
-					String apkfname = SakerStandardUtils.getFileLocationFileName(apkfilelocation);
+					String apkfname = SakerStandardUtils.getFileLocationFileName(apkfilelocation[0]);
 					outputpath = SakerPath.valueOf(toSignedOutputApkFileName(apkfname));
 				}
 				FileLocation keystorefilelocation = TaskOptionUtils.toFileLocation(keyStoreOption, taskcontext);
@@ -82,7 +95,7 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 
 				SignApkWorkerTaskIdentifier workertaskid = new SignApkWorkerTaskIdentifier(outputpath);
 				SignApkWorkerTaskFactory workertask = new SignApkWorkerTaskFactory();
-				workertask.setInputFile(apkfilelocation);
+				workertask.setInputFile(apkfilelocation[0]);
 				workertask.setOutputPath(SakerPath.valueOf(TASK_NAME).resolve(outputpath));
 				workertask.setSDKDescriptions(sdkdescriptions);
 				if (keystorefilelocation != null) {

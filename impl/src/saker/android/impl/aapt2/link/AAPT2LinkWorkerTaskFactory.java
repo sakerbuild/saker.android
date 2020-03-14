@@ -793,7 +793,6 @@ public class AAPT2LinkWorkerTaskFactory
 
 			@Override
 			public void visit(AAPT2AarCompileTaskOutput compilationinput) {
-				//TODO generate R.java files for the aar results
 				NavigableSet<SakerPath> outpaths = compilationinput.getOutputPaths();
 				if (!ObjectUtils.isNullOrEmpty(outpaths)) {
 					for (SakerPath inpath : outpaths) {

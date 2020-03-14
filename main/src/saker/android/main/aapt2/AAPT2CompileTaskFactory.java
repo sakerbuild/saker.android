@@ -122,7 +122,7 @@ public class AAPT2CompileTaskFactory extends FrontendTaskFactory<AAPT2CompileFro
 							if (FileUtils.hasExtensionIgnoreCase(SakerStandardUtils.getFileLocationFileName(file),
 									"aar")) {
 								aarCompilations.add(startAarCompilationTask(taskcontext, compilationconfig,
-										new LiteralStructuredTaskResult(file)));
+										LiteralStructuredTaskResult.create(file)));
 							} else {
 								inputs.add(new ResourceDirectoryAAPT2CompilerInputOption(file));
 							}

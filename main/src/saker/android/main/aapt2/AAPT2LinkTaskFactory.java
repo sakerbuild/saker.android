@@ -318,7 +318,6 @@ public class AAPT2LinkTaskFactory extends FrontendTaskFactory<Object> {
 		if (inoptions == null) {
 			return;
 		}
-		//TODO remove aar input support
 		for (AAPT2LinkerInputTaskOption inoption : inoptions) {
 			if (inoption == null) {
 				continue;

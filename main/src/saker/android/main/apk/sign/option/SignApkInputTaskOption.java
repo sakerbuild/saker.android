@@ -8,19 +8,34 @@ import saker.std.api.file.location.FileLocation;
 import saker.zip.api.create.ZipCreatorTaskOutput;
 
 public abstract class SignApkInputTaskOption {
-	public abstract FileLocation getInputFileLocation();
+
+	public abstract void accept(Visitor visitor);
+
+	public interface Visitor {
+		public void visit(FileLocation file);
+
+		public void visit(SakerPath path);
+	}
 
 	public static SignApkInputTaskOption valueOf(FileLocation filelocation) {
 		return new SignApkInputTaskOption() {
 			@Override
-			public FileLocation getInputFileLocation() {
-				return filelocation;
+			public void accept(Visitor visitor) {
+				visitor.visit(filelocation);
 			}
 		};
 
 	}
 
 	public static SignApkInputTaskOption valueOf(SakerPath path) {
+		if (path.isRelative()) {
+			return new SignApkInputTaskOption() {
+				@Override
+				public void accept(Visitor visitor) {
+					visitor.visit(path);
+				}
+			};
+		}
 		return valueOf(ExecutionFileLocation.create(path));
 	}
 

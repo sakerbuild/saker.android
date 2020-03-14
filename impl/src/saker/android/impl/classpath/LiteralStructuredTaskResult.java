@@ -9,8 +9,6 @@ import saker.build.task.TaskResultDependencyHandle;
 import saker.build.task.TaskResultResolver;
 import saker.build.task.utils.StructuredTaskResult;
 
-@Deprecated
-//TODO use StructuredTaskResult.createLiteral from saker.build 0.8.10 instead
 public class LiteralStructuredTaskResult implements StructuredTaskResult, Externalizable {
 	private static final long serialVersionUID = 1L;
 
@@ -19,9 +17,19 @@ public class LiteralStructuredTaskResult implements StructuredTaskResult, Extern
 	/**
 	 * For {@link Externalizable}.
 	 */
+	@Deprecated
 	public LiteralStructuredTaskResult() {
 	}
 
+	//XXX remove this after some time and use StructuredTaskResult.createLiteral directly from saker.build 0.8.10 instead
+	public static StructuredTaskResult create(Object value) {
+		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_010) {
+			return StructuredTaskResult.createLiteral(value);
+		}
+		return new LiteralStructuredTaskResult(value);
+	}
+
+	@Deprecated
 	public LiteralStructuredTaskResult(Object value) {
 		this.value = value;
 	}
