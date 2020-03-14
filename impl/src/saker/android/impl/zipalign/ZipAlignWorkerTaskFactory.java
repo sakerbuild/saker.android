@@ -114,6 +114,7 @@ public class ZipAlignWorkerTaskFactory
 		taskcontext.setStandardOutDisplayIdentifier("zipalign:" + outputPath.getFileName());
 
 		Path[] inputfilelocalpath = { null };
+		ContentDescriptor[] inputfilecd = { null };
 		inputFile.accept(new FileLocationVisitor() {
 			@Override
 			public void visit(ExecutionFileLocation loc) {
@@ -128,6 +129,7 @@ public class ZipAlignWorkerTaskFactory
 					ObjectUtils.sneakyThrow(fnfe);
 					return;
 				}
+				inputfilecd[0] = mirroredinputfile.getContents();
 				taskcontext.reportInputFileDependency(null, inputpath, mirroredinputfile.getContents());
 				inputfilelocalpath[0] = mirroredinputfile.getPath();
 			}
@@ -177,9 +179,10 @@ public class ZipAlignWorkerTaskFactory
 		}
 
 		ProviderHolderPathKey outputfilepathkey = LocalFileProvider.getInstance().getPathKey(outputfilelocalpath);
-		ContentDescriptor outputfilecd = taskcontext.invalidateGetContentDescriptor(outputfilepathkey);
+		taskcontext.invalidate(outputfilepathkey);
+		ContentDescriptor outputfilecd = new ZipAlignedArchiveContentDescriptor(inputfilecd[0]);
 		SakerFile outputfile = taskcontext.getTaskUtilities().createProviderPathFile(outputPath.getFileName(),
-				outputfilepathkey);
+				outputfilepathkey, outputfilecd);
 		outputdir.add(outputfile);
 
 		outputfile.synchronize();
