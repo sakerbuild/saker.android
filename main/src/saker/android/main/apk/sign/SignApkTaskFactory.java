@@ -46,13 +46,13 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput(value = { "SDKs" })
 			public Map<String, SDKDescriptionTaskOption> sdksOption;
 
-			@SakerInput(value = { "KeyStore" })
+			@SakerInput(value = { "KeyStore", "Keystore" })
 			public FileLocationTaskOption keyStoreOption;
 			@SakerInput(value = { "Alias" })
 			public String aliasOption;
 			@SakerInput(value = { "StorePassword" })
 			public String keyStorePasswordOption;
-			@SakerInput(value = { "Key" })
+			@SakerInput(value = { "KeyPassword" })
 			public String keyPasswordOption;
 
 			@Override
@@ -72,7 +72,7 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 					String apkfname = SakerStandardUtils.getFileLocationFileName(apkfilelocation);
 					outputpath = SakerPath.valueOf(toSignedOutputApkFileName(apkfname));
 				}
-				FileLocation keystorefilelocation = TaskOptionUtils.toFileLocation(keyStoreOption, null);
+				FileLocation keystorefilelocation = TaskOptionUtils.toFileLocation(keyStoreOption, taskcontext);
 
 				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
 						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
