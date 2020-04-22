@@ -125,7 +125,6 @@ public class AndroidPlatformClassPathReference implements ClassPathReference, Ex
 			return Collections.emptyList();
 		}
 
-		@SuppressWarnings("deprecation")
 		@Override
 		public StructuredTaskResult getSourceAttachment() {
 			if (sourceAttachmentSDKPathReference == null) {

@@ -824,18 +824,6 @@ public class AAPT2LinkWorkerTaskFactory
 
 			@Override
 			public void visit(FileLocation inputfile) {
-//				String inputfname = SakerStandardUtils.getFileLocationFileName(inputfile);
-//				if (FileUtils.hasExtensionIgnoreCase(inputfname, "aar")) {
-//					AAPT2AarStaticLibraryWorkerTaskFactory inworker = new AAPT2AarStaticLibraryWorkerTaskFactory(
-//							inputfile, new AAPT2CompilationConfiguration(EnumSet.noneOf(AAPT2CompilerFlag.class)));
-//					inworker.setSDKDescriptions(sdkDescriptions);
-//					AAPT2AarStaticLibraryWorkerTaskOutput aarlibres = taskcontext.getTaskUtilities()
-//							.runTaskResult(inworker.createWorkerTaskIdentifier(), inworker);
-//					for (SakerPath path : aarlibres.getOutputFiles()) {
-//						handleExecutionInputFile(path);
-//					}
-//					return;
-//				}
 				inputfile.accept(new FileLocationVisitor() {
 					@Override
 					public void visit(ExecutionFileLocation loc) {
@@ -885,7 +873,7 @@ public class AAPT2LinkWorkerTaskFactory
 		}
 		ProviderHolderPathKey outpathkey = fp.getPathKey(outputfilepath);
 		taskcontext.invalidate(outpathkey);
-		
+
 		FileHashResult hash = fp.hash(outputfilepath, FileUtils.DEFAULT_FILE_HASH_ALGORITHM);
 
 		//Use a hash content descriptor to avoid accidental unnoticed file changes with large granularity file systems

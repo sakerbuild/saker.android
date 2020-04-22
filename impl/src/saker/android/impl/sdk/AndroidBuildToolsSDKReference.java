@@ -20,7 +20,7 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 	public static final String PATH_AAPT2_EXECUTABLE = "exe.aapt2";
 	public static final String PATH_ZIPALIGN_EXECUTABLE = "exe.zipalign";
 	public static final String PATH_AIDL_EXECUTABLE = "exe.aidl";
-	
+
 	public static final String PATH_LIB_JNI_AAPT2 = "lib.jni.aapt2";
 	public static final String PATH_LIB64_JNI_AAPT2 = "lib.jni64.aapt2";
 
@@ -233,5 +233,4 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 		return getClass().getSimpleName() + "[" + basePath + "]";
 	}
 
-	
 }

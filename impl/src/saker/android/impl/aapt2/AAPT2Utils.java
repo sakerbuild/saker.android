@@ -45,15 +45,12 @@ public class AAPT2Utils {
 	}
 
 	/**
-	 * Tells whether or not the aapt2_jni library from the android build-tools SDK
-	 * can be used.
+	 * Tells whether or not the aapt2_jni library from the android build-tools SDK can be used.
 	 * <p>
-	 * Currently we set this to <code>false</code>, as loading the library somewhy
-	 * crashes on macOS. (May crash on other operating systems as well, but we
-	 * haven't tested that.)
+	 * Currently we set this to <code>false</code>, as loading the library somewhy crashes on macOS. (May crash on other
+	 * operating systems as well, but we haven't tested that.)
 	 * <p>
-	 * If this issue gets fixed then we can set this to <code>true</code> and
-	 * implement the rest of the functionality.
+	 * If this issue gets fixed then we can set this to <code>true</code> and implement the rest of the functionality.
 	 */
 	// !!!!! this feature should be toggleable if implemented !!!!!
 	private static final boolean AAPT2_JNI_LIB_USAGE_ENABLED = false;
@@ -95,7 +92,7 @@ public class AAPT2Utils {
 				public int invokeAAPT2WithArguments(List<String> args, OutputStream output) throws Exception {
 					return invokeAAPT2WithDaemonOrExecutable(environment, exepath, args, output);
 				}
-			};	
+			};
 		}
 		return new AAPT2Executor() {
 			@Override
@@ -163,7 +160,8 @@ public class AAPT2Utils {
 							SubDirectoryClassLoaderDataFinder.create("aapt2jnisupport", thiscl));
 					try {
 						Class<?> aapt2jniclass = Class.forName("com.android.tools.aapt2.Aapt2Jni", false, jnisupportcl);
-						result = (AAPT2Executor) aapt2jniclass.getMethod("init", Path.class).invoke(null, cacheddllpath);
+						result = (AAPT2Executor) aapt2jniclass.getMethod("init", Path.class).invoke(null,
+								cacheddllpath);
 					} catch (LinkageError | Exception e) {
 						e.printStackTrace();
 						return null;
@@ -177,7 +175,7 @@ public class AAPT2Utils {
 			return null;
 		}
 	}
-	
+
 	private static int invokeAAPT2WithDaemonOrExecutable(SakerEnvironment environment, SakerPath exepath,
 			List<String> args, OutputStream output) throws Exception, IOException, InterruptedException {
 		try {
@@ -193,7 +191,7 @@ public class AAPT2Utils {
 			throws IOException, InterruptedException {
 		//TODO use @argument-file when input files are too many to fit on the command line
 		//     (not necessary with daemon)
-		
+
 		ArrayList<String> fullcmd = new ArrayList<>(1 + args.size());
 		fullcmd.add(exepath.toString());
 		fullcmd.addAll(args);
