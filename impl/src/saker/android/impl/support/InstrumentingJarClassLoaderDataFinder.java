@@ -26,7 +26,11 @@ public class InstrumentingJarClassLoaderDataFinder implements ClassLoaderDataFin
 	private static ByteArrayRegion instrument(ByteArrayRegion classbytes) {
 		ClassReader cr = new ClassReader(classbytes.getArray(), classbytes.getOffset(), classbytes.getLength());
 		ClassWriter cw = new ClassWriter(cr, 0);
-		cr.accept(new AndroidBuildToolsInstrumentationClassVisitor(cw), 0);
+		AndroidBuildToolsInstrumentationClassVisitor visitor = new AndroidBuildToolsInstrumentationClassVisitor(cw);
+		cr.accept(visitor, 0);
+		if (!visitor.isAppliedTransformation()) {
+			return classbytes;
+		}
 		return ByteArrayRegion.wrap(cw.toByteArray());
 	}
 

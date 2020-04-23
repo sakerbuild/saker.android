@@ -439,18 +439,9 @@ public class D8ExecutorImpl implements D8Executor {
 			}
 
 			ConcurrentSkipListMap<SakerPath, ContentDescriptor> outputclassesfiledependencies = new ConcurrentSkipListMap<>();
-			d8_classes_runner:
-			{
-				if (!anychange[0] && prevstate != null) {
-					NavigableMap<SakerPath, SakerFile> changedoutputfiles = TaskUtils.collectFilesForTag(
-							taskcontext.getFileDeltas(DeltaType.OUTPUT_FILE_CHANGE),
-							D8TaskTags.OUTPUT_CLASSES_DEX_FILE);
-					if (changedoutputfiles.isEmpty()) {
-						//nothing changed
-						break d8_classes_runner;
-					}
-					//an output file changed. perform dexing
-				}
+
+			if (!isUnchangedForClasses(taskcontext, prevstate, anychange[0])) {
+				//something changed, perform dexing
 				classesoutputdir.clear();
 
 				D8ExecutionDiagnosticsHandler classesdiaghandler = new D8ExecutionDiagnosticsHandler(taskcontext);
@@ -524,6 +515,13 @@ public class D8ExecutorImpl implements D8Executor {
 					.makeImmutableNavigableSet(outputclassesfiledependencies.navigableKeySet());
 			return new D8TaskOutputImpl(dexfiles);
 		}
+	}
+
+	private static boolean isUnchangedForClasses(TaskContext taskcontext, IncrementalD8State prevstate,
+			boolean anychange) {
+		return !anychange && prevstate != null
+				&& TaskUtils.collectFilesForTag(taskcontext.getFileDeltas(DeltaType.OUTPUT_FILE_CHANGE),
+						D8TaskTags.OUTPUT_CLASSES_DEX_FILE).isEmpty();
 	}
 
 	private static ArchiveClassDescriptorsData openInputArchive(TaskContext taskcontext, ResourceCloser closer,

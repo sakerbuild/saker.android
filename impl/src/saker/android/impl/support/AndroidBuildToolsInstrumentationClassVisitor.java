@@ -95,8 +95,14 @@ public class AndroidBuildToolsInstrumentationClassVisitor extends ClassVisitor {
 		CURRENT_JVM_MAJOR_VERSION = v;
 	}
 
+	private boolean appliedTransformation = false;
+
 	public AndroidBuildToolsInstrumentationClassVisitor(ClassVisitor cv) {
 		super(Opcodes.ASM7, cv);
+	}
+
+	public boolean isAppliedTransformation() {
+		return appliedTransformation;
 	}
 
 	@Override
@@ -105,6 +111,7 @@ public class AndroidBuildToolsInstrumentationClassVisitor extends ClassVisitor {
 			//the class file version that is being transformed is not supported by the current JVM
 			//this can cause UnsupportedClassVersionErrors to be thrown
 			//transform the class to use the latest supported version. any errors that this can cause will surface later
+			appliedTransformation = true;
 			version = CURRENT_JVM_MAJOR_VERSION;
 		}
 		super.visit(version, access, name, signature, superName, interfaces);
@@ -132,6 +139,7 @@ public class AndroidBuildToolsInstrumentationClassVisitor extends ClassVisitor {
 			if ("(I)V".equals(descriptor)) {
 				if ("java/lang/System".equals(owner) || "java/lang/Runtime".equals(owner)) {
 					if ("halt".equals(name) || "exit".equals(name)) {
+						appliedTransformation = true;
 						super.visitMethodInsn(Opcodes.INVOKESTATIC, EXITREQUEST_METHOD_ENCLOSING_CLASS_INTERNAL_NAME,
 								"exitRequest", "(I)V", false);
 
@@ -181,12 +189,14 @@ public class AndroidBuildToolsInstrumentationClassVisitor extends ClassVisitor {
 				if (CURRENT_JVM_MAJOR_VERSION <= Opcodes.V1_8) {
 					if (("limit".equals(name) || "position".equals(name))
 							&& "(I)Ljava/nio/ByteBuffer;".equals(descriptor)) {
+						appliedTransformation = true;
 						super.visitMethodInsn(opcode, owner, name, "(I)Ljava/nio/Buffer;", isInterface);
 						super.visitTypeInsn(CHECKCAST, "java/nio/ByteBuffer");
 						return;
 					}
 					if (("flip".equals(name) || "rewind".equals(name) || "clear".equals(name) || "reset".equals(name)
 							|| "mark".equals(name)) && "()Ljava/nio/ByteBuffer;".equals(descriptor)) {
+						appliedTransformation = true;
 						super.visitMethodInsn(opcode, owner, name, "()Ljava/nio/Buffer;", isInterface);
 						super.visitTypeInsn(CHECKCAST, "java/nio/ByteBuffer");
 						return;
