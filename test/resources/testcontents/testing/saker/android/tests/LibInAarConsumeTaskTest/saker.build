@@ -1,0 +1,24 @@
+$aapt2 = saker.android.aapt2.compile(res)
+$libs = saker.android.aapt2.compile(
+	aar_with_lib.aar,
+	Identifier: libs,
+)
+
+$aaptlink = saker.android.aapt2.link(
+	$aapt2,
+	Overlay: $libs,
+	Manifest: AndroidManifest.xml,
+	AutoAddOverlay: true,
+)
+
+$javac = saker.java.compile(
+	[
+		src
+	] + $aaptlink[JavaSourceDirectories],
+	ClassPath: saker.android.classpath(aar_with_lib.aar),
+	BootClassPath: saker.android.classpath.platform(),
+	SDKs: {
+		AndroidPlatform: saker.android.sdk.platform(),
+		AndroidBuildTools: saker.android.sdk.buildtools(),
+	}
+)
