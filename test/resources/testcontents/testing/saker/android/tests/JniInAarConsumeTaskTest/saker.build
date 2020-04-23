@@ -18,7 +18,7 @@ build(
 		[
 			src
 		] + $aaptlink[JavaSourceDirectories],
-		ClassPath: saker.android.classpath(aar_with_jni.aar),
+		ClassPath: saker.android.classpath($libs),
 		BootClassPath: saker.android.classpath.platform(),
 		SDKs: {
 			AndroidPlatform: saker.android.sdk.platform(),

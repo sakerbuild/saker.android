@@ -15,7 +15,7 @@ $javac = saker.java.compile(
 	[
 		src
 	] + $aaptlink[JavaSourceDirectories],
-	ClassPath: saker.android.classpath(aar_with_lib.aar),
+	ClassPath: saker.android.classpath($libs),
 	BootClassPath: saker.android.classpath.platform(),
 	SDKs: {
 		AndroidPlatform: saker.android.sdk.platform(),

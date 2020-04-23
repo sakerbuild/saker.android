@@ -7,6 +7,7 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 
@@ -26,7 +27,11 @@ import saker.build.task.TaskResultDependencyHandle;
 import saker.build.task.TaskResultResolver;
 import saker.build.task.dependencies.TaskOutputChangeDetector;
 import saker.build.task.identifier.TaskIdentifier;
+import saker.build.task.utils.ComposedStructuredTaskResult;
 import saker.build.task.utils.SimpleStructuredObjectTaskResult;
+import saker.build.task.utils.StructuredListTaskResult;
+import saker.build.task.utils.StructuredMapTaskResult;
+import saker.build.task.utils.StructuredObjectTaskResult;
 import saker.build.task.utils.StructuredTaskResult;
 import saker.build.task.utils.annot.SakerInput;
 import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
@@ -56,9 +61,8 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 
 	public static final String TASK_NAME = "saker.android.classpath";
 
-	//TODO support passing the output of aar aapt2 compilation task and using all aars as classpath
 	//TODO support api.jar in aar bundles
-	
+
 	@Override
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
 		return new ParameterizableTask<Object>() {
@@ -72,16 +76,7 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 				}
 				MavenClassPathTaskBuilder cpbuilder = MavenClassPathTaskBuilder.newBuilder();
 
-				if (artifacts instanceof StructuredTaskResult) {
-					artifacts = ((StructuredTaskResult) artifacts).toResult(taskcontext);
-				}
-				if (artifacts instanceof Iterable) {
-					for (Object elem : ((Iterable<?>) artifacts)) {
-						handleInputElement(taskcontext, cpbuilder, elem);
-					}
-				} else {
-					handleInputElement(taskcontext, cpbuilder, artifacts);
-				}
+				handleInputElement(taskcontext, cpbuilder, artifacts);
 
 				TaskIdentifier workertaskid = cpbuilder.buildTaskIdentifier();
 				taskcontext.startTask(workertaskid, cpbuilder.buildTask(), null);
@@ -96,34 +91,73 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 
 	private static void handleInputElement(TaskContext taskcontext, MavenClassPathTaskBuilder cpbuilder, Object elem)
 			throws FileNotFoundException {
-		if (elem instanceof MavenDependencyResolutionTaskOutput) {
-			MavenDependencyResolutionTaskOutput depoutput = (MavenDependencyResolutionTaskOutput) elem;
-			MavenOperationConfiguration depoutmavenconfig = depoutput.getConfiguration();
-			cpbuilder.setConfiguration(depoutmavenconfig);
-			Collection<ArtifactCoordinates> departifactcoordinates = depoutput.getArtifactCoordinates();
+		while (true) {
+			if (elem instanceof MavenDependencyResolutionTaskOutput) {
+				MavenDependencyResolutionTaskOutput depoutput = (MavenDependencyResolutionTaskOutput) elem;
+				MavenOperationConfiguration depoutmavenconfig = depoutput.getConfiguration();
+				cpbuilder.setConfiguration(depoutmavenconfig);
+				Collection<ArtifactCoordinates> departifactcoordinates = depoutput.getArtifactCoordinates();
 
-			handleArtifactCoordinates(taskcontext, cpbuilder, depoutmavenconfig, departifactcoordinates);
-		} else if (elem instanceof ResolvedDependencyArtifact) {
-			ResolvedDependencyArtifact departifact = (ResolvedDependencyArtifact) elem;
-			MavenOperationConfiguration depoutmavenconfig = departifact.getConfiguration();
-
-			cpbuilder.setConfiguration(depoutmavenconfig);
-			Collection<ArtifactCoordinates> departifactcoordinates = ImmutableUtils
-					.singletonSet(departifact.getCoordinates());
-
-			handleArtifactCoordinates(taskcontext, cpbuilder, depoutmavenconfig, departifactcoordinates);
-		} else if (elem instanceof FileLocation) {
-			FileLocation fl = (FileLocation) elem;
-			handleInputFileLocation(taskcontext, cpbuilder, fl);
-		} else if (elem instanceof FileCollection) {
-			FileCollection filecollection = (FileCollection) elem;
-			for (FileLocation fl : filecollection) {
-				handleInputFileLocation(taskcontext, cpbuilder, fl);
+				handleArtifactCoordinates(taskcontext, cpbuilder, depoutmavenconfig, departifactcoordinates);
+				return;
 			}
-		} else if (elem instanceof AAPT2CompileFrontendTaskOutput) {
-			AAPT2CompileFrontendTaskOutput aaptcompileout = (AAPT2CompileFrontendTaskOutput) elem;
-			handleInputElement(taskcontext, cpbuilder, aaptcompileout);
-		} else {
+			if (elem instanceof ResolvedDependencyArtifact) {
+				ResolvedDependencyArtifact departifact = (ResolvedDependencyArtifact) elem;
+				MavenOperationConfiguration depoutmavenconfig = departifact.getConfiguration();
+
+				cpbuilder.setConfiguration(depoutmavenconfig);
+				Collection<ArtifactCoordinates> departifactcoordinates = ImmutableUtils
+						.singletonSet(departifact.getCoordinates());
+
+				handleArtifactCoordinates(taskcontext, cpbuilder, depoutmavenconfig, departifactcoordinates);
+				return;
+			}
+			if (elem instanceof FileLocation) {
+				FileLocation fl = (FileLocation) elem;
+				handleInputFileLocation(taskcontext, cpbuilder, fl);
+				return;
+			}
+			if (elem instanceof FileCollection) {
+				FileCollection filecollection = (FileCollection) elem;
+				for (FileLocation fl : filecollection) {
+					handleInputFileLocation(taskcontext, cpbuilder, fl);
+				}
+				return;
+			}
+			if (elem instanceof AAPT2CompileFrontendTaskOutput) {
+				AAPT2CompileFrontendTaskOutput aaptcompileout = (AAPT2CompileFrontendTaskOutput) elem;
+				handleInputElement(taskcontext, cpbuilder, aaptcompileout);
+				return;
+			}
+			if (elem instanceof StructuredTaskResult) {
+				if (elem instanceof ComposedStructuredTaskResult) {
+					StructuredTaskResult nres = ((ComposedStructuredTaskResult) elem)
+							.getIntermediateTaskResult(taskcontext);
+					if (!elem.equals(nres)) {
+						elem = nres;
+						continue;
+					}
+					elem = ((StructuredTaskResult) elem).toResult(taskcontext);
+					continue;
+				}
+				if (elem instanceof StructuredObjectTaskResult) {
+					elem = taskcontext.getTaskResult(((StructuredObjectTaskResult) elem).getTaskIdentifier());
+					continue;
+				}
+				if (elem instanceof StructuredMapTaskResult) {
+					throw new IllegalArgumentException("Unsupported android classpath input: " + elem);
+				}
+				if (elem instanceof StructuredListTaskResult) {
+					StructuredListTaskResult lres = (StructuredListTaskResult) elem;
+					Iterator<? extends StructuredTaskResult> rit = lres.resultIterator();
+					while (rit.hasNext()) {
+						handleInputElement(taskcontext, cpbuilder, rit.next());
+					}
+					return;
+				}
+				elem = ((StructuredTaskResult) elem).toResult(taskcontext);
+				continue;
+			}
 			String elemstr = elem.toString();
 			SakerPath execpath;
 			try {
@@ -138,6 +172,7 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 			}
 			taskcontext.reportInputFileDependency(null, execpath, CommonTaskContentDescriptors.PRESENT);
 			handleInputFileLocation(taskcontext, cpbuilder, ExecutionFileLocation.create(execpath));
+			return;
 		}
 	}
 
