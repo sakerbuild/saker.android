@@ -56,7 +56,8 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 
 	public static final String TASK_NAME = "saker.android.classpath";
 
-	//TODO support passing the output of aar aapt2 compilation task and using all aars as classpath 
+	//TODO support passing the output of aar aapt2 compilation task and using all aars as classpath
+	//TODO support api.jar in aar bundles
 	
 	@Override
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
