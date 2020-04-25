@@ -47,11 +47,15 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput(value = { "Release" })
 			public boolean releaseOption;
 
+			//XXX binary names
 			@SakerInput(value = { "MainDexClasses" })
 			public Collection<String> mainDexClassesOption;
 
 			@SakerInput("MinAPI")
 			public Integer minApiOpion;
+
+			@SakerInput("OptimizeMultidexForLinearAlloc")
+			public boolean optimizeMultidexForLinearAllocOption;
 
 			@SakerInput("Identifier")
 			public CompilationIdentifierTaskOption identifier;
@@ -111,6 +115,7 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 				workertask.setMainDexClasses(ImmutableUtils.makeImmutableNavigableSet(mainDexClassesOption));
 				workertask.setMinApi(minApiOpion);
 				workertask.setSDKDescriptions(sdkdescriptions);
+				workertask.setOptimizeMultidexForLinearAlloc(optimizeMultidexForLinearAllocOption);
 
 				taskcontext.startTask(workertaskid, workertask, null);
 

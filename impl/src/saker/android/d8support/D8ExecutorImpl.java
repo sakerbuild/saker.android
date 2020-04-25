@@ -1,6 +1,7 @@
 package saker.android.d8support;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -107,6 +108,18 @@ public class D8ExecutorImpl implements D8Executor {
 		}
 	}
 
+	private static final Method METHOD_setOptimizeMultidexForLinearAlloc;
+	static {
+		Method m;
+		try {
+			m = D8Command.Builder.class.getMethod("setOptimizeMultidexForLinearAlloc", boolean.class);
+		} catch (Exception e) {
+			e.printStackTrace();
+			m = null;
+		}
+		METHOD_setOptimizeMultidexForLinearAlloc = m;
+	}
+
 	@Override
 	public D8TaskOutput run(TaskContext taskcontext, D8WorkerTaskFactory workertask,
 			NavigableMap<String, SDKReference> sdkreferences) throws Exception {
@@ -118,9 +131,9 @@ public class D8ExecutorImpl implements D8Executor {
 		if (prevstate != null) {
 			if (!Objects.equals(prevstate.minApi, minapi) || prevstate.noDesugaring != nodesugar
 					|| prevstate.release != releasemode
-					|| !Objects.equals(prevstate.buildToolsSDK,
+					|| !Objects.equals(prevstate.getBuildToolsSDK(),
 							sdkreferences.get(AndroidBuildToolsSDKReference.SDK_NAME))
-					|| !Objects.equals(prevstate.platformsSDK,
+					|| !Objects.equals(prevstate.getPlatformsSDK(),
 							sdkreferences.get(AndroidPlatformSDKReference.SDK_NAME))) {
 				//clean
 				prevstate = null;
@@ -451,7 +464,7 @@ public class D8ExecutorImpl implements D8Executor {
 				Collection<ProgramResource> classesprogramresources = new ArrayList<>();
 				for (Entry<SakerPath, D8OutputFileInformation> entry : nstate.outputPathInformations.entrySet()) {
 					SakerPath filepath = entry.getKey();
-					//TODO be more efficient than resolving the file path
+					//XXX be more efficient than resolving the file path
 					SakerDexFileProgramResource programres = new SakerDexFileProgramResource(filepath,
 							taskcontext.getTaskUtilities().resolveFileAtPath(filepath),
 							entry.getValue().getDescriptors());
@@ -462,7 +475,7 @@ public class D8ExecutorImpl implements D8Executor {
 					for (String outdexfname : archiveinfo.getOutputDexFiles().keySet()) {
 						SakerPath filepath = archiveoutdir.resolve(outdexfname);
 
-						//TODO be more efficient than resolving the file path
+						//XXX be more efficient than resolving the file path
 						SakerDexFileProgramResource programres = new SakerDexFileProgramResource(filepath,
 								taskcontext.getTaskUtilities().resolveFileAtPath(filepath),
 								archiveinfo.getDescriptors());
@@ -477,6 +490,14 @@ public class D8ExecutorImpl implements D8Executor {
 				});
 				setD8BuilderCommonConfigurations(classesbuilder, workertask, environment, sdkreferences);
 				setD8BuilderMainDexClasses(classesbuilder, workertask);
+				if (workertask.isOptimizeMultidexForLinearAlloc()) {
+					if (METHOD_setOptimizeMultidexForLinearAlloc == null) {
+						throw new IllegalArgumentException(
+								"Cannot set OptimizeMultidexForLinearAlloc, D8 doesn't support this flag."
+										+ " Please upgrade your build tools.");
+					}
+					METHOD_setOptimizeMultidexForLinearAlloc.invoke(classesbuilder, true);
+				}
 				classesbuilder.setIntermediate(false);
 				classesbuilder.setProgramConsumer(new DexIndexedConsumer() {
 					@Override

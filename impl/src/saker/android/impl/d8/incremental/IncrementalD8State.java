@@ -17,7 +17,7 @@ import saker.std.api.file.location.FileLocation;
 public class IncrementalD8State implements Externalizable {
 	private static final long serialVersionUID = 1L;
 
-	//TODO make these private
+	//XXX make these private
 	public SDKReference buildToolsSDK;
 	public SDKReference platformsSDK;
 	public NavigableMap<SakerPath, D8InputFileInformation> inputPathInformations;
@@ -51,6 +51,34 @@ public class IncrementalD8State implements Externalizable {
 		this.outputPathInformations = new ConcurrentSkipListMap<>(copy.outputPathInformations);
 		this.outputClassIndexInformations = new ConcurrentSkipListMap<>(copy.outputClassIndexInformations);
 		this.archiveInformations = new ConcurrentHashMap<>(copy.archiveInformations);
+	}
+
+	public SDKReference getBuildToolsSDK() {
+		return buildToolsSDK;
+	}
+
+	public SDKReference getPlatformsSDK() {
+		return platformsSDK;
+	}
+
+	public NavigableMap<SakerPath, D8InputFileInformation> getInputPathInformations() {
+		return inputPathInformations;
+	}
+
+	public NavigableMap<String, D8InputFileInformation> getInputDescriptorInformations() {
+		return inputDescriptorInformations;
+	}
+
+	public Integer getMinApi() {
+		return minApi;
+	}
+
+	public boolean isNoDesugaring() {
+		return noDesugaring;
+	}
+
+	public boolean isRelease() {
+		return release;
 	}
 
 	public void putInput(D8InputFileInformation info) {

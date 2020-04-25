@@ -6,3 +6,5 @@ saker.java.compiler-api
 	classpath: [0.8.4)
 saker.maven.classpath-api
 	classpath: [0.8.2)
+saker.maven.support-api
+	classpath: [0.8.4)

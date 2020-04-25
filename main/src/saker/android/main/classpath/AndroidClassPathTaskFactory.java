@@ -44,6 +44,7 @@ import saker.maven.classpath.api.MavenClassPathTaskBuilder;
 import saker.maven.classpath.api.MavenClassPathTaskBuilder.EntryBuilder;
 import saker.maven.support.api.ArtifactCoordinates;
 import saker.maven.support.api.MavenOperationConfiguration;
+import saker.maven.support.api.MavenUtils;
 import saker.maven.support.api.dependency.MavenDependencyResolutionTaskOutput;
 import saker.maven.support.api.dependency.ResolvedDependencyArtifact;
 import saker.maven.support.api.localize.ArtifactLocalizationTaskOutput;
@@ -260,10 +261,12 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 				LocalFileLocation artifactlocalfilelocation = LocalFileLocation
 						.create(artifactlocalizationresult.getLocalPath());
 
-				//TODO this user.home/.m2/repository should depend on an environment property or something
+				SakerPath configmavenlocalrepositorypath = depoutmavenconfig.getLocalRepositoryPath();
+				if (configmavenlocalrepositorypath == null) {
+					configmavenlocalrepositorypath = MavenUtils.getDefaultMavenLocalRepositoryLocation(taskcontext);
+				}
 				String repohash = StringUtils
-						.toHexString(FileUtils.hashString(Objects.toString(depoutmavenconfig.getLocalRepositoryPath(),
-								System.getProperty("user.home") + "/.m2/repository")));
+						.toHexString(FileUtils.hashString(configmavenlocalrepositorypath.toString()));
 				SakerPath extractoutputrelativepath = SakerPath.valueOf(TASK_NAME).resolve(repohash)
 						.resolve(coords.getGroupId(), coords.getArtifactId(), coords.getVersion());
 

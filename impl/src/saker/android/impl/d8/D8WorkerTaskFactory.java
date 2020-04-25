@@ -46,6 +46,7 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 	private Integer minApi;
 	private boolean noDesugaring;
 	private NavigableSet<String> mainDexClasses;
+	private boolean optimizeMultidexForLinearAlloc;
 
 	private NavigableMap<String, ? extends SDKDescription> sdkDescriptions;
 
@@ -95,6 +96,10 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 		return inputs;
 	}
 
+	public void setOptimizeMultidexForLinearAlloc(boolean optimizeMultidexForLinearAlloc) {
+		this.optimizeMultidexForLinearAlloc = optimizeMultidexForLinearAlloc;
+	}
+
 	public void setRelease(boolean release) {
 		this.release = release;
 	}
@@ -109,6 +114,10 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 
 	public void setNoDesugaring(boolean noDesugaring) {
 		this.noDesugaring = noDesugaring;
+	}
+
+	public boolean isOptimizeMultidexForLinearAlloc() {
+		return optimizeMultidexForLinearAlloc;
 	}
 
 	@Override
@@ -174,6 +183,7 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 		SerialUtils.writeExternalCollection(out, mainDexClasses);
 		SerialUtils.writeExternalMap(out, sdkDescriptions);
 		out.writeObject(remoteDispatchableEnvironmentSelector);
+		out.writeBoolean(optimizeMultidexForLinearAlloc);
 	}
 
 	@Override
@@ -186,6 +196,7 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 		sdkDescriptions = SerialUtils.readExternalSortedImmutableNavigableMap(in,
 				SDKSupportUtils.getSDKNameComparator());
 		remoteDispatchableEnvironmentSelector = (TaskExecutionEnvironmentSelector) in.readObject();
+		optimizeMultidexForLinearAlloc = in.readBoolean();
 	}
 
 	@Override
@@ -221,6 +232,8 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 		} else if (!minApi.equals(other.minApi))
 			return false;
 		if (noDesugaring != other.noDesugaring)
+			return false;
+		if (optimizeMultidexForLinearAlloc != other.optimizeMultidexForLinearAlloc)
 			return false;
 		if (release != other.release)
 			return false;
