@@ -14,6 +14,7 @@ import java.security.SecureRandom;
 import java.security.cert.Certificate;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.NavigableMap;
 import java.util.UUID;
 
@@ -21,17 +22,20 @@ import com.android.apksigner.ApkSignerTool;
 
 import saker.android.impl.apk.sign.ApkSignExecutor;
 import saker.android.impl.apk.sign.SignApkWorkerTaskFactory;
+import saker.android.impl.apk.sign.SignerOption;
 import saker.android.impl.support.SupportToolSystemExitError;
 import saker.build.file.path.SakerPath;
 import saker.build.task.CommonTaskContentDescriptors;
 import saker.build.task.TaskContext;
 import saker.build.task.TaskExecutionUtilities.MirroredFileContents;
+import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.nest.bundle.NestBundleClassLoader;
 import saker.sdk.support.api.SDKReference;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileLocation;
 import saker.std.api.file.location.FileLocationVisitor;
+import saker.std.api.file.location.LocalFileLocation;
 import sun.security.x509.AlgorithmId;
 import sun.security.x509.CertificateAlgorithmId;
 import sun.security.x509.CertificateSerialNumber;
@@ -57,7 +61,45 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 			NavigableMap<String, SDKReference> sdkrefs, Path inputfilelocalpath, Path outputfilelocalpath)
 			throws Exception {
 		NestBundleClassLoader nestcl = (NestBundleClassLoader) ApkSignExecutor.class.getClassLoader();
-		FileLocation ksfilelocation = workertask.getKeyStoreFile();
+
+		List<SignerOption> signers = workertask.getSigners();
+		if (ObjectUtils.isNullOrEmpty(signers)) {
+			SignerOption debugsigner = new SignerOption();
+
+			debugsigner.setSigning(null, DEBUG_KEY_PASSWORD, DEBUG_KEY_ALIAS, DEBUG_KEY_PASSWORD);
+			signers = ImmutableUtils.singletonList(debugsigner);
+		}
+
+		try {
+			ArrayList<String> args = new ArrayList<>(11 + 4 + 1);
+
+			args.add("sign");
+			boolean first = true;
+			for (SignerOption opt : signers) {
+				if (!first) {
+					args.add("--next-signer");
+				}
+				appendSignerArguments(opt, taskcontext, nestcl, args);
+				first = false;
+			}
+
+			args.add("--out");
+			args.add(outputfilelocalpath.toString());
+
+			args.add(inputfilelocalpath.toString());
+			ApkSignerTool.main(args.toArray(ObjectUtils.EMPTY_STRING_ARRAY));
+		} catch (SupportToolSystemExitError e) {
+			throw new IOException("apksigner execution failed: " + e.getExitCode());
+		} catch (NoClassDefFoundError e) {
+			throw new IOException(
+					"Failed to run apksigner. This may be due to the class version of apksigner is not supported by the current JVM.",
+					e);
+		}
+	}
+
+	private static void appendSignerArguments(SignerOption opt, TaskContext taskcontext, NestBundleClassLoader nestcl,
+			ArrayList<String> args) throws IOException, Exception {
+		FileLocation ksfilelocation = opt.getKeyStoreFile();
 		String[] storepassword = { null };
 		String[] keypassword = { null };
 		Path[] keystorepath = { null };
@@ -66,7 +108,7 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 			Path storagepath = nestcl.getBundle().getBundleStoragePath();
 			Path debugkeypath = storagepath.resolve(DEBUG_KEYSTORE_NAME);
 			if (!Files.exists(debugkeypath)) {
-				synchronized ((getClass().getName() + ":debug_key:" + debugkeypath).intern()) {
+				synchronized ((ApkSignExecutorImpl.class.getName() + ":debug_key:" + debugkeypath).intern()) {
 					Files.createDirectories(debugkeypath.getParent());
 					Path temppath = debugkeypath.resolveSibling(DEBUG_KEYSTORE_NAME + "_" + UUID.randomUUID());
 					try {
@@ -108,51 +150,54 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 					keystorepath[0] = mirroredinputfile.getPath();
 				}
 			});
-			storepassword[0] = workertask.getKeyStorePassword();
-			keypassword[0] = workertask.getKeyPassword();
-			alias[0] = workertask.getAlias();
+			storepassword[0] = opt.getKeyStorePassword();
+			keypassword[0] = opt.getKeyPassword();
+			alias[0] = opt.getAlias();
 		}
 
-		try {
-			ArrayList<String> args = new ArrayList<>(11 + 4 + 1);
+		args.add("--ks");
+		args.add(keystorepath[0].toString());
 
-			args.add("sign");
-			args.add("--ks");
-			args.add(keystorepath[0].toString());
-
-			if (alias != null) {
-				args.add("--ks-key-alias");
-				args.add(alias[0]);
-			}
-			if (storepassword != null) {
-				args.add("--ks-pass");
-				args.add("pass:" + storepassword[0]);
-			}
-			if (keypassword != null) {
-				args.add("--key-pass");
-				args.add("pass:" + keypassword[0]);
-			}
-			args.add("--out");
-			args.add(outputfilelocalpath.toString());
-
-			Boolean v1signingenabled = workertask.getV1SigningEnabled();
-			Boolean v2signingenabled = workertask.getV2SigningEnabled();
-			if (v1signingenabled != null) {
-				args.add("--v1-signing-enabled");
-				args.add(v1signingenabled.toString());
-			}
-			if (v2signingenabled != null) {
-				args.add("--v2-signing-enabled");
-				args.add(v2signingenabled.toString());
-			}
-			args.add(inputfilelocalpath.toString());
-			ApkSignerTool.main(args.toArray(ObjectUtils.EMPTY_STRING_ARRAY));
-		} catch (SupportToolSystemExitError e) {
-			throw new IOException("apksigner execution failed: " + e.getExitCode());
-		} catch (NoClassDefFoundError e) {
-			throw new IOException(
-					"Failed to run apksigner. This may be due to the class version of apksigner is not supported by the current JVM.",
-					e);
+		if (alias != null) {
+			args.add("--ks-key-alias");
+			args.add(alias[0]);
+		}
+		if (storepassword != null) {
+			args.add("--ks-pass");
+			args.add("pass:" + storepassword[0]);
+		}
+		if (keypassword != null) {
+			args.add("--key-pass");
+			args.add("pass:" + keypassword[0]);
+		}
+		Boolean v1signingenabled = opt.getV1SigningEnabled();
+		String v1signername = opt.getV1SignerName();
+		Boolean v2signingenabled = opt.getV2SigningEnabled();
+		Boolean v3signingenabled = opt.getV3SigningEnabled();
+		String v4signing = opt.getV4SigningEnabled();
+		boolean v4nomerkletree = opt.getV4NoMerkleTree();
+		if (v1signingenabled != null) {
+			args.add("--v1-signing-enabled");
+			args.add(v1signingenabled.toString());
+		}
+		if (v2signingenabled != null) {
+			args.add("--v2-signing-enabled");
+			args.add(v2signingenabled.toString());
+		}
+		if (v3signingenabled != null) {
+			args.add("--v3-signing-enabled");
+			args.add(v3signingenabled.toString());
+		}
+		if (v4signing != null) {
+			args.add("--v4-signing-enabled");
+			args.add(v4signing);
+		}
+		if (v4nomerkletree) {
+			args.add("--v4-no-merkle-tree");
+		}
+		if (v1signername != null) {
+			args.add("--v1-signer-name");
+			args.add(v1signername);
 		}
 	}
 

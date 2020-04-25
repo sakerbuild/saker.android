@@ -63,6 +63,17 @@ public class AndroidUtils {
 		return versions::contains;
 	}
 
+	/**
+	 * Creates a predicate that determines if a given SDK version is deemed suitable by the argument versions set.
+	 * <p>
+	 * If the argument is <code>null</code>, all versions are accepted.
+	 * <p>
+	 * Otherwise, the semantics of {@link VersionRange} apply.
+	 * 
+	 * @param versions
+	 *            The versions.
+	 * @return The predicate.
+	 */
 	public static Predicate<? super String> getSetContainsOrBaseVersionElseAlwaysPredicate(Set<String> versions) {
 		if (versions == null) {
 			return Functionals.alwaysPredicate();

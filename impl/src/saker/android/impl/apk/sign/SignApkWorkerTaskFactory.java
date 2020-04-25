@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.NavigableMap;
 import java.util.Set;
 
@@ -54,13 +55,8 @@ public class SignApkWorkerTaskFactory
 
 	private FileLocation inputFile;
 	private SakerPath outputPath;
-	private Boolean v1SigningEnabled;
-	private Boolean v2SigningEnabled;
 
-	private FileLocation keyStoreFile;
-	private String alias;
-	private String keyStorePassword;
-	private String keyPassword;
+	private List<SignerOption> signers;
 
 	private NavigableMap<String, ? extends SDKDescription> sdkDescriptions;
 
@@ -70,6 +66,14 @@ public class SignApkWorkerTaskFactory
 	 * For {@link Externalizable}.
 	 */
 	public SignApkWorkerTaskFactory() {
+	}
+
+	public void setSigners(List<SignerOption> signers) {
+		this.signers = ImmutableUtils.makeImmutableList(signers);
+	}
+
+	public List<SignerOption> getSigners() {
+		return signers;
 	}
 
 	public void setInputFile(FileLocation inputPath) {
@@ -92,52 +96,6 @@ public class SignApkWorkerTaskFactory
 
 	public SDKDescription getAndroidBuildToolsSDKDescription() {
 		return ObjectUtils.getMapValue(sdkDescriptions, AndroidBuildToolsSDKReference.SDK_NAME);
-	}
-
-	public void setV1SigningEnabled(Boolean v1SigningEnabled) {
-		this.v1SigningEnabled = v1SigningEnabled;
-	}
-
-	public void setV2SigningEnabled(Boolean v2SigningEnabled) {
-		this.v2SigningEnabled = v2SigningEnabled;
-	}
-
-	public Boolean getV1SigningEnabled() {
-		return v1SigningEnabled;
-	}
-
-	public Boolean getV2SigningEnabled() {
-		return v2SigningEnabled;
-	}
-
-	public void setSigning(FileLocation keystore, String keystorepassword, String alias, String keypassword) {
-		if (keystore != null) {
-			this.keyStoreFile = keystore;
-			this.keyStorePassword = keystorepassword;
-			this.alias = alias;
-			this.keyPassword = keypassword;
-		} else {
-			this.keyStoreFile = null;
-			this.keyStorePassword = null;
-			this.alias = null;
-			this.keyPassword = null;
-		}
-	}
-
-	public FileLocation getKeyStoreFile() {
-		return keyStoreFile;
-	}
-
-	public String getKeyPassword() {
-		return keyPassword;
-	}
-
-	public String getKeyStorePassword() {
-		return keyStorePassword;
-	}
-
-	public String getAlias() {
-		return alias;
 	}
 
 	@Override
@@ -212,6 +170,8 @@ public class SignApkWorkerTaskFactory
 
 		executor.run(taskcontext, this, sdkrefs, inputfilelocalpath[0], outputfilelocalpath);
 
+		//TODO handle .idsig files for v4 signing
+
 		ProviderHolderPathKey outputfilepathkey = LocalFileProvider.getInstance().getPathKey(outputfilelocalpath);
 		ContentDescriptor outputfilecd = taskcontext.invalidateGetContentDescriptor(outputfilepathkey);
 		SakerFile outputfile = taskcontext.getTaskUtilities().createProviderPathFile(outputPath.getFileName(),
@@ -235,12 +195,7 @@ public class SignApkWorkerTaskFactory
 	public void writeExternal(ObjectOutput out) throws IOException {
 		out.writeObject(inputFile);
 		out.writeObject(outputPath);
-		out.writeObject(v1SigningEnabled);
-		out.writeObject(v2SigningEnabled);
-		out.writeObject(keyStoreFile);
-		out.writeObject(alias);
-		out.writeObject(keyStorePassword);
-		out.writeObject(keyPassword);
+		SerialUtils.writeExternalCollection(out, signers);
 
 		SerialUtils.writeExternalMap(out, sdkDescriptions);
 		out.writeObject(remoteDispatchableEnvironmentSelector);
@@ -250,12 +205,7 @@ public class SignApkWorkerTaskFactory
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		inputFile = (FileLocation) in.readObject();
 		outputPath = (SakerPath) in.readObject();
-		v1SigningEnabled = (Boolean) in.readObject();
-		v2SigningEnabled = (Boolean) in.readObject();
-		keyStoreFile = (FileLocation) in.readObject();
-		alias = (String) in.readObject();
-		keyStorePassword = (String) in.readObject();
-		keyPassword = (String) in.readObject();
+		signers = SerialUtils.readExternalImmutableList(in);
 
 		sdkDescriptions = SerialUtils.readExternalSortedImmutableNavigableMap(in,
 				SDKSupportUtils.getSDKNameComparator());
@@ -279,30 +229,10 @@ public class SignApkWorkerTaskFactory
 		if (getClass() != obj.getClass())
 			return false;
 		SignApkWorkerTaskFactory other = (SignApkWorkerTaskFactory) obj;
-		if (alias == null) {
-			if (other.alias != null)
-				return false;
-		} else if (!alias.equals(other.alias))
-			return false;
 		if (inputFile == null) {
 			if (other.inputFile != null)
 				return false;
 		} else if (!inputFile.equals(other.inputFile))
-			return false;
-		if (keyPassword == null) {
-			if (other.keyPassword != null)
-				return false;
-		} else if (!keyPassword.equals(other.keyPassword))
-			return false;
-		if (keyStoreFile == null) {
-			if (other.keyStoreFile != null)
-				return false;
-		} else if (!keyStoreFile.equals(other.keyStoreFile))
-			return false;
-		if (keyStorePassword == null) {
-			if (other.keyStorePassword != null)
-				return false;
-		} else if (!keyStorePassword.equals(other.keyStorePassword))
 			return false;
 		if (outputPath == null) {
 			if (other.outputPath != null)
@@ -314,15 +244,10 @@ public class SignApkWorkerTaskFactory
 				return false;
 		} else if (!sdkDescriptions.equals(other.sdkDescriptions))
 			return false;
-		if (v1SigningEnabled == null) {
-			if (other.v1SigningEnabled != null)
+		if (signers == null) {
+			if (other.signers != null)
 				return false;
-		} else if (!v1SigningEnabled.equals(other.v1SigningEnabled))
-			return false;
-		if (v2SigningEnabled == null) {
-			if (other.v2SigningEnabled != null)
-				return false;
-		} else if (!v2SigningEnabled.equals(other.v2SigningEnabled))
+		} else if (!signers.equals(other.signers))
 			return false;
 		return true;
 	}

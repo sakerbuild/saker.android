@@ -270,7 +270,7 @@ test() {
 		},
 		IgnoreFileChanges: [
 			std.file.place(test/build),
-		],
+		] + $export[bundlepaths],
 		#ProcessJVMParameters: [ "-agentlib:jdwp=transport=dt_socket,address=localhost:5432,server=y,suspend=y,quiet=y" ],
 		MaxJVMCount: 1,
 		FailFast: true,

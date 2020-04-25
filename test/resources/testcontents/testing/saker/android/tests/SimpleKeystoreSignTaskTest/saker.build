@@ -27,10 +27,12 @@ build(
 	$aligned = saker.android.zipalign($apk)
 	$signed = saker.apk.sign(
 		$aligned,
-		KeyStore: keystore,
-		Alias: testalias,
-		StorePassword: storepass,
-		KeyPassword: keypass,
+		Signer: {
+			KeyStore: keystore,
+			Alias: testalias,
+			StorePassword: storepass,
+			KeyPassword: keypass,
+		}
 	)
 	$apkpath = $signed[Path]
 	

@@ -9,6 +9,8 @@ import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.impl.zipalign.ZipAlignWorkerTaskFactory;
 import saker.android.impl.zipalign.ZipAlignWorkerTaskIdentifier;
 import saker.android.main.AndroidFrontendUtils;
+import saker.android.main.TaskDocs;
+import saker.android.main.TaskDocs.DocZipAlignTaskOutput;
 import saker.android.main.zipalign.option.ZipAlignInputTaskOption;
 import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.path.SakerPath;
@@ -20,12 +22,35 @@ import saker.build.task.utils.annot.SakerInput;
 import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
 import saker.build.thirdparty.saker.util.io.FileUtils;
 import saker.build.trace.BuildTrace;
+import saker.nest.scriptinfo.reflection.annot.NestInformation;
+import saker.nest.scriptinfo.reflection.annot.NestParameterInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTaskInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 import saker.std.api.file.location.FileLocation;
 import saker.std.api.util.SakerStandardUtils;
 
+@NestTaskInformation(returnType = @NestTypeUsage(DocZipAlignTaskOutput.class))
+@NestInformation("Performs ZIP alignment on the specified archive.\n"
+		+ "The task uses the zipalign tool on the specified APK (or any other ZIP archive).\n"
+		+ "The input archive is not overwritten. The output is written to the build directory for the task.")
+@NestParameterInformation(value = "Input",
+		aliases = { "", "Input" },
+		required = true,
+		type = @NestTypeUsage(ZipAlignInputTaskOption.class),
+		info = @NestInformation("The input APK (or any kind of ZIP archive) that should be aligned."))
+@NestParameterInformation(value = "Output",
+		type = @NestTypeUsage(SakerPath.class),
+		info = @NestInformation("Specifies an output path for the aligned APK.\n"
+				+ "The output path should be forward relative. It will be used to place the "
+				+ "aligned APK in the build directory."))
+@NestParameterInformation(value = "SDKs",
+		type = @NestTypeUsage(value = Map.class,
+				elementTypes = { saker.sdk.support.main.TaskDocs.DocSdkNameOption.class,
+						SDKDescriptionTaskOption.class }),
+		info = @NestInformation(TaskDocs.SDKS))
 public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
@@ -57,8 +82,18 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 								"Signed APK output path must be forward relative: " + outputpath));
 						return null;
 					}
+					if (outputpath.getFileName() == null) {
+						taskcontext.abortExecution(
+								new InvalidPathFormatException("Output must have a file name: " + outputpath));
+						return null;
+					}
 				} else {
 					String apkfname = SakerStandardUtils.getFileLocationFileName(inputzipfile);
+					if (apkfname == null) {
+						taskcontext.abortExecution(
+								new InvalidPathFormatException("Failed to determine input file name: " + inputzipfile));
+						return null;
+					}
 					outputpath = SakerPath.valueOf(toAlignedOutputApkFileName(apkfname));
 				}
 
