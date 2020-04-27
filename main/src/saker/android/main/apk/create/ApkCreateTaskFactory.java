@@ -11,8 +11,12 @@ import java.util.Set;
 
 import saker.android.api.aapt2.link.AAPT2LinkInputLibrary;
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
+import saker.android.main.TaskDocs.DocApkCreatorTaskOutput;
+import saker.android.main.TaskDocs.DocAssetsDirectory;
+import saker.android.main.aapt2.AAPT2LinkTaskFactory;
 import saker.android.main.apk.create.option.ApkClassesTaskOption;
 import saker.android.main.apk.create.option.ApkResourcesTaskOption;
+import saker.android.main.d8.D8TaskFactory;
 import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.DirectoryVisitPredicate;
 import saker.build.file.SakerDirectory;
@@ -35,12 +39,44 @@ import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.trace.BuildTrace;
+import saker.nest.scriptinfo.reflection.annot.NestInformation;
+import saker.nest.scriptinfo.reflection.annot.NestParameterInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTaskInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileLocation;
 import saker.zip.api.create.IncludeResourceMapping;
 import saker.zip.api.create.ZipCreationTaskBuilder;
 
+@NestTaskInformation(returnType = @NestTypeUsage(DocApkCreatorTaskOutput.class))
+@NestInformation("Creates an Android APK based on the specified inputs.\n"
+		+ "The build task generates an APK that contains the spcified resources. The task doesn't performs ZIP alignment, "
+		+ "and doesn't sign the created APK.")
+@NestParameterInformation(value = "Resources",
+		aliases = { "" },
+		required = true,
+		type = @NestTypeUsage(value = Collection.class, elementTypes = { ApkResourcesTaskOption.class }),
+		info = @NestInformation("Specifies the resources to be included in the created APK.\n"
+				+ "The parameter takes one or more resources APKs that are directly included in the output.\n"
+				+ "The parameter accepts the output of the " + AAPT2LinkTaskFactory.TASK_NAME
+				+ "() task in which case all the linked resources will be part of the output. "
+				+ "The task will also include the assets and JNI libraries from referenced AARs."))
+@NestParameterInformation(value = "Classes",
+		type = @NestTypeUsage(ApkClassesTaskOption.class),
+		info = @NestInformation("Specifies the Java classes that should be part of the APK.\n"
+				+ "The parameter accepts the output of the " + D8TaskFactory.TASK_NAME + "() task."))
+
+@NestParameterInformation(value = "Assets",
+		type = @NestTypeUsage(value = Collection.class, elementTypes = { DocAssetsDirectory.class }),
+		info = @NestInformation("One or more paths to assets directories for the APK.\n"
+				+ "All files in each specified directory will be added to the assets/ directory in the output APK."))
+
+@NestParameterInformation(value = "Output",
+		type = @NestTypeUsage(SakerPath.class),
+		info = @NestInformation("Specifies the name of the output APK.\n"
+				+ "The specified path must be forward relative and will be used to place it in the build directory.\n"
+				+ "If not specified, default.apk is used."))
 public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 	private static final IncludeResourceMapping INCLUDE_RESOURCE_MAPPING_ASSETS = IncludeResourceMapping
 			.wildcardIncludeFilter(WildcardPath.valueOf("assets/**"));
@@ -62,7 +98,7 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput(value = { "", "Resources" }, required = true)
 			public Collection<ApkResourcesTaskOption> resourcesOption;
 
-			@SakerInput(value = { "Classes" }, required = true)
+			@SakerInput(value = { "Classes" })
 			public ApkClassesTaskOption classesOption;
 
 			@SakerInput(value = { "Assets" })
@@ -81,6 +117,11 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 					if (!outputpath.isForwardRelative()) {
 						taskcontext.abortExecution(new InvalidPathFormatException(
 								"APK output path must be forward relative: " + outputpath));
+						return null;
+					}
+					if (outputpath.getFileName() == null) {
+						taskcontext.abortExecution(
+								new InvalidPathFormatException("APK output path must have a file name: " + outputpath));
 						return null;
 					}
 				} else {

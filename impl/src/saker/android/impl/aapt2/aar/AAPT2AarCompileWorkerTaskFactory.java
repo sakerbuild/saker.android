@@ -1,9 +1,7 @@
 package saker.android.impl.aapt2.aar;
 
 import java.io.Externalizable;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Collections;
@@ -11,14 +9,6 @@ import java.util.HashSet;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Set;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.xml.sax.SAXException;
 
 import saker.android.api.aapt2.aar.AAPT2AarCompileTaskOutput;
 import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
@@ -31,11 +21,8 @@ import saker.android.impl.aapt2.compile.option.ResourcesAAPT2CompilerInputOption
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.android.impl.aar.AarEntryNotFoundException;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
-import saker.build.file.SakerFile;
 import saker.build.file.path.SakerPath;
-import saker.build.file.provider.LocalFileProvider;
 import saker.build.runtime.execution.ExecutionContext;
-import saker.build.task.CommonTaskContentDescriptors;
 import saker.build.task.Task;
 import saker.build.task.TaskContext;
 import saker.build.task.TaskFactory;
@@ -50,10 +37,7 @@ import saker.compiler.utils.api.CompilationIdentifier;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNotFoundException;
-import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileLocation;
-import saker.std.api.file.location.FileLocationVisitor;
-import saker.std.api.file.location.LocalFileLocation;
 import saker.std.api.util.SakerStandardUtils;
 
 public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCompileTaskOutput>,
@@ -173,63 +157,6 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 				compileworkertask);
 
 		return new AAPT2AarCompileTaskOutputImpl(inputfilelocation, compileoutput, rtxtfile, manifestfile);
-	}
-
-	public static String getAndroidManifestPackageName(TaskContext taskcontext, FileLocation manifestfile)
-			throws Exception {
-		if (manifestfile == null) {
-			return null;
-		}
-		String[] result = { null };
-		manifestfile.accept(new FileLocationVisitor() {
-			@Override
-			public void visit(LocalFileLocation loc) {
-				try (InputStream is = LocalFileProvider.getInstance().openInputStream(loc.getLocalPath())) {
-					result[0] = readAndroidManifestPackageName(is, loc);
-				} catch (Exception e) {
-					throw ObjectUtils.sneakyThrow(e);
-				}
-				taskcontext.getTaskUtilities().getReportExecutionDependency(
-						SakerStandardUtils.createLocalFileContentDescriptorExecutionProperty(loc.getLocalPath(),
-								taskcontext.getTaskId()));
-			}
-
-			@Override
-			public void visit(ExecutionFileLocation loc) {
-				SakerFile f = taskcontext.getTaskUtilities().resolveFileAtPath(loc.getPath());
-				if (f == null) {
-					taskcontext.reportInputFileDependency(null, loc.getPath(),
-							CommonTaskContentDescriptors.IS_NOT_FILE);
-					throw ObjectUtils.sneakyThrow(
-							new FileNotFoundException("AndroidManifest.xml not found at: " + loc.getPath()));
-				}
-				try (InputStream is = f.openInputStream()) {
-					result[0] = readAndroidManifestPackageName(is, loc);
-				} catch (Exception e) {
-					throw ObjectUtils.sneakyThrow(e);
-				}
-			}
-
-		});
-		return result[0];
-	}
-
-	private static String readAndroidManifestPackageName(InputStream is, FileLocation file)
-			throws SAXException, IOException, ParserConfigurationException {
-		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-		dbFactory.setNamespaceAware(true);
-		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-		Document doc = dBuilder.parse(is);
-		Element rootelem = doc.getDocumentElement();
-		if (!"manifest".equals(rootelem.getNodeName()) || rootelem.getNamespaceURI() != null) {
-			throw new IllegalArgumentException(
-					"Invalid root element for android manifest: " + rootelem + " in " + file);
-		}
-		String packattrval = rootelem.getAttributeNS(null, "package");
-		if (ObjectUtils.isNullOrEmpty(packattrval)) {
-			throw new IllegalArgumentException("Invalid android manifest package name: " + packattrval + " in " + file);
-		}
-		return packattrval;
 	}
 
 	@Override

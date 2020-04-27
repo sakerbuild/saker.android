@@ -25,13 +25,20 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.xml.sax.SAXException;
+
 import saker.android.api.aapt2.aar.AAPT2AarCompileTaskOutput;
 import saker.android.api.aapt2.compile.AAPT2CompileWorkerTaskOutput;
 import saker.android.api.aapt2.link.AAPT2LinkInputLibrary;
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.android.impl.aapt2.AAPT2Executor;
 import saker.android.impl.aapt2.AAPT2Utils;
-import saker.android.impl.aapt2.aar.AAPT2AarCompileWorkerTaskFactory;
 import saker.android.impl.aapt2.link.option.AAPT2LinkerInput;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
@@ -470,7 +477,7 @@ public class AAPT2LinkWorkerTaskFactory
 		addArgumentIfNonNull(cmd, "--compile-sdk-version-name", compileSdkVersionName);
 
 		addArgumentIfNonNull(cmd, "--private-symbols", privateSymbols);
-		addArgumentIfNonNull(cmd, "--custom-packag", customPackage);
+		addArgumentIfNonNull(cmd, "--custom-package", customPackage);
 		addArgumentIfNonNull(cmd, "--rename-manifest-package", renameManifestPackage);
 		addArgumentIfNonNull(cmd, "--rename-instrumentation-target-package", renameInstrumentationTargetPackage);
 		addArgumentIfNonNull(cmd, "--no-compress-regex", noCompressRegex);
@@ -681,6 +688,8 @@ public class AAPT2LinkWorkerTaskFactory
 							CommonTaskContentDescriptors.IS_NOT_FILE);
 					throw ObjectUtils.sneakyThrow(new FileNotFoundException("R.txt not found at: " + loc.getPath()));
 				}
+				taskcontext.reportInputFileDependency(null, loc.getPath(), f.getContentDescriptor());
+
 				try (InputStream is = f.openInputStream()) {
 					result[0] = readRSymbolTable(is);
 				} catch (Exception e) {
@@ -804,8 +813,7 @@ public class AAPT2LinkWorkerTaskFactory
 				FileLocation manifestfile = compilationinput.getAndroidManifestXmlFile();
 				String packagename;
 				try {
-					packagename = AAPT2AarCompileWorkerTaskFactory.getAndroidManifestPackageName(taskcontext,
-							manifestfile);
+					packagename = getAndroidManifestPackageName(taskcontext, manifestfile);
 				} catch (Exception e) {
 					throw ObjectUtils.sneakyThrow(e);
 				}
@@ -864,6 +872,65 @@ public class AAPT2LinkWorkerTaskFactory
 				cmd.add(str);
 			}
 		});
+	}
+
+	public static String getAndroidManifestPackageName(TaskContext taskcontext, FileLocation manifestfile)
+			throws Exception {
+		if (manifestfile == null) {
+			return null;
+		}
+		String[] result = { null };
+		manifestfile.accept(new FileLocationVisitor() {
+			@Override
+			public void visit(LocalFileLocation loc) {
+				try (InputStream is = LocalFileProvider.getInstance().openInputStream(loc.getLocalPath())) {
+					result[0] = readAndroidManifestPackageName(is, loc);
+				} catch (Exception e) {
+					throw ObjectUtils.sneakyThrow(e);
+				}
+				taskcontext.getTaskUtilities().getReportExecutionDependency(
+						SakerStandardUtils.createLocalFileContentDescriptorExecutionProperty(loc.getLocalPath(),
+								taskcontext.getTaskId()));
+			}
+
+			@Override
+			public void visit(ExecutionFileLocation loc) {
+				SakerFile f = taskcontext.getTaskUtilities().resolveFileAtPath(loc.getPath());
+				if (f == null) {
+					taskcontext.reportInputFileDependency(null, loc.getPath(),
+							CommonTaskContentDescriptors.IS_NOT_FILE);
+					throw ObjectUtils.sneakyThrow(
+							new FileNotFoundException("AndroidManifest.xml not found at: " + loc.getPath()));
+				}
+				taskcontext.reportInputFileDependency(null, loc.getPath(), f.getContentDescriptor());
+
+				try (InputStream is = f.openInputStream()) {
+					result[0] = readAndroidManifestPackageName(is, loc);
+				} catch (Exception e) {
+					throw ObjectUtils.sneakyThrow(e);
+				}
+			}
+
+		});
+		return result[0];
+	}
+
+	private static String readAndroidManifestPackageName(InputStream is, FileLocation file)
+			throws SAXException, IOException, ParserConfigurationException {
+		DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+		dbFactory.setNamespaceAware(true);
+		DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+		Document doc = dBuilder.parse(is);
+		Element rootelem = doc.getDocumentElement();
+		if (!"manifest".equals(rootelem.getNodeName()) || rootelem.getNamespaceURI() != null) {
+			throw new IllegalArgumentException(
+					"Invalid root element for android manifest: " + rootelem + " in " + file);
+		}
+		String packattrval = rootelem.getAttributeNS(null, "package");
+		if (ObjectUtils.isNullOrEmpty(packattrval)) {
+			throw new IllegalArgumentException("Invalid android manifest package name: " + packattrval + " in " + file);
+		}
+		return packattrval;
 	}
 
 	private static SakerPath discoverOutputFile(TaskContext taskcontext, SakerDirectory outputdir, Path outputfilepath,

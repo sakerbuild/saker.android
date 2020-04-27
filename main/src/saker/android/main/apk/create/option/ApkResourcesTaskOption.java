@@ -2,7 +2,9 @@ package saker.android.main.apk.create.option;
 
 import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.build.file.path.SakerPath;
+import saker.nest.scriptinfo.reflection.annot.NestInformation;
 
+@NestInformation("Input resources for APK creation.")
 public abstract class ApkResourcesTaskOption {
 	public abstract void accept(Visitor visitor);
 

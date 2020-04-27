@@ -9,10 +9,12 @@ import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.maven.support.api.MavenOperationConfiguration;
 import saker.maven.support.api.dependency.MavenDependencyResolutionTaskOutput;
 import saker.maven.support.api.dependency.ResolvedDependencyArtifact;
+import saker.nest.scriptinfo.reflection.annot.NestInformation;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileCollection;
 import saker.std.api.file.location.FileLocation;
 
+@NestInformation("Input for aapt2 compilation.")
 public abstract class AAPT2CompilerInputTaskOption {
 	public abstract void accept(Visitor visitor);
 

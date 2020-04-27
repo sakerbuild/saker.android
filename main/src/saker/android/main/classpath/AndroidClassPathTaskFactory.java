@@ -16,6 +16,9 @@ import saker.android.api.aapt2.compile.AAPT2CompileFrontendTaskOutput;
 import saker.android.api.aar.AarExtractTaskOutput;
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.android.impl.aar.AarEntryNotFoundException;
+import saker.android.main.TaskDocs.DocAndroidClassPathInputTaskOption;
+import saker.android.main.TaskDocs.DocAndroidClassPathReference;
+import saker.android.main.aapt2.AAPT2CompileTaskFactory;
 import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.SakerFile;
 import saker.build.file.path.SakerPath;
@@ -50,6 +53,10 @@ import saker.maven.support.api.dependency.ResolvedDependencyArtifact;
 import saker.maven.support.api.localize.ArtifactLocalizationTaskOutput;
 import saker.maven.support.api.localize.ArtifactLocalizationUtils;
 import saker.maven.support.api.localize.ArtifactLocalizationWorkerTaskOutput;
+import saker.nest.scriptinfo.reflection.annot.NestInformation;
+import saker.nest.scriptinfo.reflection.annot.NestParameterInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTaskInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileCollection;
@@ -57,6 +64,20 @@ import saker.std.api.file.location.FileLocation;
 import saker.std.api.file.location.LocalFileLocation;
 import saker.std.api.util.SakerStandardUtils;
 
+@NestTaskInformation(returnType = @NestTypeUsage(DocAndroidClassPathReference.class))
+@NestInformation("Creates a Java classpath configuration for Android.\n"
+		+ "The task will extract the classes from .aar input archives and provide them as a classpath configuration. "
+		+ "The output of the task can be used as an input to Java compilation or with other tasks that support them.\n"
+		+ "The main objective of this task is to properly handle Android Library (AAR) inputs. It will automatically extract "
+		+ "the necessary embedded Java JAR files and make them part of the created classpath.")
+@NestParameterInformation(value = "AARs",
+		aliases = { "", "AAR", "Artifacts", "Artifact" },
+		required = true,
+		type = @NestTypeUsage(DocAndroidClassPathInputTaskOption.class),
+		info = @NestInformation("The inputs to create the classpath from.\n"
+				+ "May be AARs, JARs, class directories, or resolved Maven artifacts.\n" + "Result of the "
+				+ AAPT2CompileTaskFactory.TASK_NAME
+				+ "() can also be used, in which case the used AARs for the aapt2 compilation will be added to this classpath."))
 public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
@@ -68,7 +89,7 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
 		return new ParameterizableTask<Object>() {
 			@SakerInput(value = { "", "AAR", "AARs", "Artifact", "Artifacts" }, required = true)
-			public Object artifacts;
+			public Object artifactsOption;
 
 			@Override
 			public Object run(TaskContext taskcontext) throws Exception {
@@ -77,7 +98,7 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 				}
 				MavenClassPathTaskBuilder cpbuilder = MavenClassPathTaskBuilder.newBuilder();
 
-				handleInputElement(taskcontext, cpbuilder, artifacts);
+				handleInputElement(taskcontext, cpbuilder, artifactsOption);
 
 				TaskIdentifier workertaskid = cpbuilder.buildTaskIdentifier();
 				taskcontext.startTask(workertaskid, cpbuilder.buildTask(), null);

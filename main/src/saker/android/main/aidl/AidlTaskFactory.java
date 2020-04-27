@@ -13,6 +13,8 @@ import saker.android.impl.aidl.AidlWorkerTaskIdentifier;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.AndroidFrontendUtils;
+import saker.android.main.TaskDocs;
+import saker.android.main.TaskDocs.DocAidlTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.ParameterizableTask;
@@ -24,10 +26,37 @@ import saker.build.thirdparty.saker.util.StringUtils;
 import saker.build.trace.BuildTrace;
 import saker.compiler.utils.api.CompilationIdentifier;
 import saker.compiler.utils.main.CompilationIdentifierTaskOption;
+import saker.nest.scriptinfo.reflection.annot.NestInformation;
+import saker.nest.scriptinfo.reflection.annot.NestParameterInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTaskInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 
+@NestTaskInformation(returnType = @NestTypeUsage(DocAidlTaskOutput.class))
+@NestInformation("Performs AIDL (Android Interface Definition Language) compilation.\n"
+		+ "The task uses the aidl tool that comes with the Android SDK to compile the input .aidl files.\n"
+		+ "The tasks takes the source directories as the input, and generates the Java source files accordingly. "
+		+ "The .aidl files should be in the appropriate package hierarchy in each source directory.\n")
+@NestParameterInformation(value = "SourceDirectories",
+		aliases = { "", "SourceDirectory" },
+		required = true,
+		type = @NestTypeUsage(value = Collection.class, elementTypes = { SakerPath.class }),
+		info = @NestInformation("Specifies the source directories containing the .aidl files.\n"
+				+ "The parameter accepts one or more paths to the AIDL source directories which contain the .aidl "
+				+ "files that should be compiled.\n"
+				+ "The .aidl files should be in a directory hierarchy respective to their enclosing package name.\n"
+				+ "E.g. A service called com.example.IRemoteService should be in the com/example/IRemoteService.aidl file."))
+@NestParameterInformation(value = "Identifier",
+		type = @NestTypeUsage(CompilationIdentifierTaskOption.class),
+		info = @NestInformation("Specifies an identifier for the AIDL compilation.\n"
+				+ "The identifier will be used to uniquely identify this compilation, and to generate the output directory name."))
+@NestParameterInformation(value = "SDKs",
+		type = @NestTypeUsage(value = Map.class,
+				elementTypes = { saker.sdk.support.main.TaskDocs.DocSdkNameOption.class,
+						SDKDescriptionTaskOption.class }),
+		info = @NestInformation(TaskDocs.SDKS))
 public class AidlTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 

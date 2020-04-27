@@ -14,6 +14,10 @@ import saker.android.impl.d8.option.D8InputOption;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.AndroidFrontendUtils;
+import saker.android.main.TaskDocs;
+import saker.android.main.TaskDocs.DocClassBinaryName;
+import saker.android.main.TaskDocs.DocD8TaskOutput;
+import saker.android.main.apk.create.ApkCreateTaskFactory;
 import saker.android.main.d8.option.D8InputTaskOption;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.ParameterizableTask;
@@ -25,10 +29,66 @@ import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.trace.BuildTrace;
 import saker.compiler.utils.api.CompilationIdentifier;
 import saker.compiler.utils.main.CompilationIdentifierTaskOption;
+import saker.nest.scriptinfo.reflection.annot.NestInformation;
+import saker.nest.scriptinfo.reflection.annot.NestParameterInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTaskInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 
+@NestTaskInformation(returnType = @NestTypeUsage(DocD8TaskOutput.class))
+@NestInformation("Performs dexing operations on Java bytecode using the Android d8 tool.\n"
+		+ "The task converts the input Java bytecode to dex format that can run on Android devices.\n"
+		+ "The result of this operation can be passed to the " + ApkCreateTaskFactory.TASK_NAME
+		+ "() task to generate the APK that contains the classes.")
+@NestParameterInformation(value = "Input",
+		aliases = { "" },
+		required = true,
+		type = @NestTypeUsage(value = Collection.class, elementTypes = { D8InputTaskOption.class }),
+		info = @NestInformation("Specifies the inputs for the dexing operation.\n"
+				+ "The inputs may be paths or wildcards to Java archives and directories containing .class files.\n"
+				+ "Outputs of the saker.java.compile() task can also be passed directly as input. Classpath objects are also accepted.\n"
+				+ "The parameter accepts results of Maven artifact resolutions.\n"
+				+ "Note that aar bundles are not accepted as a direct input to this parameter. You may need to "
+				+ "perform the class extractions from aar bundles if necessary."))
+@NestParameterInformation(value = "NoDesugaring",
+		type = @NestTypeUsage(boolean.class),
+		info = @NestInformation("Disables Java 8 language features.\n"
+				+ "Set this parameter to tru only if you don't intend to compile Java bytecode that uses Java 8 language features.\n"
+				+ "Corresponds to the --no-desugaring flag of d8."))
+@NestParameterInformation(value = "Release",
+		type = @NestTypeUsage(boolean.class),
+		info = @NestInformation("Compiles DEX bytecode without debug information.\n"
+				+ "Set this parameter to true when compiling bytecode for a public release.\n"
+				+ "Corresponds to the --release flag of d8."))
+
+@NestParameterInformation(value = "MainDexClasses",
+		type = @NestTypeUsage(value = Collection.class, elementTypes = { DocClassBinaryName.class }),
+		info = @NestInformation("Specifies the binary names of Java classes that should be part of the main dex file.\n"
+				+ "This parameter must be used to enable multidexing. The specified classes will be placed in the main "
+				+ "dex file."))
+
+@NestParameterInformation(value = "MinAPI",
+		type = @NestTypeUsage(int.class),
+		info = @NestInformation("Specifies the minimum API level you want the output DEX files to support.\n"
+				+ "Corresponds to the --min-api argument of d8."))
+@NestParameterInformation(value = "OptimizeMultidexForLinearAlloc",
+		type = @NestTypeUsage(boolean.class),
+		info = @NestInformation("If set to true, legacy multidex partitioning will be optimized to reduce LinearAlloc usage "
+				+ " during Dalvik DexOpt.\n"
+				+ "This option may not be available with d8 present in older build-tools versions."
+				+ "Corresponds to the --optimize-multidex-for-linearalloc flag of d8."))
+
+@NestParameterInformation(value = "Identifier",
+		type = @NestTypeUsage(CompilationIdentifierTaskOption.class),
+		info = @NestInformation("Specifies an identifier for the dexing operation.\n"
+				+ "The identifier will be used to uniquely identify this operation, and to generate the output directory name."))
+@NestParameterInformation(value = "SDKs",
+		type = @NestTypeUsage(value = Map.class,
+				elementTypes = { saker.sdk.support.main.TaskDocs.DocSdkNameOption.class,
+						SDKDescriptionTaskOption.class }),
+		info = @NestInformation(TaskDocs.SDKS))
 public class D8TaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
@@ -47,7 +107,6 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput(value = { "Release" })
 			public boolean releaseOption;
 
-			//XXX binary names
 			@SakerInput(value = { "MainDexClasses" })
 			public Collection<String> mainDexClassesOption;
 

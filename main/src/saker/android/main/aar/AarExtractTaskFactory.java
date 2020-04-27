@@ -4,11 +4,14 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 import saker.android.api.aar.AarExtractTaskOutput;
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.android.impl.aar.ExecutionAarExtractTaskOutput;
 import saker.android.impl.aar.LocalAarExtractTaskOutput;
+import saker.android.main.TaskDocs.DocAarExtractTaskOutput;
 import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
@@ -23,6 +26,10 @@ import saker.build.task.utils.annot.SakerInput;
 import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.trace.BuildTrace;
+import saker.nest.scriptinfo.reflection.annot.NestInformation;
+import saker.nest.scriptinfo.reflection.annot.NestParameterInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTaskInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileLocation;
@@ -31,6 +38,25 @@ import saker.std.api.file.location.LocalFileLocation;
 import saker.std.main.file.option.FileLocationTaskOption;
 import saker.std.main.file.utils.TaskOptionUtils;
 
+@NestTaskInformation(returnType = @NestTypeUsage(DocAarExtractTaskOutput.class))
+@NestInformation("Extracts a given entry from .aar files.\n"
+		+ "The task will take an AAR archive file as input and extract the specified entries. The extracted files can be "
+		+ "used as an input to other tasks.")
+@NestParameterInformation(value = "AAR",
+		aliases = { "", "Input" },
+		required = true,
+		type = @NestTypeUsage(FileLocationTaskOption.class),
+		info = @NestInformation("The input AAR to extract the entries from."))
+@NestParameterInformation(value = "Entry",
+		required = true,
+		type = @NestTypeUsage(SakerPath.class),
+		info = @NestInformation("Path of the entry that should be extracted from the specified AAR.\n"
+				+ "The path should be a forward relative and represent a file in the archive.\n"
+				+ "If the file is a directory, all entries under that will be extracted."))
+@NestParameterInformation(value = "Output",
+		type = @NestTypeUsage(SakerPath.class),
+		info = @NestInformation("A forward relative output path that specifies the output location of the extracted files.\n"
+				+ "It can be used to have a better output location than the automatically generated one."))
 public class AarExtractTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
@@ -83,8 +109,12 @@ public class AarExtractTaskFactory extends FrontendTaskFactory<Object> {
 				SakerPath outputresolverelative = entryOption.getNameCount() == 1 ? SakerPath.EMPTY
 						: entryOption.subPath(1);
 
-				AarEntryExtractWorkerTaskFactory workertask = new AarEntryExtractWorkerTaskFactory(filelocation,
-						firstname);
+				AarEntryExtractWorkerTaskFactory workertask;
+				if (outputPathOption != null) {
+					workertask = new AarEntryExtractWorkerTaskFactory(filelocation, outputPathOption, firstname);
+				} else {
+					workertask = new AarEntryExtractWorkerTaskFactory(filelocation, firstname);
+				}
 
 				TaskIdentifier workertaskid = workertask.createTaskId();
 				taskcontext.startTask(workertaskid, workertask, null);
@@ -101,6 +131,37 @@ public class AarExtractTaskFactory extends FrontendTaskFactory<Object> {
 			}
 
 		};
+	}
+
+	private static Set<FileLocation> filterFileLocationsForBaseDirectory(Set<? extends FileLocation> files,
+			SakerPath path) {
+		if (files == null) {
+			return null;
+		}
+		int pathnamecount = path.getNameCount();
+		LinkedHashSet<FileLocation> result = new LinkedHashSet<>();
+		FileLocationVisitor visitor = new FileLocationVisitor() {
+			@Override
+			public void visit(LocalFileLocation loc) {
+				SakerPath p = loc.getLocalPath();
+				if (p.startsWith(path) && p.getNameCount() > pathnamecount) {
+					result.add(loc);
+				}
+			}
+
+			@Override
+			public void visit(ExecutionFileLocation loc) {
+				SakerPath p = loc.getPath();
+				if (p.startsWith(path) && p.getNameCount() > pathnamecount) {
+					result.add(loc);
+				}
+			}
+		};
+
+		for (FileLocation f : files) {
+			f.accept(visitor);
+		}
+		return result;
 	}
 
 	private static class AarRelativeResolvingStructuredTaskResult implements StructuredTaskResult, Externalizable {
@@ -131,14 +192,16 @@ public class AarExtractTaskFactory extends FrontendTaskFactory<Object> {
 			extractout.getFileLocation().accept(new FileLocationVisitor() {
 				@Override
 				public void visit(LocalFileLocation loc) {
-					result[0] = new LocalAarExtractTaskOutput(loc.getLocalPath().resolve(relresolve),
-							extractout.getDirectoryFileLocations());
+					SakerPath resolvedpath = loc.getLocalPath().resolve(relresolve);
+					result[0] = new LocalAarExtractTaskOutput(resolvedpath,
+							filterFileLocationsForBaseDirectory(extractout.getDirectoryFileLocations(), resolvedpath));
 				}
 
 				@Override
 				public void visit(ExecutionFileLocation loc) {
-					result[0] = new ExecutionAarExtractTaskOutput(loc.getPath().resolve(relresolve),
-							extractout.getDirectoryFileLocations());
+					SakerPath resolvedpath = loc.getPath().resolve(relresolve);
+					result[0] = new ExecutionAarExtractTaskOutput(resolvedpath,
+							filterFileLocationsForBaseDirectory(extractout.getDirectoryFileLocations(), resolvedpath));
 				}
 			});
 			return result[0];
