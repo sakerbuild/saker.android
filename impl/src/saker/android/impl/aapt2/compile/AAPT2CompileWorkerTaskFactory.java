@@ -293,32 +293,36 @@ public class AAPT2CompileWorkerTaskFactory
 			inputfiles = new TreeMap<>();
 			localinputfiles = new TreeMap<>();
 
-			ObjectUtils.iterateSortedMapEntries(prevstate.pathOutputFiles, changedoutputfiles,
-					(filepath, prevoutput, file) -> {
-						InputFileState instate = deleteOutputDirectoryForInputPath(taskcontext, outputdir, nstate,
-								prevoutput.inputFile);
-						if (instate != null) {
-							instate.fileLocation.accept(new FileLocationVisitor() {
-								@Override
-								public void visit(ExecutionFileLocation loc) {
-									SakerPath inpath = loc.getPath();
-									InputFileSpec<SakerFile> infile = collectedfiles.get(inpath);
-									if (infile != null) {
-										inputfiles.put(inpath, infile);
+			if (!changedoutputfiles.isEmpty()) {
+				ObjectUtils.iterateSortedMapEntriesDual(
+						prevstate.pathOutputFiles.subMap(changedoutputfiles.firstKey(), true,
+								changedoutputfiles.lastKey(), true),
+						changedoutputfiles, (filepath, prevoutput, file) -> {
+							InputFileState instate = deleteOutputDirectoryForInputPath(taskcontext, outputdir, nstate,
+									prevoutput.inputFile);
+							if (instate != null) {
+								instate.fileLocation.accept(new FileLocationVisitor() {
+									@Override
+									public void visit(ExecutionFileLocation loc) {
+										SakerPath inpath = loc.getPath();
+										InputFileSpec<SakerFile> infile = collectedfiles.get(inpath);
+										if (infile != null) {
+											inputfiles.put(inpath, infile);
+										}
 									}
-								}
 
-								@Override
-								public void visit(LocalFileLocation loc) {
-									SakerPath inpath = loc.getLocalPath();
-									InputFileSpec<ContentDescriptor> infile = collectedlocalinputfiles.get(inpath);
-									if (infile != null) {
-										localinputfiles.put(inpath, infile);
+									@Override
+									public void visit(LocalFileLocation loc) {
+										SakerPath inpath = loc.getLocalPath();
+										InputFileSpec<ContentDescriptor> infile = collectedlocalinputfiles.get(inpath);
+										if (infile != null) {
+											localinputfiles.put(inpath, infile);
+										}
 									}
-								}
-							});
-						}
-					});
+								});
+							}
+						});
+			}
 			ObjectUtils.iterateSortedMapEntries(prevstate.pathInputFiles, collectedfiles,
 					(filepath, previnput, filespec) -> {
 						if (filespec != null) {
@@ -373,7 +377,6 @@ public class AAPT2CompileWorkerTaskFactory
 		}
 
 		if (!inputfiles.isEmpty() || !localinputfiles.isEmpty()) {
-
 			Collection<InputFileConfig> inputs = new ArrayList<>();
 
 			for (Entry<SakerPath, InputFileSpec<SakerFile>> entry : inputfiles.entrySet()) {

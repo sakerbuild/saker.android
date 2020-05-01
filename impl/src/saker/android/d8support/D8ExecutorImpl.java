@@ -187,25 +187,29 @@ public class D8ExecutorImpl implements D8Executor {
 			inputfiles = new TreeMap<>();
 			inputarchives = new HashSet<>();
 
-			ObjectUtils.iterateSortedMapEntries(prevstate.outputPathInformations, changedoutputfiles,
-					(filepath, prevoutput, file) -> {
-						if (file == null) {
-							//the output file was removed
-						} else {
-							//an output file was modified
-							deleteOutputFile(taskcontext, prevoutput);
-						}
-						nstate.removeOutputForPath(filepath);
-						D8InputFileInformation inputinfo = nstate.inputDescriptorInformations
-								.get(prevoutput.getDescriptor());
-						if (inputinfo != null) {
-							//add the input to dex	
-							InputSakerFileInfo infile = collectedinputfileinfos.get(inputinfo.getPath());
-							if (infile != null) {
-								inputfiles.put(inputinfo.getPath(), infile);
+			if (!changedoutputfiles.isEmpty()) {
+				ObjectUtils.iterateSortedMapEntriesDual(
+						prevstate.outputPathInformations.subMap(changedoutputfiles.firstKey(), true,
+								changedoutputfiles.lastKey(), true),
+						changedoutputfiles, (filepath, prevoutput, file) -> {
+							if (file == null) {
+								//the output file was removed
+							} else {
+								//an output file was modified
+								deleteOutputFile(taskcontext, prevoutput);
 							}
-						}
-					});
+							nstate.removeOutputForPath(filepath);
+							D8InputFileInformation inputinfo = nstate.inputDescriptorInformations
+									.get(prevoutput.getDescriptor());
+							if (inputinfo != null) {
+								//add the input to dex	
+								InputSakerFileInfo infile = collectedinputfileinfos.get(inputinfo.getPath());
+								if (infile != null) {
+									inputfiles.put(inputinfo.getPath(), infile);
+								}
+							}
+						});
+			}
 
 			ObjectUtils.iterateSortedMapEntries(prevstate.inputPathInformations, collectedinputfileinfos,
 					(filepath, previnput, infile) -> {

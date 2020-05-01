@@ -70,6 +70,7 @@ import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 				+ "dex file."))
 
 @NestParameterInformation(value = "MinAPI",
+		aliases = { "MinSDKVersion" },
 		type = @NestTypeUsage(int.class),
 		info = @NestInformation("Specifies the minimum API level you want the output DEX files to support.\n"
 				+ "Corresponds to the --min-api argument of d8."))
@@ -110,7 +111,8 @@ public class D8TaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput(value = { "MainDexClasses" })
 			public Collection<String> mainDexClassesOption;
 
-			@SakerInput("MinAPI")
+			//alias with MinSDKVersion so its the same with aapt2 task
+			@SakerInput(value = { "MinAPI", "MinSDKVersion" })
 			public Integer minApiOpion;
 
 			@SakerInput("OptimizeMultidexForLinearAlloc")

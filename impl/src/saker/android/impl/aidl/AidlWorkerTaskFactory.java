@@ -181,14 +181,17 @@ public class AidlWorkerTaskFactory implements TaskFactory<AidlTaskOutput>, Task<
 
 			inputfiles = new TreeMap<>();
 
-			ObjectUtils.iterateSortedMapEntries(prevstate.pathOutputs, changedoutputfiles,
-					(filepath, prevoutput, file) -> {
-						InputFileState instate = removeOutputsForInputPath(taskcontext, nstate, prevoutput.inputPath);
-						InputFileInfo ininfo = collectedabsoluteinputfiles.get(instate.path);
-						if (ininfo != null) {
-							inputfiles.put(ininfo.sourceDirectoryRelativePath, ininfo);
-						}
-					});
+			if (!changedoutputfiles.isEmpty()) {
+				ObjectUtils.iterateSortedMapEntriesDual(prevstate.pathOutputs.subMap(changedoutputfiles.firstKey(),
+						true, changedoutputfiles.lastKey(), true), changedoutputfiles, (filepath, prevoutput, file) -> {
+							InputFileState instate = removeOutputsForInputPath(taskcontext, nstate,
+									prevoutput.inputPath);
+							InputFileInfo ininfo = collectedabsoluteinputfiles.get(instate.path);
+							if (ininfo != null) {
+								inputfiles.put(ininfo.sourceDirectoryRelativePath, ininfo);
+							}
+						});
+			}
 
 			ObjectUtils.iterateSortedMapEntries(prevstate.pathInputs, collectedabsoluteinputfiles,
 					(filepath, previnput, infile) -> {

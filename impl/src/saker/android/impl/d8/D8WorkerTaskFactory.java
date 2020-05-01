@@ -84,8 +84,9 @@ public class D8WorkerTaskFactory implements TaskFactory<D8TaskOutput>, Task<D8Ta
 		if (sdkdescriptions.get(AndroidBuildToolsSDKReference.SDK_NAME) == null) {
 			throw new SDKNotFoundException(AndroidBuildToolsSDKReference.SDK_NAME + " SDK not specified.");
 		}
-		remoteDispatchableEnvironmentSelector = SDKSupportUtils
-				.getSDKBasedClusterExecutionEnvironmentSelector(sdkdescriptions.values());
+		//TODO allow remote dispatching if there are no local input files
+//		remoteDispatchableEnvironmentSelector = SDKSupportUtils
+//				.getSDKBasedClusterExecutionEnvironmentSelector(sdkdescriptions.values());
 	}
 
 	public void setInputs(Set<D8InputOption> inputs) {

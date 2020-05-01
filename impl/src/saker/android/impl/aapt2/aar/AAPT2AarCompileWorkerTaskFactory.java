@@ -89,6 +89,7 @@ public class AAPT2AarCompileWorkerTaskFactory implements TaskFactory<AAPT2AarCom
 	@Override
 	public AAPT2AarCompileTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
+			//this is a frontend task, as the compilation is done using another worker
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 		}
 

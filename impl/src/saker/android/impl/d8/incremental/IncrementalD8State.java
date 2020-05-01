@@ -142,14 +142,14 @@ public class IncrementalD8State implements Externalizable {
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		buildToolsSDK = (SDKReference) in.readObject();
 		platformsSDK = (SDKReference) in.readObject();
-		inputPathInformations = SerialUtils.readExternalImmutableNavigableMap(in);
-		inputDescriptorInformations = SerialUtils.readExternalImmutableNavigableMap(in);
-		outputDescriptorInformations = SerialUtils.readExternalImmutableNavigableMap(in);
-		outputPathInformations = SerialUtils.readExternalImmutableNavigableMap(in);
+		inputPathInformations = SerialUtils.readExternalSortedImmutableNavigableMap(in);
+		inputDescriptorInformations = SerialUtils.readExternalSortedImmutableNavigableMap(in);
+		outputDescriptorInformations = SerialUtils.readExternalSortedImmutableNavigableMap(in);
+		outputPathInformations = SerialUtils.readExternalSortedImmutableNavigableMap(in);
 		minApi = (Integer) in.readObject();
 		noDesugaring = in.readBoolean();
 		release = in.readBoolean();
-		outputClassIndexInformations = SerialUtils.readExternalImmutableNavigableMap(in);
+		outputClassIndexInformations = SerialUtils.readExternalSortedImmutableNavigableMap(in);
 		archiveInformations = SerialUtils.readExternalImmutableHashMap(in);
 	}
 
