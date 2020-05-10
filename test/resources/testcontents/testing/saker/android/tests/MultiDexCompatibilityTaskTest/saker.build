@@ -41,7 +41,7 @@ build(
 	)
 	$d8 = saker.android.d8(
 		$javac,
-		MainDexClasses: android.support.multidex.MultiDexApplication
+		MainDexClasses: androidx.multidex.MultiDexApplication
 	)
 	
 	$apk = saker.apk.create(
