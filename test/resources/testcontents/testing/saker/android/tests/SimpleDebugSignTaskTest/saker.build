@@ -10,7 +10,7 @@ build(
 	$javac = saker.java.compile(
 		SourceDirectories: [
 			src
-		] + $aaptlink[JavaSourceDirectories],,
+		] + $aaptlink[JavaSourceDirectories],
 		BootClassPath: saker.android.classpath.platform(),
 		SDKs: {
 			AndroidPlatform: saker.android.sdk.platform(),

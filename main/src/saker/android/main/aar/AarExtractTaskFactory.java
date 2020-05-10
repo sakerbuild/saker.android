@@ -51,8 +51,8 @@ import saker.std.main.file.utils.TaskOptionUtils;
 		required = true,
 		type = @NestTypeUsage(SakerPath.class),
 		info = @NestInformation("Path of the entry that should be extracted from the specified AAR.\n"
-				+ "The path should be a forward relative and represent a file in the archive.\n"
-				+ "If the file is a directory, all entries under that will be extracted."))
+				+ "The path should be a forward relative and represent a file or directory in the archive.\n"
+				+ "If it's a directory, all entries under that will be extracted."))
 @NestParameterInformation(value = "Output",
 		type = @NestTypeUsage(SakerPath.class),
 		info = @NestInformation("A forward relative output path that specifies the output location of the extracted files.\n"

@@ -7,10 +7,12 @@ import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.file.path.WildcardPath;
 import saker.build.file.path.WildcardPath.ReducedWildcardPath;
+import saker.nest.scriptinfo.reflection.annot.NestInformation;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileCollection;
 import saker.std.api.file.location.FileLocation;
 
+@NestInformation("Input for aapt2 linking operation.")
 public abstract class AAPT2LinkerInputTaskOption {
 	public abstract void accept(Visitor visitor);
 

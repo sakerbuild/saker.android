@@ -29,11 +29,6 @@ public class VersionsAndroidBuildToolsSDKDescription implements IndeterminateSDK
 	}
 
 	public static SDKDescription create(Set<String> versions) {
-		if (versions != null && versions.size() == 1) {
-			//only a single version possible, we don't need indeterminate sdk description
-			return EnvironmentSDKDescription
-					.create(new VersionsAndroidBuildToolsSDKReferenceEnvironmentProperty(versions));
-		}
 		return new VersionsAndroidBuildToolsSDKDescription(versions);
 	}
 

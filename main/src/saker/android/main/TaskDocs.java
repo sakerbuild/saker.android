@@ -120,6 +120,7 @@ public class TaskDocs {
 	}
 
 	@NestTypeInformation(qualifiedName = "AAPT2CompileTaskOutput")
+	@NestInformation("Output of aapt2 compilation.")
 	@NestFieldInformation(value = "AarCompilations",
 			type = @NestTypeUsage(value = Collection.class, elementTypes = { DocAAPT2AarCompileTaskOutput.class }),
 			info = @NestInformation("Collection of AAR resource compilation results.\n"
@@ -132,6 +133,7 @@ public class TaskDocs {
 	}
 
 	@NestTypeInformation(qualifiedName = "AAPT2AarCompileTaskOutput")
+	@NestInformation("Output of aapt2 compilation of an AAR bundle.")
 	@NestFieldInformation(value = "AarFile",
 			type = @NestTypeUsage(DocFileLocation.class),
 			info = @NestInformation("The file location of the input AAR file."))

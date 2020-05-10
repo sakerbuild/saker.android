@@ -40,12 +40,14 @@ import saker.maven.support.api.download.ArtifactDownloadWorkerTaskOutput;
 import saker.maven.support.api.localize.ArtifactLocalizationTaskOutput;
 import saker.maven.support.api.localize.ArtifactLocalizationUtils;
 import saker.maven.support.api.localize.ArtifactLocalizationWorkerTaskOutput;
+import saker.nest.scriptinfo.reflection.annot.NestInformation;
 import saker.sdk.support.api.SDKPathReference;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileCollection;
 import saker.std.api.file.location.FileLocation;
 import saker.std.api.file.location.LocalFileLocation;
 
+@NestInformation("Input for D8 operation.")
 public abstract class D8InputTaskOption {
 	public abstract Set<D8InputOption> toInputOption(TaskContext taskcontext);
 

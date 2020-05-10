@@ -5,6 +5,7 @@ import saker.nest.scriptinfo.reflection.annot.NestInformation;
 import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.std.main.file.option.FileLocationTaskOption;
 
+@NestInformation("Describes a signer entity for APK signing.")
 @NestFieldInformation(value = "KeyStore",
 		type = @NestTypeUsage(FileLocationTaskOption.class),
 		info = @NestInformation("The keystore to be used when signing the APK.\n"
