@@ -265,7 +265,7 @@ test() {
 		},
 		TestInvokerParameters: {
 			SakerJarPath: std.file.mirror($testapi[instrumentedjar]),
-			TimeoutMillis: 120000,
+			TimeoutMillis: 240000,
 			TestsBaseBuildDirectory: std.file.mirror.path(std.file.place(test/build)),
 		},
 		IgnoreFileChanges: [
