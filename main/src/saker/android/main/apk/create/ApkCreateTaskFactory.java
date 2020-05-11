@@ -9,11 +9,11 @@ import java.util.Collections;
 import java.util.NavigableMap;
 import java.util.Set;
 
-import saker.android.api.aapt2.link.AAPT2LinkInputLibrary;
-import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
+import saker.android.api.aapt2.link.Aapt2LinkInputLibrary;
+import saker.android.api.aapt2.link.Aapt2LinkTaskOutput;
 import saker.android.main.TaskDocs.DocApkCreatorTaskOutput;
 import saker.android.main.TaskDocs.DocAssetsDirectory;
-import saker.android.main.aapt2.AAPT2LinkTaskFactory;
+import saker.android.main.aapt2.Aapt2LinkTaskFactory;
 import saker.android.main.apk.create.option.ApkClassesTaskOption;
 import saker.android.main.apk.create.option.ApkResourcesTaskOption;
 import saker.android.main.d8.D8TaskFactory;
@@ -59,7 +59,7 @@ import saker.zip.api.create.ZipCreationTaskBuilder;
 		type = @NestTypeUsage(value = Collection.class, elementTypes = { ApkResourcesTaskOption.class }),
 		info = @NestInformation("Specifies the resources to be included in the created APK.\n"
 				+ "The parameter takes one or more resources APKs that are directly included in the output.\n"
-				+ "The parameter accepts the output of the " + AAPT2LinkTaskFactory.TASK_NAME
+				+ "The parameter accepts the output of the " + Aapt2LinkTaskFactory.TASK_NAME
 				+ "() task in which case all the linked resources will be part of the output. "
 				+ "The task will also include the assets and JNI libraries from referenced AARs."))
 @NestParameterInformation(value = "Classes",
@@ -155,11 +155,11 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 					}
 					resoption.accept(new ApkResourcesTaskOption.Visitor() {
 						@Override
-						public void visit(AAPT2LinkTaskOutput linkoutput) {
+						public void visit(Aapt2LinkTaskOutput linkoutput) {
 							taskbuilder.addIncludeArchive(ExecutionFileLocation.create(linkoutput.getAPKPath()), null);
-							Collection<AAPT2LinkInputLibrary> inputlibs = linkoutput.getInputLibraries();
+							Collection<Aapt2LinkInputLibrary> inputlibs = linkoutput.getInputLibraries();
 							if (!ObjectUtils.isNullOrEmpty(inputlibs)) {
-								for (AAPT2LinkInputLibrary ilib : inputlibs) {
+								for (Aapt2LinkInputLibrary ilib : inputlibs) {
 									FileLocation aar = ilib.getAarFile();
 									//include all assets
 									taskbuilder.addIncludeArchive(aar, INCLUDE_RESOURCE_MAPPING_ASSETS);

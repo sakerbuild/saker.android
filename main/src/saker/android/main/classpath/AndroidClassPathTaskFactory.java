@@ -11,14 +11,14 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 
-import saker.android.api.aapt2.aar.AAPT2AarCompileTaskOutput;
-import saker.android.api.aapt2.compile.AAPT2CompileFrontendTaskOutput;
+import saker.android.api.aapt2.aar.Aapt2AarCompileTaskOutput;
+import saker.android.api.aapt2.compile.Aapt2CompileFrontendTaskOutput;
 import saker.android.api.aar.AarExtractTaskOutput;
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.android.impl.aar.AarEntryNotFoundException;
 import saker.android.main.TaskDocs.DocAndroidClassPathInputTaskOption;
 import saker.android.main.TaskDocs.DocAndroidClassPathReference;
-import saker.android.main.aapt2.AAPT2CompileTaskFactory;
+import saker.android.main.aapt2.Aapt2CompileTaskFactory;
 import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.SakerFile;
 import saker.build.file.path.SakerPath;
@@ -76,7 +76,7 @@ import saker.std.api.util.SakerStandardUtils;
 		type = @NestTypeUsage(DocAndroidClassPathInputTaskOption.class),
 		info = @NestInformation("The inputs to create the classpath from.\n"
 				+ "May be AARs, JARs, class directories, or resolved Maven artifacts.\n" + "Result of the "
-				+ AAPT2CompileTaskFactory.TASK_NAME
+				+ Aapt2CompileTaskFactory.TASK_NAME
 				+ "() can also be used, in which case the used AARs for the aapt2 compilation will be added to this classpath."))
 public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
@@ -146,8 +146,8 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 				}
 				return;
 			}
-			if (elem instanceof AAPT2CompileFrontendTaskOutput) {
-				AAPT2CompileFrontendTaskOutput aaptcompileout = (AAPT2CompileFrontendTaskOutput) elem;
+			if (elem instanceof Aapt2CompileFrontendTaskOutput) {
+				Aapt2CompileFrontendTaskOutput aaptcompileout = (Aapt2CompileFrontendTaskOutput) elem;
 				handleInputElement(taskcontext, cpbuilder, aaptcompileout);
 				return;
 			}
@@ -199,11 +199,11 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 	}
 
 	private static void handleInputElement(TaskContext taskcontext, MavenClassPathTaskBuilder cpbuilder,
-			AAPT2CompileFrontendTaskOutput aaptcompileout) {
+			Aapt2CompileFrontendTaskOutput aaptcompileout) {
 		Collection<StructuredTaskResult> aarcompilations = aaptcompileout.getAarCompilations();
 		for (StructuredTaskResult aarctaskout : aarcompilations) {
 			//TODO apply task change detector for the aar file location
-			AAPT2AarCompileTaskOutput aarcompileres = (AAPT2AarCompileTaskOutput) aarctaskout.toResult(taskcontext);
+			Aapt2AarCompileTaskOutput aarcompileres = (Aapt2AarCompileTaskOutput) aarctaskout.toResult(taskcontext);
 			handleInputFileLocation(taskcontext, cpbuilder, aarcompileres.getAarFile());
 		}
 	}

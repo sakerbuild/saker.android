@@ -136,14 +136,14 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 				return basePath.resolve(CORE_LAMBDA_STUBS_PATH);
 			}
 			case PATH_LIB_JNI_AAPT2: {
-				String libfn = getAAPT2LibraryFileName();
+				String libfn = getAapt2LibraryFileName();
 				if (libfn != null) {
 					return basePath.resolve(libfn);
 				}
 				break;
 			}
 			case PATH_LIB64_JNI_AAPT2: {
-				String libfn = getAAPT2LibraryFileName();
+				String libfn = getAapt2LibraryFileName();
 				if (libfn != null) {
 					return basePath.resolve("lib64").resolve(libfn);
 				}
@@ -156,7 +156,7 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 		return null;
 	}
 
-	private String getAAPT2LibraryFileName() {
+	private String getAapt2LibraryFileName() {
 		switch (osType) {
 			case AndroidUtils.SDK_OS_TYPE_WINDOWS: {
 				return "libaapt2_jni.dll";

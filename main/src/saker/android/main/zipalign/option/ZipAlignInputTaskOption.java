@@ -1,6 +1,6 @@
 package saker.android.main.zipalign.option;
 
-import saker.android.api.aapt2.link.AAPT2LinkTaskOutput;
+import saker.android.api.aapt2.link.Aapt2LinkTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.nest.scriptinfo.reflection.annot.NestInformation;
 import saker.std.api.file.location.ExecutionFileLocation;
@@ -28,7 +28,7 @@ public abstract class ZipAlignInputTaskOption {
 		return valueOf(zipout.getPath());
 	}
 
-	public static ZipAlignInputTaskOption valueOf(AAPT2LinkTaskOutput aapt2linkout) {
+	public static ZipAlignInputTaskOption valueOf(Aapt2LinkTaskOutput aapt2linkout) {
 		return valueOf(aapt2linkout.getAPKPath());
 	}
 

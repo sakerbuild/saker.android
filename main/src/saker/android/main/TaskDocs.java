@@ -119,20 +119,20 @@ public class TaskDocs {
 	public static class DocAarExtractTaskOutput {
 	}
 
-	@NestTypeInformation(qualifiedName = "AAPT2CompileTaskOutput")
+	@NestTypeInformation(qualifiedName = "Aapt2CompileTaskOutput")
 	@NestInformation("Output of aapt2 compilation.")
 	@NestFieldInformation(value = "AarCompilations",
-			type = @NestTypeUsage(value = Collection.class, elementTypes = { DocAAPT2AarCompileTaskOutput.class }),
+			type = @NestTypeUsage(value = Collection.class, elementTypes = { DocAapt2AarCompileTaskOutput.class }),
 			info = @NestInformation("Collection of AAR resource compilation results.\n"
 					+ "If any AAR inputs were specified as the compilation input, they are available via this field.\n"
 					+ "Each element is a result of an AAR compilation task."))
 	@NestFieldInformation(value = "OutputPaths",
 			type = @NestTypeUsage(value = Collection.class, elementTypes = { SakerPath.class }),
 			info = @NestInformation(AAPT2_OUTPUTPATHS))
-	public static class DocAAPT2CompileTaskOutput {
+	public static class DocAapt2CompileTaskOutput {
 	}
 
-	@NestTypeInformation(qualifiedName = "AAPT2AarCompileTaskOutput")
+	@NestTypeInformation(qualifiedName = "Aapt2AarCompileTaskOutput")
 	@NestInformation("Output of aapt2 compilation of an AAR bundle.")
 	@NestFieldInformation(value = "AarFile",
 			type = @NestTypeUsage(DocFileLocation.class),
@@ -146,10 +146,10 @@ public class TaskDocs {
 	@NestFieldInformation(value = "OutputPaths",
 			type = @NestTypeUsage(value = Collection.class, elementTypes = { SakerPath.class }),
 			info = @NestInformation(AAPT2_OUTPUTPATHS))
-	public static class DocAAPT2AarCompileTaskOutput {
+	public static class DocAapt2AarCompileTaskOutput {
 	}
 
-	@NestTypeInformation(qualifiedName = "AAPT2LinkTaskOutput")
+	@NestTypeInformation(qualifiedName = "Aapt2LinkTaskOutput")
 	@NestInformation("Output of an aapt2 linking operation.")
 	@NestFieldInformation(value = "APKPath",
 			info = @NestInformation("Path to the output APK that the aapt2 linking operation produced.\n"
@@ -181,17 +181,17 @@ public class TaskDocs {
 					+ "The field contains the split names specified in the Splits parameter mapped to their "
 					+ "respective output paths."))
 	@NestFieldInformation(value = "InputLibraries",
-			type = @NestTypeUsage(value = Collection.class, elementTypes = { DocAAPT2LinkInputLibrary.class }),
+			type = @NestTypeUsage(value = Collection.class, elementTypes = { DocAapt2LinkInputLibrary.class }),
 			info = @NestInformation("A list of input AAR libraries that were used for the linking."))
-	public static class DocAAPT2LinkTaskOutput {
+	public static class DocAapt2LinkTaskOutput {
 	}
 
-	@NestTypeInformation(qualifiedName = "AAPT2LinkInputLibrary")
+	@NestTypeInformation(qualifiedName = "Aapt2LinkInputLibrary")
 	@NestInformation("Represents an input library for aapt2 linking operation.")
 	@NestFieldInformation(value = "AarFile",
 			type = @NestTypeUsage(DocFileLocation.class),
 			info = @NestInformation("The file location of the input AAR library."))
-	public static class DocAAPT2LinkInputLibrary {
+	public static class DocAapt2LinkInputLibrary {
 	}
 
 }

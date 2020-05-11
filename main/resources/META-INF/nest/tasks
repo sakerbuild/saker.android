@@ -1,5 +1,5 @@
-saker.android.aapt2.compile=saker.android.main.aapt2.AAPT2CompileTaskFactory
-saker.android.aapt2.link=saker.android.main.aapt2.AAPT2LinkTaskFactory
+saker.android.aapt2.compile=saker.android.main.aapt2.Aapt2CompileTaskFactory
+saker.android.aapt2.link=saker.android.main.aapt2.Aapt2LinkTaskFactory
 saker.android.aidl=saker.android.main.aidl.AidlTaskFactory
 saker.android.classpath.platform=saker.android.main.classpath.AndroidPlatformClassPathTaskFactory
 saker.android.classpath=saker.android.main.classpath.AndroidClassPathTaskFactory
