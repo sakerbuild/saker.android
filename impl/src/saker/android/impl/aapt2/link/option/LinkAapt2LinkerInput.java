@@ -5,12 +5,12 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
-import saker.android.api.aapt2.link.Aapt2LinkTaskOutput;
+import saker.android.api.aapt2.link.Aapt2LinkWorkerTaskOutput;
 
 public class LinkAapt2LinkerInput implements Aapt2LinkerInput, Externalizable {
 	private static final long serialVersionUID = 1L;
 
-	private Aapt2LinkTaskOutput linkOutput;
+	private Aapt2LinkWorkerTaskOutput linkOutput;
 
 	/**
 	 * For {@link Externalizable}.
@@ -18,7 +18,7 @@ public class LinkAapt2LinkerInput implements Aapt2LinkerInput, Externalizable {
 	public LinkAapt2LinkerInput() {
 	}
 
-	public LinkAapt2LinkerInput(Aapt2LinkTaskOutput output) {
+	public LinkAapt2LinkerInput(Aapt2LinkWorkerTaskOutput output) {
 		this.linkOutput = output;
 	}
 
@@ -34,7 +34,7 @@ public class LinkAapt2LinkerInput implements Aapt2LinkerInput, Externalizable {
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		linkOutput = (Aapt2LinkTaskOutput) in.readObject();
+		linkOutput = (Aapt2LinkWorkerTaskOutput) in.readObject();
 	}
 
 	@Override

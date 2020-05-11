@@ -10,9 +10,9 @@ import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Set;
 
-import saker.android.api.aapt2.aar.Aapt2AarCompileTaskOutput;
+import saker.android.api.aapt2.aar.Aapt2AarCompileWorkerTaskOutput;
 import saker.android.api.aapt2.compile.Aapt2CompileWorkerTaskOutput;
-import saker.android.api.aar.AarExtractTaskOutput;
+import saker.android.api.aar.AarExtractWorkerTaskOutput;
 import saker.android.impl.aapt2.compile.Aapt2CompilationConfiguration;
 import saker.android.impl.aapt2.compile.Aapt2CompileWorkerTaskFactory;
 import saker.android.impl.aapt2.compile.Aapt2CompileWorkerTaskIdentifier;
@@ -40,8 +40,8 @@ import saker.sdk.support.api.exc.SDKNotFoundException;
 import saker.std.api.file.location.FileLocation;
 import saker.std.api.util.SakerStandardUtils;
 
-public class Aapt2AarCompileWorkerTaskFactory implements TaskFactory<Aapt2AarCompileTaskOutput>,
-		Task<Aapt2AarCompileTaskOutput>, Externalizable, TaskIdentifier {
+public class Aapt2AarCompileWorkerTaskFactory implements TaskFactory<Aapt2AarCompileWorkerTaskOutput>,
+		Task<Aapt2AarCompileWorkerTaskOutput>, Externalizable, TaskIdentifier {
 
 	private static final long serialVersionUID = 1L;
 
@@ -82,12 +82,12 @@ public class Aapt2AarCompileWorkerTaskFactory implements TaskFactory<Aapt2AarCom
 	}
 
 	@Override
-	public Task<? extends Aapt2AarCompileTaskOutput> createTask(ExecutionContext executioncontext) {
+	public Task<? extends Aapt2AarCompileWorkerTaskOutput> createTask(ExecutionContext executioncontext) {
 		return this;
 	}
 
 	@Override
-	public Aapt2AarCompileTaskOutput run(TaskContext taskcontext) throws Exception {
+	public Aapt2AarCompileWorkerTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			//this is a frontend task, as the compilation is done using another worker
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
@@ -114,11 +114,11 @@ public class Aapt2AarCompileWorkerTaskFactory implements TaskFactory<Aapt2AarCom
 		TaskIdentifier manifestworkertaskid = manifestworker.createTaskId();
 		taskcontext.startTask(manifestworkertaskid, manifestworker, null);
 
-		AarExtractTaskOutput resourcesout = (AarExtractTaskOutput) taskcontext.getTaskResult(resworkertaskid);
+		AarExtractWorkerTaskOutput resourcesout = (AarExtractWorkerTaskOutput) taskcontext.getTaskResult(resworkertaskid);
 
-		AarExtractTaskOutput rtxtout = (AarExtractTaskOutput) taskcontext.getTaskResult(rtxtworkertaskid);
+		AarExtractWorkerTaskOutput rtxtout = (AarExtractWorkerTaskOutput) taskcontext.getTaskResult(rtxtworkertaskid);
 
-		AarExtractTaskOutput manifestout = (AarExtractTaskOutput) taskcontext.getTaskResult(manifestworkertaskid);
+		AarExtractWorkerTaskOutput manifestout = (AarExtractWorkerTaskOutput) taskcontext.getTaskResult(manifestworkertaskid);
 
 		FileLocation rtxtfile = null;
 		try {
@@ -214,7 +214,7 @@ public class Aapt2AarCompileWorkerTaskFactory implements TaskFactory<Aapt2AarCom
 		return true;
 	}
 
-	private static final class Aapt2AarCompileTaskOutputImpl implements Aapt2AarCompileTaskOutput, Externalizable {
+	private static final class Aapt2AarCompileTaskOutputImpl implements Aapt2AarCompileWorkerTaskOutput, Externalizable {
 		private static final long serialVersionUID = 1L;
 
 		private FileLocation aarFile;

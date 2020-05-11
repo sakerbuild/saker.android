@@ -5,11 +5,11 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 
-import saker.android.api.apk.sign.SignApkTaskOutput;
+import saker.android.api.apk.sign.SignApkWorkerTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 
-public final class SignApkTaskOutputImpl implements SignApkTaskOutput, Externalizable {
+public final class SignApkTaskOutputImpl implements SignApkWorkerTaskOutput, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private SakerPath path;

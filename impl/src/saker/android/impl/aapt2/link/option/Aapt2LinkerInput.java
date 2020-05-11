@@ -1,8 +1,8 @@
 package saker.android.impl.aapt2.link.option;
 
-import saker.android.api.aapt2.aar.Aapt2AarCompileTaskOutput;
+import saker.android.api.aapt2.aar.Aapt2AarCompileWorkerTaskOutput;
 import saker.android.api.aapt2.compile.Aapt2CompileWorkerTaskOutput;
-import saker.android.api.aapt2.link.Aapt2LinkTaskOutput;
+import saker.android.api.aapt2.link.Aapt2LinkWorkerTaskOutput;
 import saker.std.api.file.location.FileLocation;
 
 public interface Aapt2LinkerInput {
@@ -13,8 +13,8 @@ public interface Aapt2LinkerInput {
 
 		public void visit(Aapt2CompileWorkerTaskOutput compilationinput);
 
-		public void visit(Aapt2AarCompileTaskOutput compilationinput);
+		public void visit(Aapt2AarCompileWorkerTaskOutput compilationinput);
 
-		public void visit(Aapt2LinkTaskOutput linkinput);
+		public void visit(Aapt2LinkWorkerTaskOutput linkinput);
 	}
 }

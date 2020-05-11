@@ -9,12 +9,14 @@ import java.util.List;
 import java.util.NavigableMap;
 
 import saker.android.api.aapt2.link.Aapt2LinkInputLibrary;
-import saker.android.api.aapt2.link.Aapt2LinkTaskOutput;
+import saker.android.api.aapt2.link.Aapt2LinkWorkerTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.compiler.utils.api.CompilationIdentifier;
+import saker.sdk.support.api.SDKDescription;
+import saker.sdk.support.api.SDKSupportUtils;
 
-final class Aapt2LinkTaskOutputImpl implements Aapt2LinkTaskOutput, Externalizable {
+final class Aapt2LinkTaskOutputImpl implements Aapt2LinkWorkerTaskOutput, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private CompilationIdentifier identifier;
@@ -29,13 +31,16 @@ final class Aapt2LinkTaskOutputImpl implements Aapt2LinkTaskOutput, Externalizab
 
 	private List<Aapt2LinkInputLibrary> inputLibraries;
 
+	private NavigableMap<String, SDKDescription> sdks;
+
 	/**
 	 * For {@link Externalizable}.
 	 */
 	public Aapt2LinkTaskOutputImpl() {
 	}
 
-	public Aapt2LinkTaskOutputImpl(CompilationIdentifier identifier, SakerPath apkPath) {
+	public Aapt2LinkTaskOutputImpl(CompilationIdentifier identifier, SakerPath apkPath,
+			NavigableMap<String, SDKDescription> sdks) {
 		this.identifier = identifier;
 		this.apkPath = apkPath;
 	}
@@ -114,6 +119,11 @@ final class Aapt2LinkTaskOutputImpl implements Aapt2LinkTaskOutput, Externalizab
 	}
 
 	@Override
+	public NavigableMap<String, SDKDescription> getSDKs() {
+		return sdks;
+	}
+
+	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
 		out.writeObject(identifier);
 		out.writeObject(apkPath);
@@ -124,6 +134,7 @@ final class Aapt2LinkTaskOutputImpl implements Aapt2LinkTaskOutput, Externalizab
 		SerialUtils.writeExternalMap(out, splits);
 		SerialUtils.writeExternalCollection(out, javaSourceDirectories);
 		SerialUtils.writeExternalCollection(out, inputLibraries);
+		SerialUtils.writeExternalMap(out, sdks);
 	}
 
 	@Override
@@ -137,6 +148,7 @@ final class Aapt2LinkTaskOutputImpl implements Aapt2LinkTaskOutput, Externalizab
 		splits = SerialUtils.readExternalSortedImmutableNavigableMap(in);
 		javaSourceDirectories = SerialUtils.readExternalImmutableList(in);
 		inputLibraries = SerialUtils.readExternalImmutableList(in);
+		sdks = SerialUtils.readExternalSortedImmutableNavigableMap(in, SDKSupportUtils.getSDKNameComparator());
 	}
 
 	@Override
@@ -190,6 +202,11 @@ final class Aapt2LinkTaskOutputImpl implements Aapt2LinkTaskOutput, Externalizab
 			if (other.proguardPath != null)
 				return false;
 		} else if (!proguardPath.equals(other.proguardPath))
+			return false;
+		if (sdks == null) {
+			if (other.sdks != null)
+				return false;
+		} else if (!sdks.equals(other.sdks))
 			return false;
 		if (splits == null) {
 			if (other.splits != null)

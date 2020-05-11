@@ -6,12 +6,12 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Objects;
 
-import saker.android.api.aapt2.aar.Aapt2AarCompileTaskOutput;
+import saker.android.api.aapt2.aar.Aapt2AarCompileWorkerTaskOutput;
 
 public class AarCompilationAapt2LinkerInput implements Aapt2LinkerInput, Externalizable {
 	private static final long serialVersionUID = 1L;
 
-	private Aapt2AarCompileTaskOutput compilationOutput;
+	private Aapt2AarCompileWorkerTaskOutput compilationOutput;
 
 	/**
 	 * For {@link Externalizable}.
@@ -19,7 +19,7 @@ public class AarCompilationAapt2LinkerInput implements Aapt2LinkerInput, Externa
 	public AarCompilationAapt2LinkerInput() {
 	}
 
-	public AarCompilationAapt2LinkerInput(Aapt2AarCompileTaskOutput compilationOutput) {
+	public AarCompilationAapt2LinkerInput(Aapt2AarCompileWorkerTaskOutput compilationOutput) {
 		Objects.requireNonNull(compilationOutput, "compilation output");
 		this.compilationOutput = compilationOutput;
 	}
@@ -36,7 +36,7 @@ public class AarCompilationAapt2LinkerInput implements Aapt2LinkerInput, Externa
 
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
-		compilationOutput = (Aapt2AarCompileTaskOutput) in.readObject();
+		compilationOutput = (Aapt2AarCompileWorkerTaskOutput) in.readObject();
 	}
 
 	@Override

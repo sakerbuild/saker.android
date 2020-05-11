@@ -7,7 +7,7 @@ import java.io.ObjectOutput;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import saker.android.api.aar.AarExtractTaskOutput;
+import saker.android.api.aar.AarExtractWorkerTaskOutput;
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.android.impl.aar.ExecutionAarExtractTaskOutput;
 import saker.android.impl.aar.LocalAarExtractTaskOutput;
@@ -185,10 +185,10 @@ public class AarExtractTaskFactory extends FrontendTaskFactory<Object> {
 		public Object toResult(TaskResultResolver results) throws NullPointerException, RuntimeException {
 			TaskResultDependencyHandle dephandle = results.getTaskResultDependencyHandle(taskId);
 			//TODO add dependency
-			AarExtractTaskOutput extractout = (AarExtractTaskOutput) dephandle.get();
+			AarExtractWorkerTaskOutput extractout = (AarExtractWorkerTaskOutput) dephandle.get();
 			SakerPath relresolve = relativeResolve;
 
-			AarExtractTaskOutput[] result = { null };
+			AarExtractWorkerTaskOutput[] result = { null };
 			extractout.getFileLocation().accept(new FileLocationVisitor() {
 				@Override
 				public void visit(LocalFileLocation loc) {

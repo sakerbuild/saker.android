@@ -14,10 +14,10 @@ import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeMap;
 
-import saker.android.api.aapt2.aar.Aapt2AarCompileTaskOutput;
+import saker.android.api.aapt2.aar.Aapt2AarCompileWorkerTaskOutput;
 import saker.android.api.aapt2.compile.Aapt2CompileFrontendTaskOutput;
 import saker.android.api.aapt2.compile.Aapt2CompileWorkerTaskOutput;
-import saker.android.api.aapt2.link.Aapt2LinkTaskOutput;
+import saker.android.api.aapt2.link.Aapt2LinkWorkerTaskOutput;
 import saker.android.impl.AndroidUtils;
 import saker.android.impl.aapt2.link.Aapt2LinkWorkerTaskFactory;
 import saker.android.impl.aapt2.link.Aapt2LinkWorkerTaskIdentifier;
@@ -609,7 +609,7 @@ public class Aapt2LinkTaskFactory extends FrontendTaskFactory<Object> {
 			}
 			inoption.accept(new Aapt2LinkerInputTaskOption.Visitor() {
 				@Override
-				public void visit(Aapt2LinkTaskOutput linkinput) {
+				public void visit(Aapt2LinkWorkerTaskOutput linkinput) {
 					inputset.add(new LinkAapt2LinkerInput(linkinput));
 				}
 
@@ -619,7 +619,7 @@ public class Aapt2LinkTaskFactory extends FrontendTaskFactory<Object> {
 				}
 
 				@Override
-				public void visit(Aapt2AarCompileTaskOutput compilationinput) {
+				public void visit(Aapt2AarCompileWorkerTaskOutput compilationinput) {
 					inputset.add(new AarCompilationAapt2LinkerInput(compilationinput));
 				}
 
@@ -630,7 +630,7 @@ public class Aapt2LinkTaskFactory extends FrontendTaskFactory<Object> {
 					Collection<StructuredTaskResult> aarcompilations = compilationinput.getAarCompilations();
 					if (!ObjectUtils.isNullOrEmpty(aarcompilations)) {
 						for (StructuredTaskResult aarctaskresult : aarcompilations) {
-							Aapt2AarCompileTaskOutput compiletaskout = (Aapt2AarCompileTaskOutput) aarctaskresult
+							Aapt2AarCompileWorkerTaskOutput compiletaskout = (Aapt2AarCompileWorkerTaskOutput) aarctaskresult
 									.toResult(taskcontext);
 							visit(compiletaskout);
 						}

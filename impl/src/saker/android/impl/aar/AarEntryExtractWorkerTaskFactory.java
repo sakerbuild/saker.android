@@ -26,7 +26,7 @@ import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
-import saker.android.api.aar.AarExtractTaskOutput;
+import saker.android.api.aar.AarExtractWorkerTaskOutput;
 import saker.android.impl.classpath.LiteralStructuredTaskResult;
 import saker.build.file.ByteArraySakerFile;
 import saker.build.file.SakerDirectory;
@@ -65,7 +65,7 @@ import saker.std.api.file.location.LocalFileLocation;
 import saker.std.api.util.SakerStandardUtils;
 
 public class AarEntryExtractWorkerTaskFactory
-		implements TaskFactory<AarExtractTaskOutput>, Task<AarExtractTaskOutput>, Externalizable {
+		implements TaskFactory<AarExtractWorkerTaskOutput>, Task<AarExtractWorkerTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	public static final String ENTRY_NAME_CLASSES_JAR = "classes.jar";
@@ -154,7 +154,7 @@ public class AarEntryExtractWorkerTaskFactory
 	}
 
 	@Override
-	public AarExtractTaskOutput run(TaskContext taskcontext) throws Exception {
+	public AarExtractWorkerTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			//CLASSIFICATION_TRANSFORMATION is available from 0.8.10, however as it is a constant, it can be inlined without runtime errors
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_TRANSFORMATION);
@@ -162,7 +162,7 @@ public class AarEntryExtractWorkerTaskFactory
 
 		FileLocation inputfile = (FileLocation) inputFile.toResult(taskcontext);
 
-		AarExtractTaskOutput[] result = { null };
+		AarExtractWorkerTaskOutput[] result = { null };
 		inputfile.accept(new FileLocationVisitor() {
 			@Override
 			public void visit(ExecutionFileLocation loc) {
@@ -204,7 +204,7 @@ public class AarEntryExtractWorkerTaskFactory
 		return result[0];
 	}
 
-	protected AarExtractTaskOutput addResultFolder(TaskContext taskcontext,
+	protected AarExtractWorkerTaskOutput addResultFolder(TaskContext taskcontext,
 			NavigableMap<SakerPath, ByteArrayRegion> folderentrybytes, FileHashResult archivehash) throws Exception {
 		switch (outPathKind) {
 			case OUTPUT_KIND_EXECUTION: {
@@ -219,7 +219,7 @@ public class AarEntryExtractWorkerTaskFactory
 		}
 	}
 
-	private AarExtractTaskOutput addBundleStorageResultFolder(TaskContext taskcontext,
+	private AarExtractWorkerTaskOutput addBundleStorageResultFolder(TaskContext taskcontext,
 			NavigableMap<SakerPath, ByteArrayRegion> folderentrybytes, FileHashResult archivehash) throws IOException {
 		NestBundleClassLoader cl = (NestBundleClassLoader) this.getClass().getClassLoader();
 		Path storagedir = cl.getBundle().getBundleStoragePath();
@@ -281,7 +281,7 @@ public class AarEntryExtractWorkerTaskFactory
 		return new LocalAarExtractTaskOutput(SakerPath.valueOf(outputdirpath), dirfilelocations);
 	}
 
-	private AarExtractTaskOutput addExecutionResultFolder(TaskContext taskcontext,
+	private AarExtractWorkerTaskOutput addExecutionResultFolder(TaskContext taskcontext,
 			NavigableMap<SakerPath, ByteArrayRegion> folderentrybytes) throws IOException {
 		SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
 
@@ -309,7 +309,7 @@ public class AarEntryExtractWorkerTaskFactory
 		return new ExecutionAarExtractTaskOutput(outdir.getSakerPath(), dirfilelocations);
 	}
 
-	protected AarExtractTaskOutput addResultFile(TaskContext taskcontext, ByteArrayRegion bytes,
+	protected AarExtractWorkerTaskOutput addResultFile(TaskContext taskcontext, ByteArrayRegion bytes,
 			FileHashResult archivehash) throws Exception {
 		switch (outPathKind) {
 			case OUTPUT_KIND_EXECUTION: {
@@ -335,7 +335,7 @@ public class AarEntryExtractWorkerTaskFactory
 		return false;
 	}
 
-	private AarExtractTaskOutput addBundleStorageResultFile(TaskContext taskcontext, ByteArrayRegion bytes,
+	private AarExtractWorkerTaskOutput addBundleStorageResultFile(TaskContext taskcontext, ByteArrayRegion bytes,
 			FileHashResult archivehash) throws AssertionError, IOException {
 		NestBundleClassLoader cl = (NestBundleClassLoader) this.getClass().getClassLoader();
 		Path storagedir = cl.getBundle().getBundleStoragePath();
@@ -377,7 +377,7 @@ public class AarEntryExtractWorkerTaskFactory
 		}
 	}
 
-	private AarExtractTaskOutput addExecutionResultFile(TaskContext taskcontext, ByteArrayRegion bytes)
+	private AarExtractWorkerTaskOutput addExecutionResultFile(TaskContext taskcontext, ByteArrayRegion bytes)
 			throws IOException {
 		SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
 
@@ -392,7 +392,7 @@ public class AarEntryExtractWorkerTaskFactory
 		return new ExecutionAarExtractTaskOutput(outfilepath);
 	}
 
-	private static AarExtractTaskOutput handleLocalFileResult(TaskContext taskcontext, Path outputfilepath) {
+	private static AarExtractWorkerTaskOutput handleLocalFileResult(TaskContext taskcontext, Path outputfilepath) {
 		SakerPath outputlocalsakerpath = SakerPath.valueOf(outputfilepath);
 
 		taskcontext.invalidate(LocalFileProvider.getPathKeyStatic(outputlocalsakerpath));
@@ -402,7 +402,7 @@ public class AarEntryExtractWorkerTaskFactory
 		return new LocalAarExtractTaskOutput(outputlocalsakerpath);
 	}
 
-	protected AarExtractTaskOutput handleLocalFile(TaskContext taskcontext, SakerPath localpath) throws Exception {
+	protected AarExtractWorkerTaskOutput handleLocalFile(TaskContext taskcontext, SakerPath localpath) throws Exception {
 		NavigableMap<SakerPath, ByteArrayRegion> folderentrybytes;
 
 		FileHashResult archivehash = null;
@@ -463,7 +463,7 @@ public class AarEntryExtractWorkerTaskFactory
 		return addResultFolder(taskcontext, folderentrybytes, archivehash);
 	}
 
-	protected AarExtractTaskOutput handleExecutionFile(TaskContext taskcontext, SakerFile f) throws Exception {
+	protected AarExtractWorkerTaskOutput handleExecutionFile(TaskContext taskcontext, SakerFile f) throws Exception {
 		String direntryname = entryName + "/";
 		NavigableMap<SakerPath, ByteArrayRegion> direntries = null;
 		ByteArrayRegion entrybytes = null;
@@ -523,7 +523,7 @@ public class AarEntryExtractWorkerTaskFactory
 	}
 
 	@Override
-	public Task<? extends AarExtractTaskOutput> createTask(ExecutionContext executioncontext) {
+	public Task<? extends AarExtractWorkerTaskOutput> createTask(ExecutionContext executioncontext) {
 		return this;
 	}
 

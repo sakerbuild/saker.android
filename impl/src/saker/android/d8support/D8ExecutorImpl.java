@@ -35,7 +35,7 @@ import com.android.tools.r8.origin.Origin;
 import com.android.tools.r8.origin.PathOrigin;
 import com.android.tools.r8.utils.StringDiagnostic;
 
-import saker.android.api.d8.D8TaskOutput;
+import saker.android.api.d8.D8WorkerTaskOutput;
 import saker.android.d8support.ArchiveFileClassFileResourceProvider.ArchiveEntryProgramResource;
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.android.impl.d8.ArchiveClassDescriptorsCacheKey;
@@ -121,7 +121,7 @@ public class D8ExecutorImpl implements D8Executor {
 	}
 
 	@Override
-	public D8TaskOutput run(TaskContext taskcontext, D8WorkerTaskFactory workertask,
+	public D8WorkerTaskOutput run(TaskContext taskcontext, D8WorkerTaskFactory workertask,
 			NavigableMap<String, SDKReference> sdkreferences) throws Exception {
 		IncrementalD8State prevstate = taskcontext.getPreviousTaskOutput(IncrementalD8State.class,
 				IncrementalD8State.class);

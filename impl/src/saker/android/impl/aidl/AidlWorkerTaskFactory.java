@@ -15,7 +15,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
-import saker.android.api.aidl.AidlTaskOutput;
+import saker.android.api.aidl.AidlWorkerTaskOutput;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.aidl.AidlTaskFactory;
@@ -51,7 +51,7 @@ import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNotFoundException;
 import saker.sdk.support.api.exc.SDKPathNotFoundException;
 
-public class AidlWorkerTaskFactory implements TaskFactory<AidlTaskOutput>, Task<AidlTaskOutput>, Externalizable {
+public class AidlWorkerTaskFactory implements TaskFactory<AidlWorkerTaskOutput>, Task<AidlWorkerTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private NavigableSet<SakerPath> sourceDirectories;
@@ -102,7 +102,7 @@ public class AidlWorkerTaskFactory implements TaskFactory<AidlTaskOutput>, Task<
 	}
 
 	@Override
-	public AidlTaskOutput run(TaskContext taskcontext) throws Exception {
+	public AidlWorkerTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 		}
@@ -327,7 +327,7 @@ public class AidlWorkerTaskFactory implements TaskFactory<AidlTaskOutput>, Task<
 	}
 
 	@Override
-	public Task<? extends AidlTaskOutput> createTask(ExecutionContext executioncontext) {
+	public Task<? extends AidlWorkerTaskOutput> createTask(ExecutionContext executioncontext) {
 		return this;
 	}
 
@@ -390,7 +390,7 @@ public class AidlWorkerTaskFactory implements TaskFactory<AidlTaskOutput>, Task<
 		}
 	}
 
-	private static final class AidlTaskOutputImpl implements AidlTaskOutput, Externalizable {
+	private static final class AidlTaskOutputImpl implements AidlWorkerTaskOutput, Externalizable {
 		private static final long serialVersionUID = 1L;
 
 		private SakerPath javaSourceDirectory;

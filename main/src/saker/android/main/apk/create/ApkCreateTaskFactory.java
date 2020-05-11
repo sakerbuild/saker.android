@@ -10,7 +10,7 @@ import java.util.NavigableMap;
 import java.util.Set;
 
 import saker.android.api.aapt2.link.Aapt2LinkInputLibrary;
-import saker.android.api.aapt2.link.Aapt2LinkTaskOutput;
+import saker.android.api.aapt2.link.Aapt2LinkWorkerTaskOutput;
 import saker.android.main.TaskDocs.DocApkCreatorTaskOutput;
 import saker.android.main.TaskDocs.DocAssetsDirectory;
 import saker.android.main.aapt2.Aapt2LinkTaskFactory;
@@ -155,7 +155,7 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 					}
 					resoption.accept(new ApkResourcesTaskOption.Visitor() {
 						@Override
-						public void visit(Aapt2LinkTaskOutput linkoutput) {
+						public void visit(Aapt2LinkWorkerTaskOutput linkoutput) {
 							taskbuilder.addIncludeArchive(ExecutionFileLocation.create(linkoutput.getAPKPath()), null);
 							Collection<Aapt2LinkInputLibrary> inputlibs = linkoutput.getInputLibraries();
 							if (!ObjectUtils.isNullOrEmpty(inputlibs)) {

@@ -6,13 +6,13 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Set;
 
-import saker.android.api.aar.AarExtractTaskOutput;
+import saker.android.api.aar.AarExtractWorkerTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.std.api.file.location.FileLocation;
 import saker.std.api.file.location.LocalFileLocation;
 
-public final class LocalAarExtractTaskOutput implements AarExtractTaskOutput, Externalizable {
+public final class LocalAarExtractTaskOutput implements AarExtractWorkerTaskOutput, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private SakerPath outputLocalFilePath;

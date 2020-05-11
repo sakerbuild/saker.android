@@ -11,9 +11,9 @@ import java.util.Iterator;
 import java.util.Objects;
 import java.util.Set;
 
-import saker.android.api.aapt2.aar.Aapt2AarCompileTaskOutput;
+import saker.android.api.aapt2.aar.Aapt2AarCompileWorkerTaskOutput;
 import saker.android.api.aapt2.compile.Aapt2CompileFrontendTaskOutput;
-import saker.android.api.aar.AarExtractTaskOutput;
+import saker.android.api.aar.AarExtractWorkerTaskOutput;
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.android.impl.aar.AarEntryNotFoundException;
 import saker.android.main.TaskDocs.DocAndroidClassPathInputTaskOption;
@@ -203,7 +203,7 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 		Collection<StructuredTaskResult> aarcompilations = aaptcompileout.getAarCompilations();
 		for (StructuredTaskResult aarctaskout : aarcompilations) {
 			//TODO apply task change detector for the aar file location
-			Aapt2AarCompileTaskOutput aarcompileres = (Aapt2AarCompileTaskOutput) aarctaskout.toResult(taskcontext);
+			Aapt2AarCompileWorkerTaskOutput aarcompileres = (Aapt2AarCompileWorkerTaskOutput) aarctaskout.toResult(taskcontext);
 			handleInputFileLocation(taskcontext, cpbuilder, aarcompileres.getAarFile());
 		}
 	}
@@ -217,7 +217,7 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 		TaskIdentifier entryExtractTaskId = extracttask.createTaskId();
 
 		//TODO run libs extractions in parallel 
-		AarExtractTaskOutput libextractout = taskcontext.getTaskUtilities().runTaskResult(entryExtractTaskId,
+		AarExtractWorkerTaskOutput libextractout = taskcontext.getTaskUtilities().runTaskResult(entryExtractTaskId,
 				extracttask);
 		//TODO install an appropriate task output change detector
 		try {
@@ -337,10 +337,10 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 
 		@Override
 		public boolean isChanged(Object taskoutput) {
-			if (!(taskoutput instanceof AarExtractTaskOutput)) {
+			if (!(taskoutput instanceof AarExtractWorkerTaskOutput)) {
 				return true;
 			}
-			return !Objects.equals(this.fileLocation, ((AarExtractTaskOutput) taskoutput).getFileLocation());
+			return !Objects.equals(this.fileLocation, ((AarExtractWorkerTaskOutput) taskoutput).getFileLocation());
 		}
 
 		@Override
@@ -403,7 +403,7 @@ public class AndroidClassPathTaskFactory extends FrontendTaskFactory<Object> {
 		@Override
 		public Object toResult(TaskResultResolver results) throws NullPointerException, RuntimeException {
 			TaskResultDependencyHandle dephandle = results.getTaskResultDependencyHandle(entryExtractTaskId);
-			AarExtractTaskOutput out = (AarExtractTaskOutput) dephandle.get();
+			AarExtractWorkerTaskOutput out = (AarExtractWorkerTaskOutput) dephandle.get();
 			FileLocation result = out.getFileLocation();
 			dephandle.setTaskOutputChangeDetector(new AarExtractTaskOutputFileLocationEqualityChangeDetector(result));
 			return result;

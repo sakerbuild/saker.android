@@ -33,10 +33,10 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.xml.sax.SAXException;
 
-import saker.android.api.aapt2.aar.Aapt2AarCompileTaskOutput;
+import saker.android.api.aapt2.aar.Aapt2AarCompileWorkerTaskOutput;
 import saker.android.api.aapt2.compile.Aapt2CompileWorkerTaskOutput;
 import saker.android.api.aapt2.link.Aapt2LinkInputLibrary;
-import saker.android.api.aapt2.link.Aapt2LinkTaskOutput;
+import saker.android.api.aapt2.link.Aapt2LinkWorkerTaskOutput;
 import saker.android.impl.aapt2.Aapt2Executor;
 import saker.android.impl.aapt2.Aapt2Utils;
 import saker.android.impl.aapt2.link.option.Aapt2LinkerInput;
@@ -73,6 +73,7 @@ import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.thirdparty.saker.util.io.UnsyncByteArrayOutputStream;
 import saker.build.trace.BuildTrace;
 import saker.compiler.utils.api.CompilationIdentifier;
+import saker.sdk.support.api.IndeterminateSDKDescription;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.SDKSupportUtils;
@@ -85,7 +86,7 @@ import saker.std.api.file.location.LocalFileLocation;
 import saker.std.api.util.SakerStandardUtils;
 
 public class Aapt2LinkWorkerTaskFactory
-		implements TaskFactory<Aapt2LinkTaskOutput>, Task<Aapt2LinkTaskOutput>, Externalizable {
+		implements TaskFactory<Aapt2LinkWorkerTaskOutput>, Task<Aapt2LinkWorkerTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private Set<Aapt2LinkerInput> input;
@@ -304,12 +305,12 @@ public class Aapt2LinkWorkerTaskFactory
 	}
 
 	@Override
-	public Task<? extends Aapt2LinkTaskOutput> createTask(ExecutionContext executioncontext) {
+	public Task<? extends Aapt2LinkWorkerTaskOutput> createTask(ExecutionContext executioncontext) {
 		return this;
 	}
 
 	@Override
-	public Aapt2LinkTaskOutput run(TaskContext taskcontext) throws Exception {
+	public Aapt2LinkWorkerTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 		}
@@ -612,7 +613,18 @@ public class Aapt2LinkWorkerTaskFactory
 
 		SakerPath rjavasourcedirpath = javaoutdir.getSakerPath();
 
-		Aapt2LinkTaskOutputImpl result = new Aapt2LinkTaskOutputImpl(compilationid, outputapkpath);
+		//TODO use SDKSupportUtils
+		NavigableMap<String, SDKDescription> pinnedsdks = new TreeMap<>(SDKSupportUtils.getSDKNameComparator());
+		for (Entry<String, SDKReference> entry : sdkrefs.entrySet()) {
+			String sdkname = entry.getKey();
+			SDKDescription desc = sdkDescriptions.get(sdkname);
+			if (desc instanceof IndeterminateSDKDescription) {
+				desc = ((IndeterminateSDKDescription) desc).pinSDKDescription(entry.getValue());
+			}
+			pinnedsdks.put(sdkname, desc);
+		}
+
+		Aapt2LinkTaskOutputImpl result = new Aapt2LinkTaskOutputImpl(compilationid, outputapkpath, pinnedsdks);
 		result.setJavaSourceDirectories(ImmutableUtils.asUnmodifiableArrayList(rjavasourcedirpath));
 		result.setProguardPath(outputproguardpath);
 		result.setProguardMainDexPath(outputmaindexproguardpath);
@@ -814,7 +826,7 @@ public class Aapt2LinkWorkerTaskFactory
 			}
 
 			@Override
-			public void visit(Aapt2AarCompileTaskOutput compilationinput) {
+			public void visit(Aapt2AarCompileWorkerTaskOutput compilationinput) {
 				NavigableSet<SakerPath> outpaths = compilationinput.getOutputPaths();
 				if (!ObjectUtils.isNullOrEmpty(outpaths)) {
 					for (SakerPath inpath : outpaths) {
@@ -862,7 +874,7 @@ public class Aapt2LinkWorkerTaskFactory
 			}
 
 			@Override
-			public void visit(Aapt2LinkTaskOutput linkinput) {
+			public void visit(Aapt2LinkWorkerTaskOutput linkinput) {
 				handleExecutionInputFile(linkinput.getAPKPath());
 			}
 

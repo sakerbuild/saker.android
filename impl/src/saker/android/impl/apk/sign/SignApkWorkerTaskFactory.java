@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.NavigableMap;
 import java.util.Set;
 
-import saker.android.api.apk.sign.SignApkTaskOutput;
+import saker.android.api.apk.sign.SignApkWorkerTaskOutput;
 import saker.android.impl.aapt2.OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.support.InstrumentingJarClassLoaderDataFinder;
@@ -50,7 +50,7 @@ import saker.std.api.file.location.FileLocation;
 import saker.std.api.file.location.FileLocationVisitor;
 
 public class SignApkWorkerTaskFactory
-		implements TaskFactory<SignApkTaskOutput>, Task<SignApkTaskOutput>, Externalizable {
+		implements TaskFactory<SignApkWorkerTaskOutput>, Task<SignApkWorkerTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private FileLocation inputFile;
@@ -120,7 +120,7 @@ public class SignApkWorkerTaskFactory
 	}
 
 	@Override
-	public SignApkTaskOutput run(TaskContext taskcontext) throws Exception {
+	public SignApkWorkerTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 			String fname = outputPath.getFileName();
@@ -187,7 +187,7 @@ public class SignApkWorkerTaskFactory
 	}
 
 	@Override
-	public Task<? extends SignApkTaskOutput> createTask(ExecutionContext executioncontext) {
+	public Task<? extends SignApkWorkerTaskOutput> createTask(ExecutionContext executioncontext) {
 		return this;
 	}
 

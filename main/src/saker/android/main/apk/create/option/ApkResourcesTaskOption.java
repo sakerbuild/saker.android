@@ -1,6 +1,6 @@
 package saker.android.main.apk.create.option;
 
-import saker.android.api.aapt2.link.Aapt2LinkTaskOutput;
+import saker.android.api.aapt2.link.Aapt2LinkWorkerTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.nest.scriptinfo.reflection.annot.NestInformation;
 
@@ -11,10 +11,10 @@ public abstract class ApkResourcesTaskOption {
 	public interface Visitor {
 		public void visit(SakerPath path);
 
-		public void visit(Aapt2LinkTaskOutput linkoutput);
+		public void visit(Aapt2LinkWorkerTaskOutput linkoutput);
 	}
 
-	public static ApkResourcesTaskOption valueOf(Aapt2LinkTaskOutput aaptoutput) {
+	public static ApkResourcesTaskOption valueOf(Aapt2LinkWorkerTaskOutput aaptoutput) {
 		return new ApkResourcesTaskOption() {
 			@Override
 			public void accept(Visitor visitor) {

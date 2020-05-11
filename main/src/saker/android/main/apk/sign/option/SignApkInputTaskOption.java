@@ -1,8 +1,8 @@
 package saker.android.main.apk.sign.option;
 
-import saker.android.api.aapt2.link.Aapt2LinkTaskOutput;
-import saker.android.api.apk.sign.SignApkTaskOutput;
-import saker.android.api.zipalign.ZipAlignTaskOutput;
+import saker.android.api.aapt2.link.Aapt2LinkWorkerTaskOutput;
+import saker.android.api.apk.sign.SignApkWorkerTaskOutput;
+import saker.android.api.zipalign.ZipAlignWorkerTaskOutput;
 import saker.android.main.TaskDocs.DocZipAlignTaskOutput;
 import saker.android.main.apk.sign.SignApkTaskFactory;
 import saker.android.main.zipalign.ZipAlignTaskFactory;
@@ -56,15 +56,15 @@ public abstract class SignApkInputTaskOption {
 		return valueOf(zipout.getPath());
 	}
 
-	public static SignApkInputTaskOption valueOf(Aapt2LinkTaskOutput aapt2linkout) {
+	public static SignApkInputTaskOption valueOf(Aapt2LinkWorkerTaskOutput aapt2linkout) {
 		return valueOf(aapt2linkout.getAPKPath());
 	}
 
-	public static SignApkInputTaskOption valueOf(ZipAlignTaskOutput zipalignout) {
+	public static SignApkInputTaskOption valueOf(ZipAlignWorkerTaskOutput zipalignout) {
 		return valueOf(zipalignout.getPath());
 	}
 
-	public static SignApkInputTaskOption valueOf(SignApkTaskOutput signapkout) {
+	public static SignApkInputTaskOption valueOf(SignApkWorkerTaskOutput signapkout) {
 		return valueOf(signapkout.getPath());
 	}
 

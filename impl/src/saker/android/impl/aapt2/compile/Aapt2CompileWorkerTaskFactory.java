@@ -477,6 +477,7 @@ public class Aapt2CompileWorkerTaskFactory
 		taskcontext.getTaskUtilities().reportOutputFileDependency(Aapt2CompilerTags.OUTPUT_COMPILED,
 				outputfilecontents);
 
+		//TODO use SDKSupportUtils
 		NavigableMap<String, SDKDescription> pinnedsdks = new TreeMap<>(SDKSupportUtils.getSDKNameComparator());
 		for (Entry<String, SDKReference> entry : sdkrefs.entrySet()) {
 			String sdkname = entry.getKey();

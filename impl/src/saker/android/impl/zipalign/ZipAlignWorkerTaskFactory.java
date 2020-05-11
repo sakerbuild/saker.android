@@ -9,7 +9,7 @@ import java.nio.file.Path;
 import java.util.NavigableMap;
 import java.util.Set;
 
-import saker.android.api.zipalign.ZipAlignTaskOutput;
+import saker.android.api.zipalign.ZipAlignWorkerTaskOutput;
 import saker.android.impl.aapt2.OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.main.zipalign.ZipAlignTaskFactory;
@@ -45,7 +45,7 @@ import saker.std.api.file.location.FileLocation;
 import saker.std.api.file.location.FileLocationVisitor;
 
 public class ZipAlignWorkerTaskFactory
-		implements TaskFactory<ZipAlignTaskOutput>, Task<ZipAlignTaskOutput>, Externalizable {
+		implements TaskFactory<ZipAlignWorkerTaskOutput>, Task<ZipAlignWorkerTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private FileLocation inputFile;
@@ -105,7 +105,7 @@ public class ZipAlignWorkerTaskFactory
 	}
 
 	@Override
-	public ZipAlignTaskOutput run(TaskContext taskcontext) throws Exception {
+	public ZipAlignWorkerTaskOutput run(TaskContext taskcontext) throws Exception {
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 			String fname = outputPath.getFileName();
@@ -194,7 +194,7 @@ public class ZipAlignWorkerTaskFactory
 	}
 
 	@Override
-	public Task<? extends ZipAlignTaskOutput> createTask(ExecutionContext executioncontext) {
+	public Task<? extends ZipAlignWorkerTaskOutput> createTask(ExecutionContext executioncontext) {
 		return this;
 	}
 

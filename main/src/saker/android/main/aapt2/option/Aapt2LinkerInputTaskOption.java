@@ -1,9 +1,9 @@
 package saker.android.main.aapt2.option;
 
-import saker.android.api.aapt2.aar.Aapt2AarCompileTaskOutput;
+import saker.android.api.aapt2.aar.Aapt2AarCompileWorkerTaskOutput;
 import saker.android.api.aapt2.compile.Aapt2CompileFrontendTaskOutput;
 import saker.android.api.aapt2.compile.Aapt2CompileWorkerTaskOutput;
-import saker.android.api.aapt2.link.Aapt2LinkTaskOutput;
+import saker.android.api.aapt2.link.Aapt2LinkWorkerTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.build.file.path.WildcardPath;
 import saker.build.file.path.WildcardPath.ReducedWildcardPath;
@@ -27,11 +27,11 @@ public abstract class Aapt2LinkerInputTaskOption {
 
 		public void visit(Aapt2CompileWorkerTaskOutput compilationinput);
 
-		public void visit(Aapt2AarCompileTaskOutput compilationinput);
+		public void visit(Aapt2AarCompileWorkerTaskOutput compilationinput);
 
 		public void visit(Aapt2CompileFrontendTaskOutput compilationinput);
 
-		public void visit(Aapt2LinkTaskOutput linkinput);
+		public void visit(Aapt2LinkWorkerTaskOutput linkinput);
 
 	}
 
@@ -53,7 +53,7 @@ public abstract class Aapt2LinkerInputTaskOption {
 		};
 	}
 
-	public static Aapt2LinkerInputTaskOption valueOf(Aapt2AarCompileTaskOutput output) {
+	public static Aapt2LinkerInputTaskOption valueOf(Aapt2AarCompileWorkerTaskOutput output) {
 		return new Aapt2LinkerInputTaskOption() {
 			@Override
 			public void accept(Visitor visitor) {
@@ -62,7 +62,7 @@ public abstract class Aapt2LinkerInputTaskOption {
 		};
 	}
 
-	public static Aapt2LinkerInputTaskOption valueOf(Aapt2LinkTaskOutput output) {
+	public static Aapt2LinkerInputTaskOption valueOf(Aapt2LinkWorkerTaskOutput output) {
 		return new Aapt2LinkerInputTaskOption() {
 			@Override
 			public void accept(Visitor visitor) {

@@ -1,6 +1,6 @@
 package saker.android.main.apk.create.option;
 
-import saker.android.api.d8.D8TaskOutput;
+import saker.android.api.d8.D8WorkerTaskOutput;
 import saker.build.file.path.SakerPath;
 import saker.nest.scriptinfo.reflection.annot.NestInformation;
 import saker.std.api.file.location.ExecutionFileLocation;
@@ -10,7 +10,7 @@ import saker.zip.api.create.ZipCreationTaskBuilder;
 public abstract class ApkClassesTaskOption {
 	public abstract void applyTo(ZipCreationTaskBuilder zipbuilder);
 
-	public static ApkClassesTaskOption valueOf(D8TaskOutput d8output) {
+	public static ApkClassesTaskOption valueOf(D8WorkerTaskOutput d8output) {
 		return new ApkClassesTaskOption() {
 			@Override
 			public void applyTo(ZipCreationTaskBuilder zipbuilder) {
