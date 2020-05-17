@@ -210,6 +210,16 @@ install() {
 	$export = include(export)
 	nest.local.install($export[bundlepaths])
 }
+upload(){
+	$export = include(export, Path: saker.build)
+	include(Path: secret/secrets.build)
+	nest.server.upload(
+		Bundles: $export[bundlepaths],
+		APIKey: global(saker.android.UPLOAD_API_KEY),
+		APISecret: global(saker.android.UPLOAD_API_SECRET),
+		Overwrite: true,
+	)
+}
 
 test() {
 	$testapi = include(_testapicompile, enabled: true)
