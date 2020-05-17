@@ -19,7 +19,7 @@ import saker.nest.utils.FrontendTaskFactory;
 @NestInformation("Gets a classpath reference to an Android platform.\n"
 		+ "The class will get a classpath configuration object for the android.jar for the "
 		+ AndroidPlatformSDKReference.SDK_NAME + " SDK.\n"
-		+ "The output of this task can be passed to the saker.java.compile() task to compile an Android application."
+		+ "The output of this task can be passed to the saker.java.compile() task to compile an Android application. "
 		+ "Make sure to specify the " + AndroidPlatformSDKReference.SDK_NAME
 		+ " SDK for the task with which you use this classpath.")
 @NestParameterInformation(value = "CoreLambdaStubs",
