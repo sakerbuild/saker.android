@@ -2,7 +2,7 @@ package saker.android.api.aar;
 
 import java.util.Set;
 
-import saker.android.impl.aar.AarEntryNotFoundException;
+import saker.android.api.aar.exc.AarEntryNotFoundException;
 import saker.std.api.file.location.FileLocation;
 
 /**

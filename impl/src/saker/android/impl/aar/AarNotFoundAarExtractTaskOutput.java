@@ -7,6 +7,7 @@ import java.io.ObjectOutput;
 import java.util.Set;
 
 import saker.android.api.aar.AarExtractWorkerTaskOutput;
+import saker.android.api.aar.exc.AarEntryNotFoundException;
 import saker.build.file.path.SakerPath;
 import saker.std.api.file.location.FileLocation;
 
