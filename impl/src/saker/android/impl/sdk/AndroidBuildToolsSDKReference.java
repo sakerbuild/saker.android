@@ -230,7 +230,7 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 
 	@Override
 	public String toString() {
-		return getClass().getSimpleName() + "[" + basePath + "]";
+		return getClass().getSimpleName() + "[" + version + "(" + basePath + ")]";
 	}
 
 }

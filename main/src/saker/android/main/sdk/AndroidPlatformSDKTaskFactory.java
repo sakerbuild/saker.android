@@ -3,6 +3,7 @@ package saker.android.main.sdk;
 import java.util.Collection;
 import java.util.Set;
 
+import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.impl.sdk.VersionsAndroidPlatformSDKDescription;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.ParameterizableTask;
@@ -22,7 +23,8 @@ import saker.sdk.support.main.TaskDocs.DocSDKDescription;
 @NestInformation("Retrieves an Android platform SDK description.\n"
 		+ "The task can be used to get an SDK reference to the Android platform with a specific version. "
 		+ "These SDKs can be passed as the input to other tasks to be used to retrieve the required tooling.\n"
-		+ "Android platforms are located in the platforms directory of the Android SDK.")
+		+ "Android platforms are located in the platforms directory of the Android SDK.\n"
+		+ "The commonly used name for the SDK is " + AndroidPlatformSDKReference.SDK_NAME + ".")
 @NestParameterInformation(value = "Version",
 		aliases = { "", "Versions" },
 		type = @NestTypeUsage(value = Collection.class, elementTypes = String.class),

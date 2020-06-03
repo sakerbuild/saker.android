@@ -1,4 +1,4 @@
-package saker.android.impl.zipalign;
+package saker.android.impl.ndk.strip;
 
 import java.io.Externalizable;
 import java.io.FileNotFoundException;
@@ -10,10 +10,10 @@ import java.util.NavigableMap;
 import java.util.Set;
 import java.util.UUID;
 
-import saker.android.api.zipalign.ZipAlignWorkerTaskOutput;
+import saker.android.api.ndk.strip.StripWorkerTaskOutput;
 import saker.android.impl.aapt2.OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate;
-import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
-import saker.android.main.zipalign.ZipAlignTaskFactory;
+import saker.android.impl.sdk.AndroidNdkSDKReference;
+import saker.android.main.ndk.strip.StripTaskFactory;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
 import saker.build.file.content.ContentDescriptor;
@@ -48,8 +48,8 @@ import saker.std.api.file.location.FileLocationVisitor;
 import saker.std.api.file.location.LocalFileLocation;
 import saker.std.api.util.SakerStandardUtils;
 
-public class ZipAlignWorkerTaskFactory
-		implements TaskFactory<ZipAlignWorkerTaskOutput>, Task<ZipAlignWorkerTaskOutput>, Externalizable {
+public class StripWorkerTaskFactory
+		implements TaskFactory<StripWorkerTaskOutput>, Task<StripWorkerTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private FileLocation inputFile;
@@ -62,7 +62,7 @@ public class ZipAlignWorkerTaskFactory
 	/**
 	 * For {@link Externalizable}.
 	 */
-	public ZipAlignWorkerTaskFactory() {
+	public StripWorkerTaskFactory() {
 	}
 
 	public void setInputFile(FileLocation inputFile) {
@@ -76,16 +76,12 @@ public class ZipAlignWorkerTaskFactory
 	public void setSDKDescriptions(NavigableMap<String, ? extends SDKDescription> sdkdescriptions) {
 		ObjectUtils.requireComparator(sdkdescriptions, SDKSupportUtils.getSDKNameComparator());
 		this.sdkDescriptions = sdkdescriptions;
-		if (sdkdescriptions.get(AndroidBuildToolsSDKReference.SDK_NAME) == null) {
-			throw new SDKNotFoundException(AndroidBuildToolsSDKReference.SDK_NAME + " SDK not specified.");
+		if (sdkdescriptions.get(AndroidNdkSDKReference.SDK_NAME) == null) {
+			throw new SDKNotFoundException(AndroidNdkSDKReference.SDK_NAME + " SDK not specified.");
 		}
 		//TODO make remote dispatchable when local files are supported
 //		remoteDispatchableEnvironmentSelector = SDKSupportUtils
 //				.getSDKBasedClusterExecutionEnvironmentSelector(sdkdescriptions.values());
-	}
-
-	public SDKDescription getAndroidBuildToolsSDKDescription() {
-		return ObjectUtils.getMapValue(sdkDescriptions, AndroidBuildToolsSDKReference.SDK_NAME);
 	}
 
 	@Override
@@ -110,13 +106,13 @@ public class ZipAlignWorkerTaskFactory
 	}
 
 	@Override
-	public ZipAlignWorkerTaskOutput run(TaskContext taskcontext) throws Exception {
+	public StripWorkerTaskOutput run(TaskContext taskcontext) throws Exception {
 		String fname = outputPath.getFileName();
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
-			BuildTrace.setDisplayInformation("zipalign:" + fname, ZipAlignTaskFactory.TASK_NAME + ":" + fname);
+			BuildTrace.setDisplayInformation("strip:" + fname, StripTaskFactory.TASK_NAME + ":" + fname);
 		}
-		taskcontext.setStandardOutDisplayIdentifier("zipalign:" + fname);
+		taskcontext.setStandardOutDisplayIdentifier("strip:" + fname);
 
 		Path[] inputfilelocalpath = { null };
 		ContentDescriptor[] inputfilecd = { null };
@@ -162,17 +158,17 @@ public class ZipAlignWorkerTaskFactory
 			sdkrefs = SDKSupportUtils.resolveSDKReferences(environment, this.sdkDescriptions);
 		}
 
-		SDKReference buildtoolssdk = sdkrefs.get(AndroidBuildToolsSDKReference.SDK_NAME);
-		SakerPath exepath = buildtoolssdk.getPath(AndroidBuildToolsSDKReference.PATH_ZIPALIGN_EXECUTABLE);
+		SDKReference ndksdk = sdkrefs.get(AndroidNdkSDKReference.SDK_NAME);
+		SakerPath exepath = ndksdk.getPath(AndroidNdkSDKReference.PATH_STRIP_EXE);
 		if (exepath == null) {
-			throw new SDKPathNotFoundException("zipalign executable not found in SDK: " + buildtoolssdk);
+			throw new SDKPathNotFoundException("strip executable not found in Android NDK: " + ndksdk);
 		}
 
 		Path outputfilelocalpath = taskcontext
 				.mirror(outputdir, OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate.INSTANCE).resolve(fname);
 
-		ProcessBuilder pb = new ProcessBuilder(exepath.toString(), "-f", "4", inputfilelocalpath[0].toString(),
-				outputfilelocalpath.toString());
+		ProcessBuilder pb = new ProcessBuilder(exepath.toString(), "-o", outputfilelocalpath.toString(),
+				inputfilelocalpath[0].toString());
 		pb.redirectErrorStream(true);
 
 		Process proc = pb.start();
@@ -182,7 +178,7 @@ public class ZipAlignWorkerTaskFactory
 			StreamUtils.copyStream(proc.getInputStream(), procout);
 			int res = proc.waitFor();
 			if (res != 0) {
-				throw new IOException("zipalign failed: " + res);
+				throw new IOException("strip failed: " + res);
 			}
 		} finally {
 			if (!procout.isEmpty()) {
@@ -192,7 +188,7 @@ public class ZipAlignWorkerTaskFactory
 
 		ProviderHolderPathKey outputfilepathkey = LocalFileProvider.getInstance().getPathKey(outputfilelocalpath);
 		taskcontext.invalidate(outputfilepathkey);
-		ContentDescriptor outputfilecd = new ZipAlignedArchiveContentDescriptor(inputfilecd[0]);
+		ContentDescriptor outputfilecd = new StrippedBinaryContentDescriptor(inputfilecd[0]);
 		SakerFile outputfile = taskcontext.getTaskUtilities().createProviderPathFile(fname, outputfilepathkey,
 				outputfilecd);
 		outputdir.add(outputfile);
@@ -202,11 +198,11 @@ public class ZipAlignWorkerTaskFactory
 		SakerPath outputabsolutepath = outputfile.getSakerPath();
 		taskcontext.reportOutputFileDependency(null, outputabsolutepath, outputfilecd);
 
-		return new ZipAlignTaskOutputImpl(outputabsolutepath);
+		return new StripTaskOutputImpl(outputabsolutepath);
 	}
 
 	@Override
-	public Task<? extends ZipAlignWorkerTaskOutput> createTask(ExecutionContext executioncontext) {
+	public Task<? extends StripWorkerTaskOutput> createTask(ExecutionContext executioncontext) {
 		return this;
 	}
 
@@ -247,7 +243,7 @@ public class ZipAlignWorkerTaskFactory
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		ZipAlignWorkerTaskFactory other = (ZipAlignWorkerTaskFactory) obj;
+		StripWorkerTaskFactory other = (StripWorkerTaskFactory) obj;
 		if (inputFile == null) {
 			if (other.inputFile != null)
 				return false;
@@ -265,4 +261,5 @@ public class ZipAlignWorkerTaskFactory
 			return false;
 		return true;
 	}
+
 }

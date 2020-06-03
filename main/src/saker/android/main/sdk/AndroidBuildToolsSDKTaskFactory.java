@@ -3,6 +3,7 @@ package saker.android.main.sdk;
 import java.util.Collection;
 import java.util.Set;
 
+import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.VersionsAndroidBuildToolsSDKDescription;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.ParameterizableTask;
@@ -21,7 +22,8 @@ import saker.sdk.support.main.TaskDocs.DocSDKDescription;
 @NestTaskInformation(returnType = @NestTypeUsage(DocSDKDescription.class))
 @NestInformation("Retrieves an Android build-tools SDK description.\n"
 		+ "The task can be used to get an SDK reference to the Android build-tools with a specific version. "
-		+ "These SDKs can be passed as the input to other tasks to be used to retrieve the required tooling.")
+		+ "These SDKs can be passed as the input to other tasks to be used to retrieve the required tooling.\n"
+		+ "The commonly used name for the SDK is " + AndroidBuildToolsSDKReference.SDK_NAME + ".")
 @NestParameterInformation(value = "Version",
 		aliases = { "", "Versions" },
 		type = @NestTypeUsage(value = Collection.class, elementTypes = String.class),

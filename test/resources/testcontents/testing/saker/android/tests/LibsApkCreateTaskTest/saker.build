@@ -1,0 +1,21 @@
+build(
+	out apkpath,
+){
+	$aapt2 = saker.android.aapt2.compile(res)
+	
+	$aaptlink = saker.android.aapt2.link(
+		$aapt2,
+		Manifest: AndroidManifest.xml,
+	)
+		
+	$apk = saker.apk.create(
+		Resources: $aaptlink,
+		Libraries: {
+			libmain.so: {
+				armeabi: mylibs/libmain-armeabi.so,
+				x86: mylibs/libmain-x86.so,
+			}
+		}
+	)
+	$apkpath = $apk[Path]
+}

@@ -4,15 +4,18 @@ import java.io.Externalizable;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
 
 import saker.android.impl.AndroidUtils;
-import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.path.SakerPath;
+import saker.build.file.provider.SakerPathFiles;
 import saker.build.runtime.environment.EnvironmentProperty;
 import saker.build.runtime.environment.SakerEnvironment;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.thirdparty.saker.util.StringUtils;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.exc.SDKNotFoundException;
@@ -37,26 +40,25 @@ public class VersionsAndroidPlatformSDKReferenceEnvironmentProperty
 	public SDKReference getCurrentValue(SakerEnvironment environment) throws Exception {
 		Predicate<? super String> versionpredicate = AndroidUtils.getSetContainsElseAlwaysPredicate(versions);
 
-		for (String loc : AndroidUtils.getEnvironmentUserParameterSDKLocations(environment)) {
-			SDKReference foundsdk = tryGetSDKFromInstallLocation(loc, versionpredicate);
-			if (foundsdk != null) {
-				return foundsdk;
+		List<Exception> causes = new ArrayList<>();
+		SDKReference foundsdk = AndroidUtils.searchInAndroidSDKLocations(environment, loc -> {
+			try {
+				return tryGetSDKFromInstallLocation(loc, versionpredicate);
+			} catch (Exception e) {
+				causes.add(e);
+				return null;
 			}
-		}
-
-		SDKReference foundsdk;
-		foundsdk = tryGetSDKFromInstallLocation(System.getenv(AndroidUtils.SYSTEM_ENVIRONMENT_VARIABLE_ANDROID_HOME),
-				versionpredicate);
-		if (foundsdk != null) {
-			return foundsdk;
-		}
-		foundsdk = tryGetSDKFromInstallLocation(
-				System.getenv(AndroidUtils.SYSTEM_ENVIRONMENT_VARIABLE_ANDROID_SDK_ROOT), versionpredicate);
+		});
 		if (foundsdk != null) {
 			return foundsdk;
 		}
 
-		throw new SDKNotFoundException("Android platform SDK not found for versions: " + versions);
+		SDKNotFoundException ex = new SDKNotFoundException("Android platform SDK not found for versions: "
+				+ (versions == null ? "any" : StringUtils.toStringJoin(", ", versions)));
+		for (Exception e : causes) {
+			ex.addSuppressed(e);
+		}
+		throw ex;
 	}
 
 	private static SDKReference tryGetSDKFromInstallLocation(String location,
@@ -64,16 +66,9 @@ public class VersionsAndroidPlatformSDKReferenceEnvironmentProperty
 		if (ObjectUtils.isNullOrEmpty(location)) {
 			return null;
 		}
-		SakerPath installpath;
-		try {
-			installpath = SakerPath.valueOf(location);
-		} catch (InvalidPathFormatException e) {
-			//ignore
-			return null;
-		}
-		if (!installpath.isAbsolute()) {
-			return null;
-		}
+		SakerPath installpath = SakerPath.valueOf(location);
+		SakerPathFiles.requireAbsolutePath(installpath);
+
 		SDKReference foundsdk = AndroidUtils.searchPlatformInAndroidSDKInstallLocation(installpath, versionpredicate);
 		if (foundsdk != null) {
 			return foundsdk;

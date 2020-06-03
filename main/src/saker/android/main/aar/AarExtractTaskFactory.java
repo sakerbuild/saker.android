@@ -11,8 +11,8 @@ import saker.android.api.aar.AarExtractWorkerTaskOutput;
 import saker.android.impl.aar.AarEntryExtractWorkerTaskFactory;
 import saker.android.impl.aar.ExecutionAarExtractTaskOutput;
 import saker.android.impl.aar.LocalAarExtractTaskOutput;
+import saker.android.main.AndroidFrontendUtils;
 import saker.android.main.TaskDocs.DocAarExtractTaskOutput;
-import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.ParameterizableTask;
@@ -81,26 +81,15 @@ public class AarExtractTaskFactory extends FrontendTaskFactory<Object> {
 					BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 				}
 
-				if (outputPathOption != null) {
-					if (!outputPathOption.isForwardRelative()) {
-						taskcontext.abortExecution(new InvalidPathFormatException(
-								"Output path must be forward relative: " + outputPathOption));
-						return null;
+				try {
+					if (outputPathOption != null) {
+						outputPathOption = AndroidFrontendUtils.requireFormwardRelativeWithFileName(outputPathOption,
+								"Output path");
 					}
-					if (outputPathOption.getFileName() == null) {
-						taskcontext.abortExecution(
-								new InvalidPathFormatException("Output path has no file name: " + outputPathOption));
-						return null;
-					}
-				}
-				if (!entryOption.isForwardRelative()) {
-					taskcontext.abortExecution(
-							new InvalidPathFormatException("Entry path must be forward relative: " + entryOption));
-					return null;
-				}
-				if (entryOption.getFileName() == null) {
-					taskcontext
-							.abortExecution(new InvalidPathFormatException("Entry has no file name: " + entryOption));
+					outputPathOption = AndroidFrontendUtils.requireFormwardRelativeWithFileName(entryOption,
+							"Entry path");
+				} catch (Exception e) {
+					taskcontext.abortExecution(e);
 					return null;
 				}
 

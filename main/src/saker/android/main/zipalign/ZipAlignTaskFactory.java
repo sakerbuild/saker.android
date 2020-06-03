@@ -12,7 +12,6 @@ import saker.android.main.AndroidFrontendUtils;
 import saker.android.main.TaskDocs;
 import saker.android.main.TaskDocs.DocZipAlignTaskOutput;
 import saker.android.main.zipalign.option.ZipAlignInputTaskOption;
-import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.path.SakerPath;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.task.ParameterizableTask;
@@ -30,7 +29,6 @@ import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 import saker.std.api.file.location.FileLocation;
-import saker.std.api.util.SakerStandardUtils;
 
 @NestTaskInformation(returnType = @NestTypeUsage(DocZipAlignTaskOutput.class))
 @NestInformation("Performs ZIP alignment on the specified archive.\n"
@@ -75,26 +73,13 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 				}
 				FileLocation inputzipfile = inputOption.getInputFileLocation();
 
-				SakerPath outputpath = outputOption;
-				if (outputpath != null) {
-					if (!outputpath.isForwardRelative()) {
-						taskcontext.abortExecution(new InvalidPathFormatException(
-								"Signed APK output path must be forward relative: " + outputpath));
-						return null;
-					}
-					if (outputpath.getFileName() == null) {
-						taskcontext.abortExecution(
-								new InvalidPathFormatException("Output must have a file name: " + outputpath));
-						return null;
-					}
-				} else {
-					String apkfname = SakerStandardUtils.getFileLocationFileName(inputzipfile);
-					if (apkfname == null) {
-						taskcontext.abortExecution(
-								new InvalidPathFormatException("Failed to determine input file name: " + inputzipfile));
-						return null;
-					}
-					outputpath = SakerPath.valueOf(toAlignedOutputApkFileName(apkfname));
+				SakerPath outputpath;
+				try {
+					outputpath = AndroidFrontendUtils.getOutputPathForForwardRelativeWithFileName(outputOption,
+							inputzipfile, "Signed APK output path", ZipAlignTaskFactory::toAlignedOutputApkFileName);
+				} catch (Exception e) {
+					taskcontext.abortExecution(e);
+					return null;
 				}
 
 				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils

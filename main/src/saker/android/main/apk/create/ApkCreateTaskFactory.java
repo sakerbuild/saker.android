@@ -6,18 +6,20 @@ import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Set;
 
 import saker.android.api.aapt2.link.Aapt2LinkInputLibrary;
 import saker.android.api.aapt2.link.Aapt2LinkWorkerTaskOutput;
+import saker.android.main.AndroidFrontendUtils;
 import saker.android.main.TaskDocs.DocApkCreatorTaskOutput;
 import saker.android.main.TaskDocs.DocAssetsDirectory;
 import saker.android.main.aapt2.Aapt2LinkTaskFactory;
 import saker.android.main.apk.create.option.ApkClassesTaskOption;
 import saker.android.main.apk.create.option.ApkResourcesTaskOption;
 import saker.android.main.d8.D8TaskFactory;
-import saker.build.exception.InvalidPathFormatException;
 import saker.build.file.DirectoryVisitPredicate;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
@@ -26,6 +28,7 @@ import saker.build.file.path.WildcardPath;
 import saker.build.file.provider.SakerPathFiles;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.runtime.execution.ExecutionDirectoryContext;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.task.CommonTaskContentDescriptors;
 import saker.build.task.ParameterizableTask;
 import saker.build.task.TaskContext;
@@ -38,6 +41,7 @@ import saker.build.task.utils.annot.SakerInput;
 import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.thirdparty.saker.util.function.Functionals;
 import saker.build.trace.BuildTrace;
 import saker.nest.scriptinfo.reflection.annot.NestInformation;
 import saker.nest.scriptinfo.reflection.annot.NestParameterInformation;
@@ -46,6 +50,8 @@ import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileLocation;
+import saker.std.main.file.option.FileLocationTaskOption;
+import saker.std.main.file.utils.TaskOptionUtils;
 import saker.zip.api.create.IncludeResourceMapping;
 import saker.zip.api.create.ZipCreationTaskBuilder;
 
@@ -58,7 +64,7 @@ import saker.zip.api.create.ZipCreationTaskBuilder;
 		required = true,
 		type = @NestTypeUsage(value = Collection.class, elementTypes = { ApkResourcesTaskOption.class }),
 		info = @NestInformation("Specifies the resources to be included in the created APK.\n"
-				+ "The parameter takes one or more resources APKs that are directly included in the output.\n"
+				+ "The parameter takes one or more resource APKs that are directly included in the output.\n"
 				+ "The parameter accepts the output of the " + Aapt2LinkTaskFactory.TASK_NAME
 				+ "() task in which case all the linked resources will be part of the output. "
 				+ "The task will also include the assets and JNI libraries from referenced AARs."))
@@ -91,6 +97,11 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 	private static final SakerPath DEFAULT_BUILD_SUBDIRECTORY_PATH = SakerPath.valueOf(TASK_NAME);
 	private static final SakerPath PATH_APK_ASSETS_DIRECTORY = SakerPath.valueOf("assets");
 
+	public static final Set<String> KNOWN_ABIS = ImmutableUtils
+			.makeImmutableNavigableSet(new String[] { "arm64-v8a", "armeabi-v7a", "x86", "x86_64",
+					//deprecated:
+					"armeabi", "mips", "mips64", });
+
 	@Override
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
 		return new ParameterizableTask<Object>() {
@@ -107,26 +118,34 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput(value = { "Output" })
 			public SakerPath outputOption;
 
+			/**
+			 * Maps library relative paths to abi to file locations.
+			 */
+			@SakerInput(value = { "Libraries", "Libs", "Lib" })
+			public Map<SakerPath, Map<String, FileLocationTaskOption>> librariesOption;
+
 			@Override
 			public Object run(TaskContext taskcontext) throws Exception {
 				if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 					BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 				}
-				SakerPath outputpath = outputOption;
-				if (outputpath != null) {
-					if (!outputpath.isForwardRelative()) {
-						taskcontext.abortExecution(new InvalidPathFormatException(
-								"APK output path must be forward relative: " + outputpath));
+				final SakerPath outputpath;
+				if (outputOption != null) {
+					try {
+						outputpath = AndroidFrontendUtils.requireFormwardRelativeWithFileName(outputOption,
+								"APK output path");
+					} catch (Exception e) {
+						taskcontext.abortExecution(e);
 						return null;
 					}
-					if (outputpath.getFileName() == null) {
-						taskcontext.abortExecution(
-								new InvalidPathFormatException("APK output path must have a file name: " + outputpath));
-						return null;
-					}
+
 				} else {
 					outputpath = SakerPath.valueOf("default.apk");
 				}
+
+				librariesOption = ObjectUtils.cloneTreeMap(librariesOption, Functionals.identityFunction(),
+						m -> ObjectUtils.cloneTreeMap(m, Functionals.identityFunction(),
+								FileLocationTaskOption::clone));
 
 				SakerPath builddirpath = SakerPathFiles.requireBuildDirectoryPath(taskcontext)
 						.resolve(DEFAULT_BUILD_SUBDIRECTORY_PATH);
@@ -178,6 +197,49 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 				}
 				if (classesOption != null) {
 					classesOption.applyTo(taskbuilder);
+				}
+				if (!ObjectUtils.isNullOrEmpty(librariesOption)) {
+					for (Entry<SakerPath, Map<String, FileLocationTaskOption>> entry : librariesOption.entrySet()) {
+						SakerPath libpath = entry.getKey();
+						Map<String, FileLocationTaskOption> val = entry.getValue();
+						if (libpath == null) {
+							if (val == null) {
+								continue;
+							}
+							throw new NullPointerException("Null library name.");
+						}
+
+						AndroidFrontendUtils.requireFormwardRelativeWithFileName(libpath, "Library name");
+						if (ObjectUtils.isNullOrEmpty(val)) {
+							//no libs
+							continue;
+						}
+						for (Entry<String, FileLocationTaskOption> archentry : val.entrySet()) {
+							String abi = archentry.getKey();
+							FileLocationTaskOption filelocation = archentry.getValue();
+							if (abi == null) {
+								if (filelocation == null) {
+									//ignore instead of throwing
+									continue;
+								}
+								throw new NullPointerException("Null ABI: " + libpath);
+							}
+							if (abi.isEmpty()) {
+								throw new IllegalArgumentException("Empty string specified as ABI for: " + libpath);
+							}
+							FileLocation fl = TaskOptionUtils.toFileLocation(filelocation, taskcontext);
+							if (fl == null) {
+								throw new NullPointerException(
+										"No file location specified for library ABI: " + libpath + " - " + abi);
+							}
+							if (!KNOWN_ABIS.contains(abi)) {
+								//print a warning
+								SakerLog.warning().taskScriptPosition(taskcontext)
+										.println("Unrecognized Android ABI: " + abi);
+							}
+							taskbuilder.addResource(fl, SakerPath.valueOf("lib").resolve(abi).append(libpath));
+						}
+					}
 				}
 				TaskIdentifier workertaskid = taskbuilder.buildTaskIdentifier();
 				TaskFactory<?> workertask = taskbuilder.buildTaskFactory();
