@@ -46,7 +46,6 @@ import saker.build.thirdparty.saker.util.io.UnsyncByteArrayOutputStream;
 import saker.build.thirdparty.saker.util.thread.ThreadUtils;
 import saker.build.trace.BuildTrace;
 import saker.compiler.utils.api.CompilationIdentifier;
-import saker.sdk.support.api.IndeterminateSDKDescription;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.SDKSupportUtils;
@@ -477,16 +476,7 @@ public class Aapt2CompileWorkerTaskFactory
 		taskcontext.getTaskUtilities().reportOutputFileDependency(Aapt2CompilerTags.OUTPUT_COMPILED,
 				outputfilecontents);
 
-		//TODO use SDKSupportUtils
-		NavigableMap<String, SDKDescription> pinnedsdks = new TreeMap<>(SDKSupportUtils.getSDKNameComparator());
-		for (Entry<String, SDKReference> entry : sdkrefs.entrySet()) {
-			String sdkname = entry.getKey();
-			SDKDescription desc = sdkDescriptions.get(sdkname);
-			if (desc instanceof IndeterminateSDKDescription) {
-				desc = ((IndeterminateSDKDescription) desc).pinSDKDescription(entry.getValue());
-			}
-			pinnedsdks.put(sdkname, desc);
-		}
+		NavigableMap<String, SDKDescription> pinnedsdks = SDKSupportUtils.pinSDKSelection(sdkDescriptions, sdkrefs);
 
 		taskcontext.setTaskOutput(CompileState.class, nstate);
 

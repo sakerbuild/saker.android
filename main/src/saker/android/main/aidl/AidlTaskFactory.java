@@ -12,7 +12,6 @@ import saker.android.impl.aidl.AidlWorkerTaskFactory;
 import saker.android.impl.aidl.AidlWorkerTaskIdentifier;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
-import saker.android.main.AndroidFrontendUtils;
 import saker.android.main.TaskDocs;
 import saker.android.main.TaskDocs.DocAidlTaskOutput;
 import saker.build.file.path.SakerPath;
@@ -32,6 +31,7 @@ import saker.nest.scriptinfo.reflection.annot.NestTaskInformation;
 import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
+import saker.sdk.support.main.SDKSupportFrontendUtils;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 
 @NestTaskInformation(returnType = @NestTypeUsage(DocAidlTaskOutput.class))
@@ -85,8 +85,8 @@ public class AidlTaskFactory extends FrontendTaskFactory<Object> {
 					compilationid = generateCompilationIdentifier(taskcontext.getTaskWorkingDirectoryPath());
 				}
 
-				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
-						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
+				NavigableMap<String, SDKDescription> sdkdescriptions = SDKSupportFrontendUtils
+						.toSDKDescriptionMap(sdksOption);
 				sdkdescriptions.putIfAbsent(AndroidBuildToolsSDKReference.SDK_NAME,
 						AndroidUtils.DEFAULT_BUILD_TOOLS_SDK);
 				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);

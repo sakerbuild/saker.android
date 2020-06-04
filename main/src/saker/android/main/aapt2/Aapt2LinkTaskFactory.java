@@ -29,7 +29,6 @@ import saker.android.impl.aapt2.link.option.FileAapt2LinkerInput;
 import saker.android.impl.aapt2.link.option.LinkAapt2LinkerInput;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
-import saker.android.main.AndroidFrontendUtils;
 import saker.android.main.TaskDocs;
 import saker.android.main.TaskDocs.DocAapt2LinkTaskOutput;
 import saker.android.main.aapt2.option.Aapt2LinkerInputTaskOption;
@@ -64,6 +63,7 @@ import saker.nest.scriptinfo.reflection.annot.NestTaskInformation;
 import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
+import saker.sdk.support.main.SDKSupportFrontendUtils;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileCollection;
@@ -500,8 +500,8 @@ public class Aapt2LinkTaskFactory extends FrontendTaskFactory<Object> {
 					compilationid = CompilationIdentifier.valueOf("default");
 				}
 
-				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
-						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
+				NavigableMap<String, SDKDescription> sdkdescriptions = SDKSupportFrontendUtils
+						.toSDKDescriptionMap(sdksOption);
 				sdkdescriptions.putIfAbsent(AndroidBuildToolsSDKReference.SDK_NAME,
 						AndroidUtils.DEFAULT_BUILD_TOOLS_SDK);
 				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);

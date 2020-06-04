@@ -35,6 +35,7 @@ import saker.nest.scriptinfo.reflection.annot.NestTaskInformation;
 import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
+import saker.sdk.support.main.SDKSupportFrontendUtils;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileLocation;
@@ -116,8 +117,8 @@ public class SignApkTaskFactory extends FrontendTaskFactory<Object> {
 						outputOption, apkfilelocation[0], "Signed APK output path",
 						SignApkTaskFactory::toSignedOutputApkFileName);
 
-				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
-						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
+				NavigableMap<String, SDKDescription> sdkdescriptions = SDKSupportFrontendUtils
+						.toSDKDescriptionMap(sdksOption);
 				sdkdescriptions.putIfAbsent(AndroidBuildToolsSDKReference.SDK_NAME,
 						AndroidUtils.DEFAULT_BUILD_TOOLS_SDK);
 				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);

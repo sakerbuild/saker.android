@@ -18,6 +18,7 @@ import saker.build.task.utils.dependencies.EqualityTaskOutputChangeDetector;
 import saker.build.trace.BuildTrace;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
+import saker.sdk.support.main.SDKSupportFrontendUtils;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 import saker.std.api.file.location.FileLocation;
 import saker.std.main.file.option.FileLocationTaskOption;
@@ -49,14 +50,13 @@ public class StripTaskFactory extends FrontendTaskFactory<Object> {
 				final SakerPath outputpath = AndroidFrontendUtils.getOutputPathForForwardRelativeWithFileName(
 						outputOption, inputfilelocation, "Stripped library output path", f -> "stripped-" + f);
 
-				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
-						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
+				NavigableMap<String, SDKDescription> sdkdescriptions = SDKSupportFrontendUtils
+						.toSDKDescriptionMap(this.sdksOption);
 				sdkdescriptions.putIfAbsent(AndroidNdkSDKReference.SDK_NAME, AndroidUtils.DEFAULT_NDK_SDK);
 
 				StripWorkerTaskIdentifier workertaskid = new StripWorkerTaskIdentifier(outputpath);
 				StripWorkerTaskFactory workertask = new StripWorkerTaskFactory();
 				workertask.setInputFile(inputfilelocation);
-				workertask.setOutputPath(SakerPath.valueOf(TASK_NAME).resolve(outputpath));
 				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);

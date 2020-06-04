@@ -23,7 +23,6 @@ import saker.android.impl.aapt2.compile.option.ResourceDirectoryAapt2CompilerInp
 import saker.android.impl.classpath.LiteralStructuredTaskResult;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
-import saker.android.main.AndroidFrontendUtils;
 import saker.android.main.TaskDocs;
 import saker.android.main.TaskDocs.DocAapt2CompileTaskOutput;
 import saker.android.main.aapt2.Aapt2LinkTaskFactory.ArtifactLocalizationOutputFileLocationStructuredTaskResult;
@@ -62,6 +61,7 @@ import saker.nest.scriptinfo.reflection.annot.NestTaskInformation;
 import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
+import saker.sdk.support.main.SDKSupportFrontendUtils;
 import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileCollection;
@@ -153,8 +153,8 @@ public class Aapt2CompileTaskFactory extends FrontendTaskFactory<Aapt2CompileFro
 				addFlagIfSet(flags, Aapt2CompilerFlag.PSEUDO_LOCALIZE, pseudoLocalizeOption);
 				Aapt2CompilationConfiguration compilationconfig = new Aapt2CompilationConfiguration(flags);
 
-				NavigableMap<String, SDKDescription> sdkdescriptions = AndroidFrontendUtils
-						.sdksTaskOptionToDescriptions(taskcontext, this.sdksOption);
+				NavigableMap<String, SDKDescription> sdkdescriptions = SDKSupportFrontendUtils
+						.toSDKDescriptionMap(sdksOption);
 				sdkdescriptions.putIfAbsent(AndroidBuildToolsSDKReference.SDK_NAME,
 						AndroidUtils.DEFAULT_BUILD_TOOLS_SDK);
 				sdkdescriptions.putIfAbsent(AndroidPlatformSDKReference.SDK_NAME, AndroidUtils.DEFAULT_PLATFORM_SDK);

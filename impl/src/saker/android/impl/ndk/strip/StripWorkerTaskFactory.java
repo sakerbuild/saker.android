@@ -53,7 +53,6 @@ public class StripWorkerTaskFactory
 	private static final long serialVersionUID = 1L;
 
 	private FileLocation inputFile;
-	private SakerPath outputPath;
 
 	private NavigableMap<String, ? extends SDKDescription> sdkDescriptions;
 
@@ -67,10 +66,6 @@ public class StripWorkerTaskFactory
 
 	public void setInputFile(FileLocation inputFile) {
 		this.inputFile = inputFile;
-	}
-
-	public void setOutputPath(SakerPath outputPath) {
-		this.outputPath = outputPath;
 	}
 
 	public void setSDKDescriptions(NavigableMap<String, ? extends SDKDescription> sdkdescriptions) {
@@ -107,7 +102,9 @@ public class StripWorkerTaskFactory
 
 	@Override
 	public StripWorkerTaskOutput run(TaskContext taskcontext) throws Exception {
-		String fname = outputPath.getFileName();
+		StripWorkerTaskIdentifier taskid = (StripWorkerTaskIdentifier) taskcontext.getTaskId();
+		SakerPath outputpath = taskid.getOutputPath();
+		String fname = outputpath.getFileName();
 		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
 			BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_WORKER);
 			BuildTrace.setDisplayInformation("strip:" + fname, StripTaskFactory.TASK_NAME + ":" + fname);
@@ -137,16 +134,17 @@ public class StripWorkerTaskFactory
 
 			@Override
 			public void visit(LocalFileLocation loc) {
+				SakerPath inputpath = loc.getLocalPath();
 				ExecutionProperty<? extends ContentDescriptor> envprop = SakerStandardUtils
-						.createLocalFileContentDescriptorExecutionProperty(loc.getLocalPath(), UUID.randomUUID());
-				inputfilelocalpath[0] = LocalFileProvider.toRealPath(outputPath);
+						.createLocalFileContentDescriptorExecutionProperty(inputpath, UUID.randomUUID());
+				inputfilelocalpath[0] = LocalFileProvider.toRealPath(inputpath);
 				inputfilecd[0] = taskcontext.getTaskUtilities().getReportExecutionDependency(envprop);
 			}
 		});
 
-		SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
-		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtRelativePathCreate(builddir,
-				outputPath.getParent());
+		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtRelativePathCreate(
+				SakerPathFiles.requireBuildDirectory(taskcontext).getDirectoryCreate(StripTaskFactory.TASK_NAME),
+				outputpath.getParent());
 
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
 
@@ -209,7 +207,6 @@ public class StripWorkerTaskFactory
 	@Override
 	public void writeExternal(ObjectOutput out) throws IOException {
 		out.writeObject(inputFile);
-		out.writeObject(outputPath);
 
 		SerialUtils.writeExternalMap(out, sdkDescriptions);
 		out.writeObject(remoteDispatchableEnvironmentSelector);
@@ -218,7 +215,6 @@ public class StripWorkerTaskFactory
 	@Override
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		inputFile = (FileLocation) in.readObject();
-		outputPath = (SakerPath) in.readObject();
 
 		sdkDescriptions = SerialUtils.readExternalSortedImmutableNavigableMap(in,
 				SDKSupportUtils.getSDKNameComparator());
@@ -230,7 +226,6 @@ public class StripWorkerTaskFactory
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((inputFile == null) ? 0 : inputFile.hashCode());
-		result = prime * result + ((outputPath == null) ? 0 : outputPath.hashCode());
 		result = prime * result + ((sdkDescriptions == null) ? 0 : sdkDescriptions.hashCode());
 		return result;
 	}
@@ -248,11 +243,6 @@ public class StripWorkerTaskFactory
 			if (other.inputFile != null)
 				return false;
 		} else if (!inputFile.equals(other.inputFile))
-			return false;
-		if (outputPath == null) {
-			if (other.outputPath != null)
-				return false;
-		} else if (!outputPath.equals(other.outputPath))
 			return false;
 		if (sdkDescriptions == null) {
 			if (other.sdkDescriptions != null)

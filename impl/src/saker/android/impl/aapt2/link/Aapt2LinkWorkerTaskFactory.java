@@ -73,7 +73,6 @@ import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.build.thirdparty.saker.util.io.UnsyncByteArrayOutputStream;
 import saker.build.trace.BuildTrace;
 import saker.compiler.utils.api.CompilationIdentifier;
-import saker.sdk.support.api.IndeterminateSDKDescription;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.SDKSupportUtils;
@@ -613,16 +612,7 @@ public class Aapt2LinkWorkerTaskFactory
 
 		SakerPath rjavasourcedirpath = javaoutdir.getSakerPath();
 
-		//TODO use SDKSupportUtils
-		NavigableMap<String, SDKDescription> pinnedsdks = new TreeMap<>(SDKSupportUtils.getSDKNameComparator());
-		for (Entry<String, SDKReference> entry : sdkrefs.entrySet()) {
-			String sdkname = entry.getKey();
-			SDKDescription desc = sdkDescriptions.get(sdkname);
-			if (desc instanceof IndeterminateSDKDescription) {
-				desc = ((IndeterminateSDKDescription) desc).pinSDKDescription(entry.getValue());
-			}
-			pinnedsdks.put(sdkname, desc);
-		}
+		NavigableMap<String, SDKDescription> pinnedsdks = SDKSupportUtils.pinSDKSelection(sdkDescriptions, sdkrefs);
 
 		Aapt2LinkTaskOutputImpl result = new Aapt2LinkTaskOutputImpl(compilationid, outputapkpath, pinnedsdks);
 		result.setJavaSourceDirectories(ImmutableUtils.asUnmodifiableArrayList(rjavasourcedirpath));

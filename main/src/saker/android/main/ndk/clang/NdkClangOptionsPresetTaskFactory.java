@@ -37,8 +37,8 @@ public class NdkClangOptionsPresetTaskFactory extends FrontendTaskFactory<Object
 			@SakerInput(value = { "API" })
 			public Integer targetAPIOption;
 
-			@SakerInput(value = "Debug")
-			public Boolean debugOption = Boolean.FALSE;
+			@SakerInput(value = "Release")
+			public Boolean releaseOption = Boolean.FALSE;
 
 			@SakerInput(value = "StaticStdLib")
 			public Boolean staticStdLibOption = Boolean.FALSE;
@@ -154,8 +154,8 @@ public class NdkClangOptionsPresetTaskFactory extends FrontendTaskFactory<Object
 				if (!ObjectUtils.isNullOrEmpty(visibilityOption)) {
 					compilerparams.add("-fvisibility=" + visibilityOption);
 				}
-				if (debugOption != null) {
-					if (debugOption) {
+				if (releaseOption != null) {
+					if (!releaseOption) {
 						compilerparams.add("-fno-limit-debug-info");
 						compilerparams.add("-O0");
 					} else {
@@ -188,8 +188,8 @@ public class NdkClangOptionsPresetTaskFactory extends FrontendTaskFactory<Object
 				//__ANDROID_API__ is defined by the toolchain
 				macros.put("ANDROID", "");
 				macros.put("_FORTIFY_SOURCE", "2");
-				if (debugOption != null) {
-					if (!debugOption) {
+				if (releaseOption != null) {
+					if (releaseOption) {
 						macros.put("NDEBUG", "");
 					}
 				}
