@@ -47,8 +47,9 @@ public class StripTaskFactory extends FrontendTaskFactory<Object> {
 					BuildTrace.classifyTask(BuildTrace.CLASSIFICATION_FRONTEND);
 				}
 				FileLocation inputfilelocation = TaskOptionUtils.toFileLocation(inputOption, taskcontext);
-				final SakerPath outputpath = AndroidFrontendUtils.getOutputPathForForwardRelativeWithFileName(
-						outputOption, inputfilelocation, "Stripped library output path", f -> "stripped-" + f);
+				final SakerPath outputpath = SakerPath.valueOf(TASK_NAME)
+						.resolve(AndroidFrontendUtils.getOutputPathForForwardRelativeWithFileName(outputOption,
+								inputfilelocation, "Stripped library output path", f -> "stripped-" + f));
 
 				NavigableMap<String, SDKDescription> sdkdescriptions = SDKSupportFrontendUtils
 						.toSDKDescriptionMap(this.sdksOption);

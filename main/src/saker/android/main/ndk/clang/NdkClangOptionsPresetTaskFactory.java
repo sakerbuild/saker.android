@@ -69,6 +69,8 @@ public class NdkClangOptionsPresetTaskFactory extends FrontendTaskFactory<Object
 
 				CompilationIdentifier identifier = CompilationIdentifierTaskOption.getIdentifier(identifierOption);
 
+				List<String> linkerparams = new ArrayList<>();
+				List<String> compilerparams = new ArrayList<>();
 				String targetparam = null;
 				String armeabimarch = null;
 				boolean exceptions = false;
@@ -76,9 +78,27 @@ public class NdkClangOptionsPresetTaskFactory extends FrontendTaskFactory<Object
 
 				if (!ObjectUtils.isNullOrEmpty(abiOption)) {
 					String targetapi = targetAPIOption == null ? "" : targetAPIOption.toString();
+					int targetapiint;
+					try {
+						targetapiint = Integer.parseUnsignedInt(targetapi);
+					} catch (NumberFormatException e) {
+						throw new IllegalArgumentException("Target API must be an integer: " + targetapi);
+					}
 					switch (abiOption) {
 						case "x86": {
 							targetparam = "--target=i686-none-linux-android" + targetapi;
+							//based on build/core/build-binary.mk in the NDK
+//							# http://b.android.com/222239
+//							# http://b.android.com/220159 (internal http://b/31809417)
+//							# x86 devices have stack alignment issues.
+//							ifeq ($(TARGET_ARCH_ABI),x86)
+//							    ifneq (,$(call lt,$(APP_PLATFORM_LEVEL),24))
+//							        LOCAL_CFLAGS += -mstackrealign
+//							    endif
+//							endif
+							if (targetapiint < 24) {
+								compilerparams.add("-mstackrealign");
+							}
 							break;
 						}
 						case "x86_64": {
@@ -121,8 +141,6 @@ public class NdkClangOptionsPresetTaskFactory extends FrontendTaskFactory<Object
 					}
 				}
 
-				List<String> linkerparams = new ArrayList<>();
-				List<String> compilerparams = new ArrayList<>();
 				NavigableMap<String, String> macros = new TreeMap<>();
 				if (targetparam != null) {
 					compilerparams.add(targetparam);

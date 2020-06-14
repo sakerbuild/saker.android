@@ -143,7 +143,7 @@ public class StripWorkerTaskFactory
 		});
 
 		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtRelativePathCreate(
-				SakerPathFiles.requireBuildDirectory(taskcontext).getDirectoryCreate(StripTaskFactory.TASK_NAME),
+				SakerPathFiles.requireBuildDirectory(taskcontext),
 				outputpath.getParent());
 
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
@@ -185,16 +185,18 @@ public class StripWorkerTaskFactory
 		}
 
 		ProviderHolderPathKey outputfilepathkey = LocalFileProvider.getInstance().getPathKey(outputfilelocalpath);
-		taskcontext.invalidate(outputfilepathkey);
-		ContentDescriptor outputfilecd = new StrippedBinaryContentDescriptor(inputfilecd[0]);
-		SakerFile outputfile = taskcontext.getTaskUtilities().createProviderPathFile(fname, outputfilepathkey,
-				outputfilecd);
+		if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_013) {
+			taskcontext.getTaskUtilities().invalidateWithPosixFilePermissions(outputfilepathkey);
+		} else {
+			taskcontext.invalidate(outputfilepathkey);
+		}
+		SakerFile outputfile = taskcontext.getTaskUtilities().createProviderPathFile(fname, outputfilepathkey);
 		outputdir.add(outputfile);
 
 		outputfile.synchronize();
 
 		SakerPath outputabsolutepath = outputfile.getSakerPath();
-		taskcontext.reportOutputFileDependency(null, outputabsolutepath, outputfilecd);
+		taskcontext.reportOutputFileDependency(null, outputabsolutepath, outputfile.getContentDescriptor());
 
 		return new StripTaskOutputImpl(outputabsolutepath);
 	}
