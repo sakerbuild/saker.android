@@ -1,3 +1,4 @@
+saker.aar.extract=saker.android.main.aar.AarExtractTaskFactory
 saker.android.aapt2.compile=saker.android.main.aapt2.Aapt2CompileTaskFactory
 saker.android.aapt2.link=saker.android.main.aapt2.Aapt2LinkTaskFactory
 saker.android.aidl=saker.android.main.aidl.AidlTaskFactory
@@ -10,6 +11,5 @@ saker.android.ndk.strip=saker.android.main.ndk.strip.StripTaskFactory
 saker.android.sdk.buildtools=saker.android.main.sdk.AndroidBuildToolsSDKTaskFactory
 saker.android.sdk.platform=saker.android.main.sdk.AndroidPlatformSDKTaskFactory
 saker.android.zipalign=saker.android.main.zipalign.ZipAlignTaskFactory
-saker.aar.extract=saker.android.main.aar.AarExtractTaskFactory
 saker.apk.create=saker.android.main.apk.create.ApkCreateTaskFactory
 saker.apk.sign=saker.android.main.apk.sign.SignApkTaskFactory

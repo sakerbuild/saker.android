@@ -64,7 +64,7 @@ public class StripWorkerTaskFactory
 	public StripWorkerTaskFactory() {
 	}
 
-	public void setInputFile(FileLocation inputFile) {
+	public StripWorkerTaskFactory(FileLocation inputFile) {
 		this.inputFile = inputFile;
 	}
 
@@ -143,8 +143,7 @@ public class StripWorkerTaskFactory
 		});
 
 		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtRelativePathCreate(
-				SakerPathFiles.requireBuildDirectory(taskcontext),
-				outputpath.getParent());
+				SakerPathFiles.requireBuildDirectory(taskcontext), outputpath.getParent());
 
 		SakerEnvironment environment = taskcontext.getExecutionContext().getEnvironment();
 

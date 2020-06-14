@@ -7,6 +7,7 @@ import java.io.ObjectOutput;
 import java.util.Collections;
 import java.util.Set;
 
+import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
 import saker.sdk.support.api.EnvironmentSDKDescription;
 import saker.sdk.support.api.IndeterminateSDKDescription;
@@ -34,14 +35,15 @@ public class VersionsAndroidNdkSDKDescription implements IndeterminateSDKDescrip
 
 	@Override
 	public SDKDescription getBaseSDKDescription() {
-		return EnvironmentSDKDescription.create(new VersionsAndroidNdkSDKReferenceEnvironmentProperty(versions));
+		return new VersionsAndroidNdkEnvironmentSDKDescription(versions);
 	}
 
 	@Override
 	public SDKDescription pinSDKDescription(SDKReference sdkreference) {
 		if (sdkreference instanceof AndroidNdkSDKReference) {
-			return EnvironmentSDKDescription.create(new VersionsAndroidNdkSDKReferenceEnvironmentProperty(
-					Collections.singleton(((AndroidNdkSDKReference) sdkreference).getVersion())));
+			Set<String> versions = ImmutableUtils
+					.singletonNavigableSet(((AndroidNdkSDKReference) sdkreference).getVersion());
+			return new VersionsAndroidNdkEnvironmentSDKDescription(versions);
 		}
 		return getBaseSDKDescription();
 	}
@@ -54,7 +56,7 @@ public class VersionsAndroidNdkSDKDescription implements IndeterminateSDKDescrip
 		return getClangSdk(AndroidNdkSDKReference.PATH_CLANGXX_EXE, versions);
 	}
 
-	private static SDKDescription getClangSdk(String exename, Set<String> versions) {
+	public static SDKDescription getClangSdk(String exename, Set<String> versions) {
 		return new AndrodNdkEmbeddedClangSDKDescription(exename, versions);
 	}
 

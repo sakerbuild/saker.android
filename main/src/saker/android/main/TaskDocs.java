@@ -15,6 +15,7 @@ import saker.nest.scriptinfo.reflection.annot.NestFieldInformation;
 import saker.nest.scriptinfo.reflection.annot.NestInformation;
 import saker.nest.scriptinfo.reflection.annot.NestTypeInformation;
 import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
+import saker.sdk.support.main.TaskDocs.DocSDKDescription;
 import saker.std.main.TaskDocs.DocFileLocation;
 
 public class TaskDocs {
@@ -194,4 +195,123 @@ public class TaskDocs {
 	public static class DocAapt2LinkInputLibrary {
 	}
 
+	@NestTypeInformation(qualifiedName = "AndroidNdkLibrary",
+			enumValues = {
+
+					@NestFieldInformation(value = "android",
+							info = @NestInformation("The Android native runtime library.")),
+					@NestFieldInformation(value = "log", info = @NestInformation("Logging library for Android.")),
+					@NestFieldInformation(value = "z", info = @NestInformation("The Zlib compression library. ")),
+					@NestFieldInformation(value = "GLESv1_CM",
+							info = @NestInformation("Library for using OpenGL ES 1.x. All Android-based devices support OpenGL ES 1.0 and 2.0.")),
+					@NestFieldInformation(value = "GLESv2",
+							info = @NestInformation("Library for using OpenGL ES 2.0. All Android-based devices support OpenGL ES 1.0 and 2.0.")),
+					@NestFieldInformation(value = "GLESv3",
+							info = @NestInformation("Library for using OpenGL ES 3.x.")),
+					@NestFieldInformation(value = "EGL",
+							info = @NestInformation("EGL provides a native platform interface via the <EGL/egl.h> and <EGL/eglext.h> headers for allocating and managing OpenGL ES contexts and surfaces.")),
+					@NestFieldInformation(value = "vulkan",
+							info = @NestInformation("Vulkan is a low-overhead, cross-platform API for high-performance 3D graphics rendering.")),
+					@NestFieldInformation(value = "jnigraphics",
+							info = @NestInformation("The libjnigraphics library exposes API that allows access to the pixel buffers of Java Bitmap objects.")),
+					@NestFieldInformation(value = "sync", info = @NestInformation("Library for handling sync files")),
+					@NestFieldInformation(value = "camera2ndk",
+							info = @NestInformation("Native camera APIs to perform fine-grained photo capture and processing.")),
+					@NestFieldInformation(value = "mediandk",
+							info = @NestInformation("The Media APIs provide low-level native interfaces similar to MediaExtractor, MediaCodec and other related Java APIs.")),
+					@NestFieldInformation(value = "OpenMAXAL",
+							info = @NestInformation("Android native multimedia handling based on Khronos Group OpenMAX AL 1.0.1 API.")),
+					@NestFieldInformation(value = "nativewindow",
+							info = @NestInformation("Native Window functionality library.")),
+					@NestFieldInformation(value = "aaudio",
+							info = @NestInformation("AAudio is a high-performance native audio API for Android")),
+					@NestFieldInformation(value = "OpenSLES",
+							info = @NestInformation("OpenSL ES is a native audio API.")),
+					@NestFieldInformation(value = "neuralnetworks",
+							info = @NestInformation("The Neural Networks API (NNAPI) provides apps with hardware acceleration for on-device machine learning operations.")),
+					@NestFieldInformation(value = "dl",
+							info = @NestInformation("Library for dynamically loading libraries.")),
+
+			})
+	@NestInformation("Identifier of an Android NDK library.")
+	public static class DocAndroidNdkLibrary {
+	}
+
+	@NestTypeInformation(qualifiedName = "AndroidAbi",
+			enumValues = {
+
+					@NestFieldInformation(value = "armeabi-v7a",
+							info = @NestInformation("ABI for 32-bit ARM-based CPUs.")),
+					@NestFieldInformation(value = "arm64-v8a",
+							info = @NestInformation("ABI for ARMv8-A based CPUs, which support the 64-bit AArch64 architecture.")),
+					@NestFieldInformation(value = "x86",
+							info = @NestInformation("ABI for CPUs supporting the instruction set commonly known as \"x86\", \"i386\", or \"IA-32\".")),
+					@NestFieldInformation(value = "x86_64",
+							info = @NestInformation("ABI for CPUs supporting the instruction set commonly referred to as \"x86-64.\"")),
+
+			})
+	@NestInformation("Identifier of an Android ABI (Application Binary Interface).")
+	public static class DocAndroidAbi {
+	}
+
+	@NestTypeInformation(qualifiedName = "AndroidNdkRuntimeFeatures",
+			enumValues = {
+
+					@NestFieldInformation(value = "exceptions",
+							info = @NestInformation("Feature to enable using C++ exceptions.")),
+					@NestFieldInformation(value = "rtti",
+							info = @NestInformation("Feature to enable using RTTI (Run-time type information).")),
+
+			})
+	@NestInformation("An Android runtime feature option.")
+	public static class DocAndroidNdkRuntimeFeatures {
+	}
+
+	@NestTypeInformation(qualifiedName = "SymbolVisibility",
+			enumValues = {
+					//from https://www.cita.utoronto.ca/~merz/intel_f10b/main_for/mergedProjects/copts_for/common_options/option_fvisibility.htm
+					@NestFieldInformation(value = "hidden",
+							info = @NestInformation("Hidden visiblity. Other components cannot directly reference the symbol. "
+									+ "However, its address may be passed to other components indirectly.")),
+					@NestFieldInformation(value = "default",
+							info = @NestInformation("Default visibility. Other components can reference the symbol, "
+									+ "and the symbol definition can be overridden (preempted) by a definition of the same name in another component.")),
+					@NestFieldInformation(value = "protected",
+							info = @NestInformation("Protected visibility. Other components can reference the symbol, "
+									+ "but it cannot be overridden by a definition of the same name in another component.")),
+					@NestFieldInformation(value = "internal",
+							info = @NestInformation("Protected visibility. The symbol cannot be referenced "
+									+ "outside its defining component, either directly or indirectly.")),
+					@NestFieldInformation(value = "extern",
+							info = @NestInformation("Protected visibility. The symbol is treated as though it is defined in another component. "
+									+ "It also means that the symbol can be overridden by a definition of the same name in another component.")),
+
+			})
+	@NestInformation("Symbol visibility value.")
+	public static class DocSymbolVisibility {
+	}
+
+	@NestInformation("SDK description for the Android NDK.")
+	@NestTypeInformation(qualifiedName = "AndroidNdkSDKDescription")
+	@NestFieldInformation(value = "ClangSDK",
+			type = @NestTypeUsage(DocSDKDescription.class),
+			info = @NestInformation("Gets a Clang SDK that uses clang in the located Android NDK."))
+	@NestFieldInformation(value = "ClangXXSDK",
+			type = @NestTypeUsage(DocSDKDescription.class),
+			info = @NestInformation("Gets a Clang SDK that uses clang++ in the located Android NDK."))
+	public static class DocAndroidNdkSDKDescription {
+	}
+
+	@NestTypeInformation(qualifiedName = "AndroidNdkClangOptionsPreset")
+	@NestInformation("Configuration preset for using clang with Android NDK.")
+	public static class DocNdkClangOptionsPreset {
+	}
+
+	@NestTypeInformation(qualifiedName = "StripWorkerTaskOutput")
+	@NestInformation("Worker task output of the strip tool invocation from the Android NDK.")
+	@NestFieldInformation(value = "Path",
+			type = @NestTypeUsage(SakerPath.class),
+			info = @NestInformation("The output path of the stripped binary."))
+	public static class DocStripWorkerTaskOutput {
+	}
 }

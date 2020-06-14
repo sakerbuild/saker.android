@@ -5,9 +5,16 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.NavigableMap;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import saker.android.impl.AndroidUtils;
+import saker.android.main.TaskDocs.DocAndroidAbi;
+import saker.android.main.TaskDocs.DocAndroidNdkLibrary;
+import saker.android.main.TaskDocs.DocAndroidNdkRuntimeFeatures;
+import saker.android.main.TaskDocs.DocNdkClangOptionsPreset;
+import saker.android.main.TaskDocs.DocSymbolVisibility;
 import saker.build.runtime.execution.ExecutionContext;
 import saker.build.runtime.execution.SakerLog;
 import saker.build.task.ParameterizableTask;
@@ -19,10 +26,63 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.trace.BuildTrace;
 import saker.compiler.utils.api.CompilationIdentifier;
 import saker.compiler.utils.main.CompilationIdentifierTaskOption;
+import saker.nest.scriptinfo.reflection.annot.NestInformation;
+import saker.nest.scriptinfo.reflection.annot.NestParameterInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTaskInformation;
+import saker.nest.scriptinfo.reflection.annot.NestTypeUsage;
 import saker.nest.utils.FrontendTaskFactory;
 import saker.sdk.support.api.SDKDescription;
 import saker.sdk.support.api.SDKSupportUtils;
 
+@NestTaskInformation(returnType = @NestTypeUsage(DocNdkClangOptionsPreset.class))
+@NestInformation("Creates a clang configuration preset for compiling and linking Android native binaries.\n"
+		+ "The task can be used to create a configuration object that can be passed to saker.clang.compile() and "
+		+ "saker.clang.link() build tasks for their CompilerOptions and LinkerOptions parameters.\n"
+		+ "The created configuration includes the default arguments for the compilers and sets up the "
+		+ "include and library paths, and sysroots for the compilation.")
+
+@NestParameterInformation(value = "ABI",
+		type = @NestTypeUsage(value = Collection.class, elementTypes = { DocAndroidAbi.class }),
+		info = @NestInformation("Specifies the Application Binary Interface for which the compilation should be done.\n"
+				+ "Each combination of CPU and instruction set has its own Application Binary Interface (ABI). See "
+				+ "https://developer.android.com/ndk/guides/abis for more information."))
+@NestParameterInformation(value = "API",
+		type = @NestTypeUsage(int.class),
+		info = @NestInformation("Specifies the target API level for which the compilation should be done.\n"
+				+ "The target API level is used to set up the proper roots for the compilation. It determines "
+				+ "which APIs are available for your application.\n"
+				+ "Generally it should be the latest Android release version, however, you should still make sure "
+				+ "not to call any APIs that aren't available during runtime."))
+@NestParameterInformation(value = "Release",
+		type = @NestTypeUsage(boolean.class),
+		info = @NestInformation("Specifies the optimization options that should be added when compiling and linking.\n"
+				+ "This value is false by default. You should set it to true when producing the release APK for your application.\n"
+				+ "Setting this to null will result in no optimization related configuration to be included."))
+@NestParameterInformation(value = "StaticStdLib",
+		type = @NestTypeUsage(boolean.class),
+		info = @NestInformation("Specifies if the standard library should be linked statically to the application.\n"
+				+ "Specifying true will cause the -nostdlib++, -lc++_static and -lc++abi arguments to be "
+				+ "added to clang for linking.\n" + "This is false by default."))
+@NestParameterInformation(value = "RuntimeFeatures",
+		type = @NestTypeUsage(value = Collection.class, elementTypes = { DocAndroidNdkRuntimeFeatures.class }),
+		info = @NestInformation("Specifies which runtime features can be used in the application.\n"
+				+ "The parameter accepts \"exceptions\" and \"rtti\" values to enable the usage of exceptions and run-time type "
+				+ "information when compiling C++ sources.\n" + "None of these features are enabled by default."))
+@NestParameterInformation(value = "Visibility",
+		type = @NestTypeUsage(DocSymbolVisibility.class),
+		info = @NestInformation("Specifies the default visibility of symbols in your application.\n"
+				+ "The argument corresponds to the -fvisibility=<VALUE> clang parameter. Can be set to null to don't use it."
+				+ "This is \"hidden\" by default."))
+@NestParameterInformation(value = "Libraries",
+		type = @NestTypeUsage(value = Collection.class, elementTypes = { DocAndroidNdkLibrary.class }),
+		info = @NestInformation("Specifies the libraries that should be linked.\n"
+				+ "Each specified library will be added as a -l<LIB> argument to the clang linker.\n"
+				+ "If this parameter is not specified, it will only contain \"android\". However, if you "
+				+ "specify it, you need to add \"android\" in addition to the other libraries you want.\n"
+				+ "See https://developer.android.com/ndk/guides/stable_apis for the available libraries."))
+@NestParameterInformation(value = "Identifier",
+		type = @NestTypeUsage(CompilationIdentifierTaskOption.class),
+		info = @NestInformation("Compilation identifier that specifies for which compilations this preset can be applied to."))
 public class NdkClangOptionsPresetTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
@@ -50,8 +110,9 @@ public class NdkClangOptionsPresetTaskFactory extends FrontendTaskFactory<Object
 			@SakerInput(value = "Visibility")
 			public String visibilityOption = "hidden";
 
+			//link the android library by default
 			@SakerInput(value = { "Libraries" })
-			public Collection<String> librariesOption;
+			public Collection<String> librariesOption = ImmutableUtils.asUnmodifiableArrayList("android");
 
 			@SakerInput(value = { "Identifier" })
 			public CompilationIdentifierTaskOption identifierOption;
@@ -116,7 +177,8 @@ public class NdkClangOptionsPresetTaskFactory extends FrontendTaskFactory<Object
 							break;
 						}
 						default: {
-							SakerLog.warning().taskScriptPosition(taskcontext).println("Unrecognized ABI: " + abiOption);
+							SakerLog.warning().taskScriptPosition(taskcontext)
+									.println("Unrecognized ABI: " + abiOption);
 							break;
 						}
 					}
@@ -197,8 +259,13 @@ public class NdkClangOptionsPresetTaskFactory extends FrontendTaskFactory<Object
 					}
 				}
 				if (!ObjectUtils.isNullOrEmpty(librariesOption)) {
+					//deduplicate
+					Set<String> addedlibs = new TreeSet<>();
 					for (String lib : librariesOption) {
 						if (ObjectUtils.isNullOrEmpty(lib)) {
+							continue;
+						}
+						if (!addedlibs.add(lib)) {
 							continue;
 						}
 						linkerparams.add("-l" + lib);
