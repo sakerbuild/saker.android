@@ -23,6 +23,8 @@ public abstract class BaseAndroidTestCase extends NestRepositoryCachingEnvironme
 			TreeMap<String, String> userparams = ObjectUtils.newTreeMap(tcc.getEnvironmentUserParameters());
 			userparams.put("saker.android.sdk.install.location",
 					testParameters.get("AndroidSDKLocationEnvironmentUserParameter"));
+			userparams.put("saker.android.ndk.install.location",
+					testParameters.get("AndroidNDKLocationEnvironmentUserParameter"));
 			result.add(EnvironmentTestCaseConfiguration.builder(tcc).setEnvironmentUserParameters(userparams).build());
 		}
 		return result;

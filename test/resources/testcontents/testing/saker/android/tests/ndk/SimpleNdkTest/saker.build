@@ -1,0 +1,24 @@
+build(){
+	foreach $abi in [armeabi-v7a, arm64-v8a, x86, x86_64] 
+			with $preset, $compile, $link {
+		$preset = saker.android.ndk.clang.preset(
+				ABI: $abi,
+				API: 21,
+				StaticStdLib: true,
+				Libraries: [
+					android,
+					log,
+				]
+			)
+			
+		$compile = saker.clang.compile(
+				src/*.cpp,
+				Identifier: "main-{ $abi }",
+				CompilerOptions: $preset,
+			)
+		$link = saker.clang.link(
+				$compile, 
+				LinkerOptions: $preset,
+			)
+	}
+}

@@ -9,6 +9,7 @@ import java.util.TreeMap;
 
 import saker.android.impl.AndroidUtils;
 import saker.build.runtime.execution.ExecutionContext;
+import saker.build.runtime.execution.SakerLog;
 import saker.build.task.ParameterizableTask;
 import saker.build.task.TaskContext;
 import saker.build.task.utils.annot.SakerInput;
@@ -115,7 +116,8 @@ public class NdkClangOptionsPresetTaskFactory extends FrontendTaskFactory<Object
 							break;
 						}
 						default: {
-							throw new IllegalArgumentException("Unrecognized ABI: " + abiOption);
+							SakerLog.warning().taskScriptPosition(taskcontext).println("Unrecognized ABI: " + abiOption);
+							break;
 						}
 					}
 				}

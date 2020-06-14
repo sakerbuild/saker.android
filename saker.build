@@ -271,6 +271,7 @@ test() {
 						foreach $path in $export[bundlepaths]: "{ std.file.mirror($path) };" 
 					}",
 				AndroidSDKLocationEnvironmentUserParameter: std.param.env(saker.android.sdk.install.location, Default: null),
+				AndroidNDKLocationEnvironmentUserParameter: std.param.env(saker.android.ndk.install.location, Default: null),
 			}
 		},
 		TestInvokerParameters: {
