@@ -1,24 +1,32 @@
 build(){
-	foreach $abi in [armeabi-v7a, arm64-v8a, x86, x86_64] 
-			with $preset, $compile, $link {
-		$preset = saker.android.ndk.clang.preset(
-				ABI: $abi,
-				API: 21,
-				StaticStdLib: true,
-				Libraries: [
-					android,
-					log,
-				]
-			)
-			
-		$compile = saker.clang.compile(
-				src/*.cpp,
-				Identifier: "main-{ $abi }",
-				CompilerOptions: $preset,
-			)
-		$link = saker.clang.link(
-				$compile, 
-				LinkerOptions: $preset,
-			)
+	foreach $release in [true, false] {
+		foreach $staticlib in [true, false] {
+			foreach $abi in [armeabi-v7a, arm64-v8a, x86, x86_64] 
+					with $preset, $compile, $link {
+				$preset = saker.android.ndk.clang.preset(
+						ABI: $abi,
+						API: 21,
+						StaticStdLib: $staticlib,
+						Release: $release,
+						Libraries: [
+							android,
+							log,
+						]
+					)
+					
+				$compile = saker.clang.compile(
+						[
+							src/*.cpp,
+							src/*.c,
+						],
+						Identifier: "main-abi{ $abi }-rel{ $release }-sl{ $staticlib }",
+						CompilerOptions: $preset,
+					)
+				$link = saker.clang.link(
+						$compile, 
+						LinkerOptions: $preset,
+					)
+			}
+		}
 	}
 }
