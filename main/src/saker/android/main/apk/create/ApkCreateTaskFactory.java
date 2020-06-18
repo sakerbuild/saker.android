@@ -16,8 +16,10 @@ import saker.android.api.aapt2.link.Aapt2LinkWorkerTaskOutput;
 import saker.android.main.AndroidFrontendUtils;
 import saker.android.main.TaskDocs.DocApkCreatorTaskOutput;
 import saker.android.main.TaskDocs.DocAssetsDirectory;
+import saker.android.main.TaskDocs.DocLibraryEntryOption;
 import saker.android.main.aapt2.Aapt2LinkTaskFactory;
 import saker.android.main.apk.create.option.ApkClassesTaskOption;
+import saker.android.main.apk.create.option.ApkLibraryLocationTaskOption;
 import saker.android.main.apk.create.option.ApkResourcesTaskOption;
 import saker.android.main.d8.D8TaskFactory;
 import saker.build.file.DirectoryVisitPredicate;
@@ -78,6 +80,13 @@ import saker.zip.api.create.ZipCreationTaskBuilder;
 		info = @NestInformation("One or more paths to assets directories for the APK.\n"
 				+ "All files in each specified directory will be added to the assets/ directory in the output APK."))
 
+@NestParameterInformation(value = "Libraries",
+		aliases = { "Libs", "Lib" },
+		type = @NestTypeUsage(value = Map.class, elementTypes = { SakerPath.class, DocLibraryEntryOption.class }),
+		info = @NestInformation("Specifies the libraries that should be added to the APK in the lib directory.\n"
+				+ "The parameter accepts a map with keys that correspond to the library name. The values are "
+				+ "maps that contain the library ABI as keys and the location of the library to put in the APK."))
+
 @NestParameterInformation(value = "Output",
 		type = @NestTypeUsage(SakerPath.class),
 		info = @NestInformation("Specifies the name of the output APK.\n"
@@ -122,7 +131,7 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 			 * Maps library relative paths to abi to file locations.
 			 */
 			@SakerInput(value = { "Libraries", "Libs", "Lib" })
-			public Map<SakerPath, Map<String, FileLocationTaskOption>> librariesOption;
+			public Map<SakerPath, Map<String, ApkLibraryLocationTaskOption>> librariesOption;
 
 			@Override
 			public Object run(TaskContext taskcontext) throws Exception {
@@ -145,7 +154,7 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 
 				librariesOption = ObjectUtils.cloneTreeMap(librariesOption, Functionals.identityFunction(),
 						m -> ObjectUtils.cloneTreeMap(m, Functionals.identityFunction(),
-								FileLocationTaskOption::clone));
+								ApkLibraryLocationTaskOption::clone));
 
 				SakerPath builddirpath = SakerPathFiles.requireBuildDirectoryPath(taskcontext)
 						.resolve(DEFAULT_BUILD_SUBDIRECTORY_PATH);
@@ -199,9 +208,10 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 					classesOption.applyTo(taskbuilder);
 				}
 				if (!ObjectUtils.isNullOrEmpty(librariesOption)) {
-					for (Entry<SakerPath, Map<String, FileLocationTaskOption>> entry : librariesOption.entrySet()) {
+					for (Entry<SakerPath, Map<String, ApkLibraryLocationTaskOption>> entry : librariesOption
+							.entrySet()) {
 						SakerPath libpath = entry.getKey();
-						Map<String, FileLocationTaskOption> val = entry.getValue();
+						Map<String, ApkLibraryLocationTaskOption> val = entry.getValue();
 						if (libpath == null) {
 							if (val == null) {
 								continue;
@@ -214,9 +224,9 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 							//no libs
 							continue;
 						}
-						for (Entry<String, FileLocationTaskOption> archentry : val.entrySet()) {
+						for (Entry<String, ApkLibraryLocationTaskOption> archentry : val.entrySet()) {
 							String abi = archentry.getKey();
-							FileLocationTaskOption filelocation = archentry.getValue();
+							FileLocationTaskOption filelocation = archentry.getValue().getFileLocationTaskOption();
 							if (abi == null) {
 								if (filelocation == null) {
 									//ignore instead of throwing

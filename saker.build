@@ -6,6 +6,7 @@ global(DEPENDENCIES_saker.android) = [
 	saker.java.compiler-api,
 	saker.maven.classpath-api,
 	saker.maven.support,
+	saker.clang-api,
 ]
 global(saker.android.COMPILER_OPTIONS) = [
 	{

@@ -10,3 +10,5 @@ saker.maven.support
 	classpath: [0)
 saker.java.compiler-api
 	classpath: [0)
+saker.clang-api
+	classpath: [0)

@@ -7,6 +7,7 @@ import java.util.Set;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.apk.create.ApkCreateTaskFactory;
+import saker.android.main.apk.create.option.ApkLibraryLocationTaskOption;
 import saker.android.main.sdk.AndroidBuildToolsSDKTaskFactory;
 import saker.android.main.sdk.AndroidPlatformSDKTaskFactory;
 import saker.build.file.path.SakerPath;
@@ -313,5 +314,13 @@ public class TaskDocs {
 			type = @NestTypeUsage(SakerPath.class),
 			info = @NestInformation("The output path of the stripped binary."))
 	public static class DocStripWorkerTaskOutput {
+	}
+
+	@NestTypeInformation(kind = TypeInformationKind.MAP,
+			elementTypes = { @NestTypeUsage(DocAndroidAbi.class), @NestTypeUsage(ApkLibraryLocationTaskOption.class) },
+			qualifiedName = "AndroidLibraryEntryOption")
+	@NestInformation("Represents an ABI - Android library location pair.\n"
+			+ "The library location can be specified as a path, file location or output of the clang linker or NDK strip tasks.")
+	public static class DocLibraryEntryOption {
 	}
 }
