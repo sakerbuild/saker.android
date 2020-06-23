@@ -14,6 +14,8 @@ public class AndroidPlatformSDKReference implements SDKReference, Externalizable
 
 	public static final String PROPERTY_VERSION = "version";
 
+	public static final String PATH_HOME = "home";
+
 	public static final String PATH_ANDROID_JAR = "jar.android";
 	public static final String PATH_SOURCES = "sources";
 	public static final String PATH_FRAMEWORK_AIDL = "aidl.framework";
@@ -47,12 +49,19 @@ public class AndroidPlatformSDKReference implements SDKReference, Externalizable
 		return version;
 	}
 
+	public SakerPath getBasePath() {
+		return basePath;
+	}
+
 	@Override
 	public SakerPath getPath(String identifier) throws Exception {
 		if (identifier == null) {
 			return null;
 		}
 		switch (identifier) {
+			case PATH_HOME: {
+				return basePath;
+			}
 			case PATH_ANDROID_JAR: {
 				return basePath.resolve(ANDROID_JAR_PATH);
 			}

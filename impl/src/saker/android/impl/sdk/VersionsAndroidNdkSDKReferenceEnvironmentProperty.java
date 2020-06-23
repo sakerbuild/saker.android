@@ -5,27 +5,31 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.function.Predicate;
 
 import saker.android.impl.AndroidUtils;
+import saker.build.exception.PropertyComputationFailedException;
 import saker.build.file.path.SakerPath;
 import saker.build.file.provider.FileEntry;
 import saker.build.file.provider.LocalFileProvider;
 import saker.build.file.provider.SakerPathFiles;
-import saker.build.runtime.environment.EnvironmentProperty;
 import saker.build.runtime.environment.SakerEnvironment;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
 import saker.build.thirdparty.saker.util.io.SerialUtils;
+import saker.build.trace.BuildTrace;
+import saker.build.trace.TraceContributorEnvironmentProperty;
 import saker.sdk.support.api.SDKReference;
 import saker.sdk.support.api.exc.SDKNotFoundException;
 
 public class VersionsAndroidNdkSDKReferenceEnvironmentProperty
-		implements EnvironmentProperty<SDKReference>, Externalizable {
+		implements TraceContributorEnvironmentProperty<SDKReference>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private Set<String> versions;
@@ -130,6 +134,34 @@ public class VersionsAndroidNdkSDKReferenceEnvironmentProperty
 			ex.addSuppressed(e);
 		}
 		throw ex;
+	}
+
+	@Override
+	public void contributeBuildTraceInformation(SDKReference propertyvalue,
+			PropertyComputationFailedException thrownexception) {
+		if (propertyvalue == null) {
+			if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_014) {
+				if (thrownexception != null) {
+					BuildTrace.ignoredException(thrownexception.getCause());
+				}
+			}
+			return;
+		}
+		Map<Object, Object> values = new LinkedHashMap<>();
+		try {
+			String version = propertyvalue.getProperty(AndroidNdkSDKReference.PROPERTY_VERSION);
+			SakerPath home = propertyvalue.getPath(AndroidNdkSDKReference.PATH_HOME);
+			Map<Object, Object> ndkprops = new LinkedHashMap<>();
+			values.put("Android NDK v" + version, ndkprops);
+			if (home != null) {
+				ndkprops.put("Install location", home.toString());
+			}
+			BuildTrace.setValues(values, BuildTrace.VALUE_CATEGORY_ENVIRONMENT);
+		} catch (Exception e) {
+			if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_014) {
+				BuildTrace.ignoredException(e);
+			}
+		}
 	}
 
 	private static SDKReference tryGetSDKFromInstallLocation(String location,

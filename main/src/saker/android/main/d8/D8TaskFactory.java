@@ -13,7 +13,6 @@ import saker.android.impl.d8.D8WorkerTaskIdentifier;
 import saker.android.impl.d8.option.D8InputOption;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
-import saker.android.main.AndroidFrontendUtils;
 import saker.android.main.TaskDocs;
 import saker.android.main.TaskDocs.DocClassBinaryName;
 import saker.android.main.TaskDocs.DocD8TaskOutput;
@@ -78,8 +77,7 @@ import saker.sdk.support.main.option.SDKDescriptionTaskOption;
 @NestParameterInformation(value = "OptimizeMultidexForLinearAlloc",
 		type = @NestTypeUsage(boolean.class),
 		info = @NestInformation("If set to true, legacy multidex partitioning will be optimized to reduce LinearAlloc usage "
-				+ " during Dalvik DexOpt.\n"
-				+ "This option may not be available with d8 present in older build-tools versions."
+				+ " during Dalvik DexOpt.\n" + "This option may not be supported in older versions of d8."
 				+ "Corresponds to the --optimize-multidex-for-linearalloc flag of d8."))
 
 @NestParameterInformation(value = "Identifier",

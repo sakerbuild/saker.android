@@ -114,7 +114,6 @@ public class D8ExecutorImpl implements D8Executor {
 		try {
 			m = D8Command.Builder.class.getMethod("setOptimizeMultidexForLinearAlloc", boolean.class);
 		} catch (Exception e) {
-			e.printStackTrace();
 			m = null;
 		}
 		METHOD_setOptimizeMultidexForLinearAlloc = m;

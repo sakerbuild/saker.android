@@ -26,6 +26,8 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 
 	public static final String PROPERTY_VERSION = "version";
 
+	public static final String PATH_HOME = "home";
+
 	private static final SakerPath LIB_D8JAR_PATH = SakerPath.valueOf("lib/d8.jar");
 	private static final SakerPath LIB_APKSIGNERJAR_PATH = SakerPath.valueOf("lib/apksigner.jar");
 
@@ -78,6 +80,9 @@ public class AndroidBuildToolsSDKReference implements SDKReference, Externalizab
 			return null;
 		}
 		switch (identifier) {
+			case PATH_HOME: {
+				return basePath;
+			}
 			case PATH_D8_JAR: {
 				return basePath.resolve(LIB_D8JAR_PATH);
 			}

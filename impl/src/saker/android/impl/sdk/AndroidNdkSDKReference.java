@@ -69,6 +69,10 @@ public class AndroidNdkSDKReference implements SDKReference, Externalizable {
 		return version;
 	}
 
+	public SakerPath getBasePath() {
+		return basePath;
+	}
+
 	@Override
 	public SakerPath getPath(String identifier) throws Exception {
 		if (identifier == null) {
