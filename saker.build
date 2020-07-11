@@ -124,6 +124,7 @@ export(
 				Nest-Bundle-Format-Version: 1,
 				Nest-Bundle-Identifier: "saker.android-v{ global(VERSION_saker.android) }",
 				Nest-Bundle-Source: "saker.android-sources-v{ global(VERSION_saker.android) }",
+				Nest-ClassPath-Supported-Build-System-Versions: "[0.8.9)",
 			},
 		},
 	)
@@ -144,6 +145,7 @@ export(
 				Nest-Bundle-Format-Version: 1,
 				Nest-Bundle-Identifier: "saker.android-api-v{ global(VERSION_saker.android) }",
 				Nest-Bundle-Source: "saker.android-sources-v{ global(VERSION_saker.android) }",
+				Nest-ClassPath-Supported-Build-System-Versions: "[0.8.9)",
 			},
 		},
 	)
@@ -185,6 +187,7 @@ export(
 				Nest-Bundle-Format-Version: 1,
 				Nest-Bundle-Identifier: "saker.android-impl-v{ global(VERSION_saker.android) }",
 				Nest-Bundle-Source: "saker.android-sources-v{ global(VERSION_saker.android) }",
+				Nest-ClassPath-Supported-Build-System-Versions: "[0.8.9)",
 			},
 		},
 	)
