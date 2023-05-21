@@ -1,6 +1,6 @@
 # saker.android
 
-![Build status](https://img.shields.io/azure-devops/build/sakerbuild/2e8d0e95-2787-42aa-85b5-ccb3424ada66/20/master)
+[![Build status](https://img.shields.io/azure-devops/build/sakerbuild/2e8d0e95-2787-42aa-85b5-ccb3424ada66/20/master)](https://dev.azure.com/sakerbuild/saker.android/_build) [![Latest version](https://mirror.nest.saker.build/badges/saker.android/version.svg)](https://nest.saker.build/package/saker.android "saker.android | saker.nest")
 
 Android support for the saker.build system
 
