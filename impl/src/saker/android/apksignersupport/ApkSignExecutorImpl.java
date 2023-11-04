@@ -200,6 +200,7 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 		}
 	}
 
+	//TODO don't use internal API, as that doesnt work on newer Java versions
 	private static void generateDebugKeyStoreToPath(Path path) throws Exception {
 		//partially based on
 		//https://stackoverflow.com/questions/1615871/creating-an-x509-certificate-in-java-without-bouncycastle

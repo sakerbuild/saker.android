@@ -21,4 +21,5 @@ $javac = saker.java.compile(
 		AndroidPlatform: saker.android.sdk.platform(),
 		AndroidBuildTools: saker.android.sdk.buildtools(),
 	}
+	Parameters: [--release, 7]
 )

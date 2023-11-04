@@ -24,6 +24,7 @@ build(
 			AndroidPlatform: saker.android.sdk.platform(),
 			AndroidBuildTools: saker.android.sdk.buildtools(),
 		}
+		Parameters: [--release, 7]
 	)
 	
 	$d8 = saker.android.d8($javac)

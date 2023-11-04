@@ -246,6 +246,9 @@ test() {
 			]),
 		],
 		Identifier: saker.android-tests,
+		SourceVersion: 8,
+		TargetVersion: 8,
+		Parameters: [ --release, 8 ]
 	)
 	
 	saker.java.test(
@@ -290,6 +293,7 @@ test() {
 		IgnoreFileChanges: [
 			std.file.place(test/build),
 		] + $export[bundlepaths],
+		JavaSDK: saker.java.sdk(11), # run on this Java version as debug key generation doesn't work on newer Java versions, so use older Java until that is fixed
 		#ProcessJVMParameters: [ "-agentlib:jdwp=transport=dt_socket,address=localhost:5432,server=y,suspend=y,quiet=y" ],
 		MaxJVMCount: 1,
 		FailFast: true,
