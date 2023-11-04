@@ -55,8 +55,12 @@ public class ZipAlignWorkerTaskFactory
 		implements TaskFactory<ZipAlignWorkerTaskOutput>, Task<ZipAlignWorkerTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
+	public static final int DEFAULT_ALIGNMENT = 4;
+
 	private FileLocation inputFile;
 	private SakerPath outputPath;
+
+	private int alignment = DEFAULT_ALIGNMENT;
 
 	private boolean pageAlignSharedObjectFile;
 	private boolean verbose;
@@ -90,6 +94,10 @@ public class ZipAlignWorkerTaskFactory
 
 	public void setZopfli(boolean zopfli) {
 		this.zopfli = zopfli;
+	}
+
+	public void setAlignment(int alignment) {
+		this.alignment = alignment;
 	}
 
 	public void setSDKDescriptions(NavigableMap<String, ? extends SDKDescription> sdkdescriptions) {
@@ -203,7 +211,7 @@ public class ZipAlignWorkerTaskFactory
 			processargslist.add("-z");
 		}
 		processargslist.add("-f");
-		processargslist.add("4");
+		processargslist.add(Integer.toString(alignment));
 		processargslist.add(inputfilelocalpath[0].toString());
 		processargslist.add(outputfilelocalpath.toString());
 
@@ -249,6 +257,7 @@ public class ZipAlignWorkerTaskFactory
 	public void writeExternal(ObjectOutput out) throws IOException {
 		out.writeObject(inputFile);
 		out.writeObject(outputPath);
+		out.writeInt(alignment);
 		out.writeBoolean(pageAlignSharedObjectFile);
 		out.writeBoolean(verbose);
 		out.writeBoolean(zopfli);
@@ -261,6 +270,7 @@ public class ZipAlignWorkerTaskFactory
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		inputFile = (FileLocation) in.readObject();
 		outputPath = (SakerPath) in.readObject();
+		alignment = in.readInt();
 		pageAlignSharedObjectFile = in.readBoolean();
 		verbose = in.readBoolean();
 		zopfli = in.readBoolean();
@@ -284,6 +294,8 @@ public class ZipAlignWorkerTaskFactory
 		if (getClass() != obj.getClass())
 			return false;
 		ZipAlignWorkerTaskFactory other = (ZipAlignWorkerTaskFactory) obj;
+		if (alignment != other.alignment)
+			return false;
 		if (inputFile == null) {
 			if (other.inputFile != null)
 				return false;

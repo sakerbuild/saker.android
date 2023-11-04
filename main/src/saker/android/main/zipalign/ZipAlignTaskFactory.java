@@ -50,6 +50,10 @@ import saker.std.api.file.location.FileLocation;
 				elementTypes = { saker.sdk.support.main.TaskDocs.DocSdkNameOption.class,
 						SDKDescriptionTaskOption.class }),
 		info = @NestInformation(TaskDocs.SDKS))
+@NestParameterInformation(value = "Alignment",
+		type = @NestTypeUsage(int.class),
+		info = @NestInformation("Sets the alignment argument for zipalign.\n" + "The default value is 4.\n"
+				+ "The aligment value is passed directly to zipalign."))
 @NestParameterInformation(value = "PageAlignSharedObjects",
 		type = @NestTypeUsage(boolean.class),
 		info = @NestInformation("Sets if the uncompressed .so files should be page aligned.\n"
@@ -70,6 +74,11 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 
 	@Override
 	public ParameterizableTask<? extends Object> createTask(ExecutionContext executioncontext) {
+		if (ZipAlignWorkerTaskFactory.DEFAULT_ALIGNMENT != 4) {
+			//test time sanity check to ensure that the default alignment match the one specified in the task doc.
+			//if the values match, then this dead code is removed
+			throw new AssertionError("different default alignment: " + ZipAlignWorkerTaskFactory.DEFAULT_ALIGNMENT);
+		}
 		return new ParameterizableTask<Object>() {
 			@SakerInput(value = { "", "APK", "Input" }, required = true)
 			public ZipAlignInputTaskOption inputOption;
@@ -79,6 +88,9 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 
 			@SakerInput(value = { "SDKs" })
 			public Map<String, SDKDescriptionTaskOption> sdksOption;
+
+			@SakerInput(value = { "Alignment" })
+			public int alignment = ZipAlignWorkerTaskFactory.DEFAULT_ALIGNMENT;
 
 			//default to true, as that makes sense
 			@SakerInput(value = { "PageAlignSharedObjects" })
@@ -131,7 +143,7 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 		};
 	}
 
-	private static String toAlignedOutputApkFileName(String apkfname) {
+	protected static String toAlignedOutputApkFileName(String apkfname) {
 		String ext = FileUtils.getExtension(apkfname);
 		if (ext == null) {
 			return apkfname + "-aligned.apk";
