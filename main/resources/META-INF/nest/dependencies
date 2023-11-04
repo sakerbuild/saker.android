@@ -5,7 +5,7 @@ saker.compiler.utils
 saker.sdk.support
 	classpath: [0.8.3)
 saker.zip-api
-	classpath: [0)
+	classpath: [0.8.5)
 saker.maven.support
 	classpath: [0)
 saker.java.compiler-api
