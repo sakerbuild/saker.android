@@ -33,7 +33,7 @@ static(VERSION_saker.nest) = nest.dependency.resolve(
 )[Bundles][0][BundleIdentifier][VersionNumber]
 
 compile(
-	in testapicompile = include(_testapicompile),
+	in testapicompile = _testapicompile(),
 	out javac,
 ) {
 	$resolveddependencies = nest.dependency.resolve(
@@ -96,7 +96,7 @@ compile(
 	}
 }
 export(
-	in compile = include(compile),
+	in compile = compile(),
 	out compile,
 	out mainjar,
 	out apijar,
@@ -215,23 +215,13 @@ export(
 	)
 }
 install() {
-	$export = include(export)
+	$export = export()
 	nest.local.install($export[bundlepaths])
-}
-upload(){
-	$export = include(export, Path: saker.build)
-	include(Path: secret/secrets.build)
-	nest.server.upload(
-		Bundles: $export[bundlepaths],
-		APIKey: global(saker.android.UPLOAD_API_KEY),
-		APISecret: global(saker.android.UPLOAD_API_SECRET),
-		Overwrite: true,
-	)
 }
 
 test() {
-	$testapi = include(_testapicompile, enabled: true)
-	$export = include(export, compile: include(compile, testapicompile: $testapi))
+	$testapi = _testapicompile(enabled: true)
+	$export = export(compile: compile(testapicompile: $testapi))
 	
 	$testcompile = saker.java.compile(
 		SourceDirectories: [
