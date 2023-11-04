@@ -87,6 +87,12 @@ import saker.zip.api.create.ZipResourceEntry;
 		info = @NestInformation("Specifies the libraries that should be added to the APK in the lib directory.\n"
 				+ "The parameter accepts a map with keys that correspond to the library name. The values are "
 				+ "maps that contain the library ABI as keys and the location of the library to put in the APK."))
+@NestParameterInformation(value = "CompressLibraries",
+		type = @NestTypeUsage(boolean.class),
+		info = @NestInformation("Turns on the compression of shared libraries.\n"
+				+ "By default, the shared libraries (e.g. lib/*/libsomething.so) will be placed in the APK without compression. "
+				+ "This is to allow page aligning them (by zipalign) and loading them using mmap.\n"
+				+ "Set this to true to enable compressing the shared libraries."))
 
 @NestParameterInformation(value = "Output",
 		type = @NestTypeUsage(SakerPath.class),
@@ -130,9 +136,23 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 
 			/**
 			 * Maps library relative paths to abi to file locations.
+			 * <p>
+			 * E.g.
+			 * 
+			 * <pre>
+			 * {
+			 * 	libmain.so: {
+			 * 		x86: build/.../x86/libmain.so,
+			 * 		arm64-v84: build/.../arm64-v84/libmain.so
+			 * 	}
+			 * }
+			 * </pre>
 			 */
 			@SakerInput(value = { "Libraries", "Libs", "Lib" })
 			public Map<SakerPath, Map<String, ApkLibraryLocationTaskOption>> librariesOption;
+
+			@SakerInput(value = { "CompressLibraries" })
+			public boolean compressLibraries = false;
 
 			@Override
 			public Object run(TaskContext taskcontext) throws Exception {
@@ -193,7 +213,13 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 									//include all assets
 									taskbuilder.addIncludeArchive(aar, INCLUDE_RESOURCE_MAPPING_ASSETS);
 									//include all libs
-									taskbuilder.addIncludeArchive(aar, INCLUDE_RESOURCE_MAPPING_JNI_TO_LIB);
+									IncludeResourceMapping libincluder = INCLUDE_RESOURCE_MAPPING_JNI_TO_LIB;
+									if (!compressLibraries) {
+										//explicitly make them uncompressed
+										libincluder = IncludeResourceMapping.chain(libincluder,
+												IncludeResourceMapping.storedCompressionMethod());
+									}
+									taskbuilder.addIncludeArchive(aar, libincluder);
 								}
 							}
 						}
@@ -248,7 +274,12 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 								SakerLog.warning().taskScriptPosition(taskcontext)
 										.println("Unrecognized Android ABI: " + abi);
 							}
-							taskbuilder.addResource(fl, SakerPath.valueOf("lib").resolve(abi).append(libpath));
+							SakerPath libentrypath = SakerPath.valueOf("lib").resolve(abi).append(libpath);
+							if (!compressLibraries) {
+								taskbuilder.addResource(fl, ZipResourceEntry.stored(libentrypath));
+							} else {
+								taskbuilder.addResource(fl, libentrypath);
+							}
 						}
 					}
 				}
