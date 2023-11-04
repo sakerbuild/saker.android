@@ -23,6 +23,8 @@ global(saker.android.COMPILER_OPTIONS) = [
 	}
 ]
 
+static(maven_dependencies) = saker.maven.resolve(Artifacts: "org.bouncycastle:bcpkix-jdk18on:1.76")
+
 static(VERSION_saker.build) = nest.dependency.resolve(
 	saker.build,
 	Filters: nest.dependency.filter.kind([]),
@@ -50,6 +52,7 @@ compile(
 		]),
 		saker.java.classpath.bundle($resolveddependencies),
 		$testapicompile[javac],
+		saker.maven.classpath(static(maven_dependencies))
 	]
 	
 	$javac = saker.java.compile(
@@ -283,7 +286,7 @@ test() {
 		IgnoreFileChanges: [
 			std.file.place(test/build),
 		] + $export[bundlepaths],
-		JavaSDK: saker.java.sdk(11), # run on this Java version as debug key generation doesn't work on newer Java versions, so use older Java until that is fixed
+		JavaSDK: saker.java.sdk([11, 12, 13, 14, 15, 16, 17]), # d8 implementation classes are Java 11+
 		ProcessJVMParameters: [ 
 			#"-agentlib:jdwp=transport=dt_socket,address=localhost:5432,server=y,suspend=y,quiet=y"
 			"-Xverify:all" # due to a crash that we encountered: fatal error: Illegal class file encountered. Try running with -Xverify:all in method parseClassValue 

@@ -1,0 +1,43 @@
+https://repo1.maven.org/maven2/org/bouncycastle/bcpkix-jdk18on/1.76/bcpkix-jdk18on-1.76.jar
+	classpath
+		private: true
+	MD5: 661d57d384f768f2bf92c0392f88379e
+	SHA-1: 10c9cf5c1b4d64abeda28ee32fbade3b74373622
+	SHA-256: 935a388854c329f9a6f32708f30c90045d2f91294fa687281273145d4cf9834a
+	source-attachment: https://repo1.maven.org/maven2/org/bouncycastle/bcpkix-jdk18on/1.76/bcpkix-jdk18on-1.76-sources.jar
+		MD5: ff1e11470e2f73e697d599c54693f867
+		SHA-1: e5700c1de407652c1af5961ac8a04fab02eda365
+		SHA-256: c2f5d37a268bd3c7fac567e700bb10e63756d391b0090743b2ee6e3ffac58c63
+	documentation-attachment: https://repo1.maven.org/maven2/org/bouncycastle/bcpkix-jdk18on/1.76/bcpkix-jdk18on-1.76-javadoc.jar
+		MD5: 00d0f6da8647232861d5ddfb5e26cd08
+		SHA-1: 4a8117dd9960008c792f9b0d9b9a95529cd13f1f
+		SHA-256: ee81ada883f529dec452a4e99b53cc90640fd851967473f13ee9ed1566c2f64f
+https://repo1.maven.org/maven2/org/bouncycastle/bcutil-jdk18on/1.76/bcutil-jdk18on-1.76.jar
+	classpath
+		private: true
+	MD5: 4df5b021c310b4c7c07d4490318d75cb
+	SHA-1: 8c7594e651a278bcde18e038d8ab55b1f97f4d31
+	SHA-256: 1a65ad02958223a3f31373bd72eea942cafd1b1877a3ed0b492c2487e77c3c27
+	source-attachment: https://repo1.maven.org/maven2/org/bouncycastle/bcutil-jdk18on/1.76/bcutil-jdk18on-1.76-sources.jar
+		MD5: 97d9da5147aa2873d766ec79eb142f31
+		SHA-1: 836bb2c42f10b29127b470ebe5c648927dd4ddc6
+		SHA-256: 897cc65df5e79dfc31add6a61016b189d51718bc5e914bc78cb0948c45327b14
+	documentation-attachment: https://repo1.maven.org/maven2/org/bouncycastle/bcutil-jdk18on/1.76/bcutil-jdk18on-1.76-javadoc.jar
+		MD5: 2571befbbd2d6d0707885a49b99e0bae
+		SHA-1: ba0e135b0623a5828562a3cf8fb8e8db1d99d26e
+		SHA-256: 34fb8ec41f9209088f86acc91c63df5a0a565d0f90e58cab67da1f530df7d9d9
+https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/1.76/bcprov-jdk18on-1.76.jar
+	classpath
+		private: true
+	MD5: 7020b9a9e1b951f5754a2168a26367f1
+	SHA-1: 3a785d0b41806865ad7e311162bfa3fa60b3965b
+	SHA-256: fda85d777aaae168015860b23a77cad9b8d3a1d5c904fda875313427bd560179
+	source-attachment: https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/1.76/bcprov-jdk18on-1.76-sources.jar
+		MD5: 8f3746bb7e6b8611c2904d525fab2264
+		SHA-1: 9e00748625819d7e3cc1447366dfa76f0b354a2d
+		SHA-256: b021a75c7ea7602d7fa6eaa288dafa855ec4a327321680dca289871b9271534f
+	documentation-attachment: https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/1.76/bcprov-jdk18on-1.76-javadoc.jar
+		MD5: 11660da3ff94570430734fa46a807cf0
+		SHA-1: c04f433177d631d9298cd3186580fddf9be7b13e
+		SHA-256: ebf04246dad88b9cb1dd77008baf1f0c50fd11974cc7f2acdae87ad216b54a5f
+

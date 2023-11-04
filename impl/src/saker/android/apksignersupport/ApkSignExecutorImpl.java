@@ -10,13 +10,22 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.PrivateKey;
-import java.security.SecureRandom;
 import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.NavigableMap;
 import java.util.UUID;
+
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
+import org.bouncycastle.cert.X509CertificateHolder;
+import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 
 import com.android.apksigner.ApkSignerTool;
 
@@ -35,15 +44,6 @@ import saker.sdk.support.api.SDKReference;
 import saker.std.api.file.location.ExecutionFileLocation;
 import saker.std.api.file.location.FileLocation;
 import saker.std.api.file.location.FileLocationVisitor;
-import sun.security.x509.AlgorithmId;
-import sun.security.x509.CertificateAlgorithmId;
-import sun.security.x509.CertificateSerialNumber;
-import sun.security.x509.CertificateValidity;
-import sun.security.x509.CertificateVersion;
-import sun.security.x509.CertificateX509Key;
-import sun.security.x509.X500Name;
-import sun.security.x509.X509CertImpl;
-import sun.security.x509.X509CertInfo;
 
 public class ApkSignExecutorImpl implements ApkSignExecutor {
 	private static final String DEBUG_KEYSTORE_NAME = "android_debug.jks";
@@ -200,10 +200,11 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 		}
 	}
 
-	//TODO don't use internal API, as that doesnt work on newer Java versions
+	// Note: the following command can be used to get the hashes for the external archive dependencies of bouncycastle:
+	//       cat <(md5sum *-jdk18on/*/*.jar | sed 's/^/MD5: /') <(sha1sum *-jdk18on/*/*.jar | sed 's/^/SHA-1: /') <(sha256sum *-jdk18on/*/*.jar | sed 's/^/SHA-256: /') | sort -k 3 | awk '{ if (last != $3) print $3; print $1 " " $2; last=$3}'
+	// where the current directory is .m2/repository/org/bouncycastle in the maven repo
+
 	private static void generateDebugKeyStoreToPath(Path path) throws Exception {
-		//partially based on
-		//https://stackoverflow.com/questions/1615871/creating-an-x509-certificate-in-java-without-bouncycastle
 
 		KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
 		ks.load(null, DEBUG_KEY_PASSWORD_CHARS);
@@ -211,33 +212,57 @@ public class ApkSignExecutorImpl implements ApkSignExecutor {
 		KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
 		keyPairGenerator.initialize(2048);
 		KeyPair pair = keyPairGenerator.generateKeyPair();
-
-		X509CertInfo info = new X509CertInfo();
-		Date from = new Date();
-		CertificateValidity interval = new CertificateValidity(from, new Date(from.getTime() + 365 * 100 * 86400000L));
-		BigInteger sn = new BigInteger(64, new SecureRandom());
-		X500Name owner = new X500Name("CN=Android Debug, OU=, O=Android, L=, S=, C=US");
-
-		info.set(X509CertInfo.VALIDITY, interval);
-		info.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(sn));
-		info.set(X509CertInfo.SUBJECT, owner);
-		info.set(X509CertInfo.ISSUER, owner);
-		info.set(X509CertInfo.KEY, new CertificateX509Key(pair.getPublic()));
-		info.set(X509CertInfo.VERSION, new CertificateVersion(CertificateVersion.V3));
-		AlgorithmId algo = new AlgorithmId(AlgorithmId.sha256WithRSAEncryption_oid);
-		info.set(X509CertInfo.ALGORITHM_ID, new CertificateAlgorithmId(algo));
-
 		PrivateKey privkey = pair.getPrivate();
 
-		String algorithm = "SHA256withRSA";
+		final String algorithm = "SHA256withRSA";
+		//100 years
+		final long validity = 365 * 100 * 86400000L;
 
-		X509CertImpl cert = new X509CertImpl(info);
-		cert.sign(privkey, algorithm);
+		//old internal api based generation
+		//partially based on
+		//https://stackoverflow.com/questions/1615871/creating-an-x509-certificate-in-java-without-bouncycastle
+//		X509CertInfo info = new X509CertInfo();
+//		Date from = new Date();
+//		CertificateValidity interval = new CertificateValidity(from, new Date(from.getTime() + validity));
+//		BigInteger sn = new BigInteger(64, new SecureRandom());
+//		sun.security.x509.X500Name owner = new sun.security.x509.X500Name("CN=Android Debug, OU=, O=Android, L=, S=, C=US");
+//
+//		info.set(X509CertInfo.VALIDITY, interval);
+//		info.set(X509CertInfo.SERIAL_NUMBER, new CertificateSerialNumber(sn));
+//		info.set(X509CertInfo.SUBJECT, owner);
+//		info.set(X509CertInfo.ISSUER, owner);
+//		info.set(X509CertInfo.KEY, new CertificateX509Key(pair.getPublic()));
+//		info.set(X509CertInfo.VERSION, new CertificateVersion(CertificateVersion.V3));
+//		AlgorithmId algo = new AlgorithmId(AlgorithmId.sha256WithRSAEncryption_oid);
+//		info.set(X509CertInfo.ALGORITHM_ID, new CertificateAlgorithmId(algo));
+//
+//		X509CertImpl cert = new X509CertImpl(info);
+//		cert.sign(privkey, algorithm);
+//
+//		algo = (AlgorithmId) cert.get(X509CertImpl.SIG_ALG);
+//		info.set(CertificateAlgorithmId.NAME + "." + CertificateAlgorithmId.ALGORITHM, algo);
+//		cert = new X509CertImpl(info);
+//		cert.sign(privkey, algorithm);
 
-		algo = (AlgorithmId) cert.get(X509CertImpl.SIG_ALG);
-		info.set(CertificateAlgorithmId.NAME + "." + CertificateAlgorithmId.ALGORITHM, algo);
-		cert = new X509CertImpl(info);
-		cert.sign(privkey, algorithm);
+		//bouncycastle based debug key generation
+		//somewhat based on https://stackoverflow.com/questions/11383898/how-to-create-a-x509-certificate-using-java
+		Date from = new Date();
+		Date to = new Date(from.getTime() + validity);
+
+		final String name = "C=US, O=Android, CN=Android Debug";
+
+		X500Name x500name = new X500Name(name);
+		X509v3CertificateBuilder certbuilder = new X509v3CertificateBuilder(x500name, BigInteger.ONE, from, to,
+				x500name, SubjectPublicKeyInfo.getInstance(pair.getPublic().getEncoded()));
+
+		ContentSigner signer = new JcaContentSignerBuilder(algorithm).setProvider(new BouncyCastleProvider())
+				.build(privkey);
+
+		X509CertificateHolder certholder = certbuilder.build(signer);
+
+		JcaX509CertificateConverter converter = new JcaX509CertificateConverter()
+				.setProvider(new BouncyCastleProvider());
+		X509Certificate cert = converter.getCertificate(certholder);
 
 		ks.setKeyEntry(DEBUG_KEY_ALIAS, privkey, DEBUG_KEY_PASSWORD_CHARS, new Certificate[] { cert });
 
