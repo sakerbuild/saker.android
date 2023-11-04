@@ -11,7 +11,6 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Objects;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 
@@ -32,6 +31,7 @@ import saker.build.task.Task;
 import saker.build.task.TaskContext;
 import saker.build.task.TaskExecutionEnvironmentSelector;
 import saker.build.task.TaskFactory;
+import saker.build.task.TaskInvocationConfiguration;
 import saker.build.task.delta.DeltaType;
 import saker.build.task.utils.TaskUtils;
 import saker.build.task.utils.dependencies.RecursiveIgnoreCaseExtensionFileCollectionStrategy;
@@ -51,7 +51,8 @@ import saker.sdk.support.api.SDKSupportUtils;
 import saker.sdk.support.api.exc.SDKNotFoundException;
 import saker.sdk.support.api.exc.SDKPathNotFoundException;
 
-public class AidlWorkerTaskFactory implements TaskFactory<AidlWorkerTaskOutput>, Task<AidlWorkerTaskOutput>, Externalizable {
+public class AidlWorkerTaskFactory
+		implements TaskFactory<AidlWorkerTaskOutput>, Task<AidlWorkerTaskOutput>, Externalizable {
 	private static final long serialVersionUID = 1L;
 
 	private NavigableSet<SakerPath> sourceDirectories;
@@ -81,24 +82,14 @@ public class AidlWorkerTaskFactory implements TaskFactory<AidlWorkerTaskOutput>,
 	}
 
 	@Override
-	public Set<String> getCapabilities() {
+	public TaskInvocationConfiguration getInvocationConfiguration() {
+		TaskInvocationConfiguration.Builder builder = TaskInvocationConfiguration.builder()
+				.setRequestedComputationTokenCount(1);
 		if (remoteDispatchableEnvironmentSelector != null) {
-			return ImmutableUtils.singletonNavigableSet(CAPABILITY_REMOTE_DISPATCHABLE);
+			builder.setRemoteDispatchable(true);
+			builder.setExecutionEnvironmentSelector(remoteDispatchableEnvironmentSelector);
 		}
-		return TaskFactory.super.getCapabilities();
-	}
-
-	@Override
-	public TaskExecutionEnvironmentSelector getExecutionEnvironmentSelector() {
-		if (remoteDispatchableEnvironmentSelector != null) {
-			return remoteDispatchableEnvironmentSelector;
-		}
-		return TaskFactory.super.getExecutionEnvironmentSelector();
-	}
-
-	@Override
-	public int getRequestedComputationTokenCount() {
-		return 1;
+		return builder.build();
 	}
 
 	@Override

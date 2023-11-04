@@ -36,6 +36,7 @@ import saker.build.task.Task;
 import saker.build.task.TaskContext;
 import saker.build.task.TaskExecutionEnvironmentSelector;
 import saker.build.task.TaskFactory;
+import saker.build.task.TaskInvocationConfiguration;
 import saker.build.task.delta.DeltaType;
 import saker.build.task.dependencies.FileCollectionStrategy;
 import saker.build.task.utils.TaskUtils;
@@ -105,30 +106,20 @@ public class Aapt2CompileWorkerTaskFactory
 		if (sdkdescriptions.get(AndroidBuildToolsSDKReference.SDK_NAME) == null) {
 			throw new SDKNotFoundException(AndroidBuildToolsSDKReference.SDK_NAME + " SDK not specified.");
 		}
-		remoteDispatchableEnvironmentSelector = SDKSupportUtils
-				.getSDKBasedClusterExecutionEnvironmentSelector(sdkdescriptions.values());
-	}
-
-	@Override
-	public Set<String> getCapabilities() {
 		//TODO turn back remote dispatchability if the local file location inputs are taken into account
-//		if (remoteDispatchableEnvironmentSelector != null) {
-//			return ImmutableUtils.singletonNavigableSet(CAPABILITY_REMOTE_DISPATCHABLE);
-//		}
-		return TaskFactory.super.getCapabilities();
+//		remoteDispatchableEnvironmentSelector = SDKSupportUtils
+//				.getSDKBasedClusterExecutionEnvironmentSelector(sdkdescriptions.values());
 	}
 
 	@Override
-	public TaskExecutionEnvironmentSelector getExecutionEnvironmentSelector() {
+	public TaskInvocationConfiguration getInvocationConfiguration() {
+		TaskInvocationConfiguration.Builder builder = TaskInvocationConfiguration.builder()
+				.setRequestedComputationTokenCount(1);
 		if (remoteDispatchableEnvironmentSelector != null) {
-			return remoteDispatchableEnvironmentSelector;
+			builder.setRemoteDispatchable(true);
+			builder.setExecutionEnvironmentSelector(remoteDispatchableEnvironmentSelector);
 		}
-		return TaskFactory.super.getExecutionEnvironmentSelector();
-	}
-
-	@Override
-	public int getRequestedComputationTokenCount() {
-		return 1;
+		return builder.build();
 	}
 
 	@Override
@@ -167,8 +158,6 @@ public class Aapt2CompileWorkerTaskFactory
 		SakerDirectory builddir = SakerPathFiles.requireBuildDirectory(taskcontext);
 		SakerDirectory outputdir = taskcontext.getTaskUtilities().resolveDirectoryAtPathCreate(builddir,
 				SakerPath.valueOf(Aapt2CompileTaskFactory.TASK_NAME + "/" + compilationid));
-
-		SakerPath outputdirpath = outputdir.getSakerPath();
 
 		NavigableMap<String, SDKReference> sdkrefs;
 		//if we have an environment selector then the dependencies are reported during selection

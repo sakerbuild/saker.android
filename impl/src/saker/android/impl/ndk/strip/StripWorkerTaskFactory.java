@@ -30,6 +30,7 @@ import saker.build.task.TaskContext;
 import saker.build.task.TaskExecutionEnvironmentSelector;
 import saker.build.task.TaskExecutionUtilities.MirroredFileContents;
 import saker.build.task.TaskFactory;
+import saker.build.task.TaskInvocationConfiguration;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.io.IOUtils;
@@ -80,24 +81,14 @@ public class StripWorkerTaskFactory
 	}
 
 	@Override
-	public Set<String> getCapabilities() {
+	public TaskInvocationConfiguration getInvocationConfiguration() {
+		TaskInvocationConfiguration.Builder builder = TaskInvocationConfiguration.builder()
+				.setRequestedComputationTokenCount(1);
 		if (remoteDispatchableEnvironmentSelector != null) {
-			return ImmutableUtils.singletonNavigableSet(CAPABILITY_REMOTE_DISPATCHABLE);
+			builder.setRemoteDispatchable(true);
+			builder.setExecutionEnvironmentSelector(remoteDispatchableEnvironmentSelector);
 		}
-		return TaskFactory.super.getCapabilities();
-	}
-
-	@Override
-	public TaskExecutionEnvironmentSelector getExecutionEnvironmentSelector() {
-		if (remoteDispatchableEnvironmentSelector != null) {
-			return remoteDispatchableEnvironmentSelector;
-		}
-		return TaskFactory.super.getExecutionEnvironmentSelector();
-	}
-
-	@Override
-	public int getRequestedComputationTokenCount() {
-		return 1;
+		return builder.build();
 	}
 
 	@Override

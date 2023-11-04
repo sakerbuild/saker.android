@@ -63,6 +63,7 @@ import saker.build.task.TaskExecutionEnvironmentSelector;
 import saker.build.task.TaskExecutionUtilities;
 import saker.build.task.TaskExecutionUtilities.MirroredFileContents;
 import saker.build.task.TaskFactory;
+import saker.build.task.TaskInvocationConfiguration;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 import saker.build.thirdparty.saker.util.StringUtils;
@@ -153,8 +154,9 @@ public class Aapt2LinkWorkerTaskFactory
 		if (sdkdescriptions.get(AndroidBuildToolsSDKReference.SDK_NAME) == null) {
 			throw new SDKNotFoundException(AndroidBuildToolsSDKReference.SDK_NAME + " SDK not specified.");
 		}
-		remoteDispatchableEnvironmentSelector = SDKSupportUtils
-				.getSDKBasedClusterExecutionEnvironmentSelector(sdkdescriptions.values());
+		//TODO re-enable remote dispatchability when local file locations are taken into account
+//		remoteDispatchableEnvironmentSelector = SDKSupportUtils
+//				.getSDKBasedClusterExecutionEnvironmentSelector(sdkdescriptions.values());
 	}
 
 	public void setPackageId(Integer packageId) {
@@ -282,25 +284,14 @@ public class Aapt2LinkWorkerTaskFactory
 	}
 
 	@Override
-	public int getRequestedComputationTokenCount() {
-		return 1;
-	}
-
-	@Override
-	public TaskExecutionEnvironmentSelector getExecutionEnvironmentSelector() {
+	public TaskInvocationConfiguration getInvocationConfiguration() {
+		TaskInvocationConfiguration.Builder builder = TaskInvocationConfiguration.builder()
+				.setRequestedComputationTokenCount(1);
 		if (remoteDispatchableEnvironmentSelector != null) {
-			return remoteDispatchableEnvironmentSelector;
+			builder.setRemoteDispatchable(true);
+			builder.setExecutionEnvironmentSelector(remoteDispatchableEnvironmentSelector);
 		}
-		return TaskFactory.super.getExecutionEnvironmentSelector();
-	}
-
-	@Override
-	public Set<String> getCapabilities() {
-		//TODO re-enable remote dispatchability when local file locations are taken into account
-//		if (remoteDispatchableEnvironmentSelector != null) {
-//			return ImmutableUtils.singletonNavigableSet(CAPABILITY_REMOTE_DISPATCHABLE);
-//		}
-		return TaskFactory.super.getCapabilities();
+		return builder.build();
 	}
 
 	@Override
