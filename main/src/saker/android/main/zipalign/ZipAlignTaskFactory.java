@@ -50,6 +50,11 @@ import saker.std.api.file.location.FileLocation;
 				elementTypes = { saker.sdk.support.main.TaskDocs.DocSdkNameOption.class,
 						SDKDescriptionTaskOption.class }),
 		info = @NestInformation(TaskDocs.SDKS))
+@NestParameterInformation(value = "PageAlignSharedObjects",
+		type = @NestTypeUsage(boolean.class),
+		info = @NestInformation("Sets if the uncompressed .so files should be page aligned.\n"
+				+ "Page aligning uncompressed .so files makes them suitable for mmap(2).\n"
+				+ "The default value is true.\n" + "Corresponds to the -p flag of zipalign."))
 public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
@@ -67,6 +72,10 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 			@SakerInput(value = { "SDKs" })
 			public Map<String, SDKDescriptionTaskOption> sdksOption;
 
+			//default to true, as that makes sense
+			@SakerInput(value = { "PageAlignSharedObjects" })
+			public boolean pageAlignSharedObjects = true;
+
 			@Override
 			public Object run(TaskContext taskcontext) throws Exception {
 				if (saker.build.meta.Versions.VERSION_FULL_COMPOUND >= 8_006) {
@@ -77,7 +86,8 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 				SakerPath outputpath;
 				try {
 					outputpath = AndroidFrontendUtils.getOutputPathForForwardRelativeWithFileName(outputOption,
-							inputzipfile, "Signed APK output path", ZipAlignTaskFactory::toAlignedOutputApkFileName);
+							inputzipfile, "Zip aligned APK output path",
+							ZipAlignTaskFactory::toAlignedOutputApkFileName);
 				} catch (Exception e) {
 					taskcontext.abortExecution(e);
 					return null;
@@ -93,6 +103,7 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 				ZipAlignWorkerTaskFactory workertask = new ZipAlignWorkerTaskFactory();
 				workertask.setInputFile(inputzipfile);
 				workertask.setOutputPath(SakerPath.valueOf(TASK_NAME).resolve(outputpath));
+				workertask.setPageAlignSharedObjectFile(pageAlignSharedObjects);
 				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);

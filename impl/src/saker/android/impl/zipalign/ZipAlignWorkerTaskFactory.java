@@ -6,7 +6,10 @@ import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.NavigableMap;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -55,6 +58,8 @@ public class ZipAlignWorkerTaskFactory
 	private FileLocation inputFile;
 	private SakerPath outputPath;
 
+	private boolean pageAlignSharedObjectFile;
+
 	private NavigableMap<String, ? extends SDKDescription> sdkDescriptions;
 
 	private transient TaskExecutionEnvironmentSelector remoteDispatchableEnvironmentSelector;
@@ -71,6 +76,10 @@ public class ZipAlignWorkerTaskFactory
 
 	public void setOutputPath(SakerPath outputPath) {
 		this.outputPath = outputPath;
+	}
+
+	public void setPageAlignSharedObjectFile(boolean pageAlignSharedObjectFile) {
+		this.pageAlignSharedObjectFile = pageAlignSharedObjectFile;
 	}
 
 	public void setSDKDescriptions(NavigableMap<String, ? extends SDKDescription> sdkdescriptions) {
@@ -172,8 +181,17 @@ public class ZipAlignWorkerTaskFactory
 		Path outputfilelocalpath = taskcontext.mirror(outputdir, DirectoryVisitPredicate.synchronizeNothing())
 				.resolve(fname);
 
-		ProcessBuilder pb = new ProcessBuilder(exepath.toString(), "-f", "4", inputfilelocalpath[0].toString(),
-				outputfilelocalpath.toString());
+		List<String> processargslist = new ArrayList<>();
+		processargslist.add(exepath.toString());
+		if (pageAlignSharedObjectFile) {
+			processargslist.add("-p");
+		}
+		processargslist.add("-f");
+		processargslist.add("4");
+		processargslist.add(inputfilelocalpath[0].toString());
+		processargslist.add(outputfilelocalpath.toString());
+
+		ProcessBuilder pb = new ProcessBuilder(processargslist);
 		pb.redirectErrorStream(true);
 
 		Process proc = pb.start();
@@ -215,6 +233,7 @@ public class ZipAlignWorkerTaskFactory
 	public void writeExternal(ObjectOutput out) throws IOException {
 		out.writeObject(inputFile);
 		out.writeObject(outputPath);
+		out.writeBoolean(pageAlignSharedObjectFile);
 
 		SerialUtils.writeExternalMap(out, sdkDescriptions);
 		out.writeObject(remoteDispatchableEnvironmentSelector);
@@ -224,6 +243,7 @@ public class ZipAlignWorkerTaskFactory
 	public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException {
 		inputFile = (FileLocation) in.readObject();
 		outputPath = (SakerPath) in.readObject();
+		pageAlignSharedObjectFile = in.readBoolean();
 
 		sdkDescriptions = SerialUtils.readExternalSortedImmutableNavigableMap(in,
 				SDKSupportUtils.getSDKNameComparator());
@@ -232,12 +252,7 @@ public class ZipAlignWorkerTaskFactory
 
 	@Override
 	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + ((inputFile == null) ? 0 : inputFile.hashCode());
-		result = prime * result + ((outputPath == null) ? 0 : outputPath.hashCode());
-		result = prime * result + ((sdkDescriptions == null) ? 0 : sdkDescriptions.hashCode());
-		return result;
+		return Objects.hashCode(outputPath);
 	}
 
 	@Override
@@ -258,6 +273,8 @@ public class ZipAlignWorkerTaskFactory
 			if (other.outputPath != null)
 				return false;
 		} else if (!outputPath.equals(other.outputPath))
+			return false;
+		if (pageAlignSharedObjectFile != other.pageAlignSharedObjectFile)
 			return false;
 		if (sdkDescriptions == null) {
 			if (other.sdkDescriptions != null)
