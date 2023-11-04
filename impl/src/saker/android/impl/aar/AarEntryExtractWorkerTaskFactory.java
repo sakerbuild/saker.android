@@ -27,7 +27,6 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
 import saker.android.api.aar.AarExtractWorkerTaskOutput;
-import saker.android.impl.classpath.LiteralStructuredTaskResult;
 import saker.build.file.ByteArraySakerFile;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
@@ -87,12 +86,12 @@ public class AarEntryExtractWorkerTaskFactory
 	}
 
 	public AarEntryExtractWorkerTaskFactory(FileLocation inputFile, String entry) {
-		this(LiteralStructuredTaskResult.create(inputFile), createGeneralAarExtractOutputRelativePath(inputFile), entry,
+		this(StructuredTaskResult.createLiteral(inputFile), createGeneralAarExtractOutputRelativePath(inputFile), entry,
 				inferOutPathKind(inputFile));
 	}
 
 	public AarEntryExtractWorkerTaskFactory(FileLocation inputFile, SakerPath outputRelativePath, String entry) {
-		this(LiteralStructuredTaskResult.create(inputFile), outputRelativePath, entry, inferOutPathKind(inputFile));
+		this(StructuredTaskResult.createLiteral(inputFile), outputRelativePath, entry, inferOutPathKind(inputFile));
 	}
 
 	public AarEntryExtractWorkerTaskFactory(StructuredTaskResult inputFile, SakerPath outputRelativePath, String entry,
@@ -402,7 +401,8 @@ public class AarEntryExtractWorkerTaskFactory
 		return new LocalAarExtractTaskOutput(outputlocalsakerpath);
 	}
 
-	protected AarExtractWorkerTaskOutput handleLocalFile(TaskContext taskcontext, SakerPath localpath) throws Exception {
+	protected AarExtractWorkerTaskOutput handleLocalFile(TaskContext taskcontext, SakerPath localpath)
+			throws Exception {
 		NavigableMap<SakerPath, ByteArrayRegion> folderentrybytes;
 
 		FileHashResult archivehash = null;

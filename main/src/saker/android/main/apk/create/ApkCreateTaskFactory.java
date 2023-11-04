@@ -56,6 +56,7 @@ import saker.std.main.file.option.FileLocationTaskOption;
 import saker.std.main.file.utils.TaskOptionUtils;
 import saker.zip.api.create.IncludeResourceMapping;
 import saker.zip.api.create.ZipCreationTaskBuilder;
+import saker.zip.api.create.ZipResourceEntry;
 
 @NestTaskInformation(returnType = @NestTypeUsage(DocApkCreatorTaskOutput.class))
 @NestInformation("Creates an Android APK based on the specified inputs.\n"
@@ -273,11 +274,22 @@ public class ApkCreateTaskFactory extends FrontendTaskFactory<Object> {
 		}
 
 		@Override
+		@SuppressWarnings("deprecation")
 		public Set<SakerPath> mapResourcePath(SakerPath archivepath, boolean directory) {
 			if (archivepath.getNameCount() < 2 || !archivepath.startsWith(PATH_JNI)) {
 				return null;
 			}
 			return ImmutableUtils.singletonNavigableSet(PATH_LIB.append(archivepath.subPath(1)));
+		}
+
+		@Override
+		public Collection<? extends ZipResourceEntry> mapResource(ZipResourceEntry resourceentry, boolean directory) {
+			SakerPath archivepath = resourceentry.getEntryPath();
+			if (archivepath.getNameCount() < 2 || !archivepath.startsWith(PATH_JNI)) {
+				return null;
+			}
+			return ImmutableUtils
+					.singletonNavigableSet(resourceentry.withEntryPath(PATH_LIB.append(archivepath.subPath(1))));
 		}
 
 		@Override

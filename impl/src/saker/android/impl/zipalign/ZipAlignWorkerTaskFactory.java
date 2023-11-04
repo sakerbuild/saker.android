@@ -11,9 +11,9 @@ import java.util.Set;
 import java.util.UUID;
 
 import saker.android.api.zipalign.ZipAlignWorkerTaskOutput;
-import saker.android.impl.aapt2.OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.main.zipalign.ZipAlignTaskFactory;
+import saker.build.file.DirectoryVisitPredicate;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
 import saker.build.file.content.ContentDescriptor;
@@ -143,7 +143,7 @@ public class ZipAlignWorkerTaskFactory
 			public void visit(LocalFileLocation loc) {
 				ExecutionProperty<? extends ContentDescriptor> envprop = SakerStandardUtils
 						.createLocalFileContentDescriptorExecutionProperty(loc.getLocalPath(), UUID.randomUUID());
-				inputfilelocalpath[0] = LocalFileProvider.toRealPath(outputPath);
+				inputfilelocalpath[0] = LocalFileProvider.toRealPath(loc.getLocalPath());
 				inputfilecd[0] = taskcontext.getTaskUtilities().getReportExecutionDependency(envprop);
 			}
 		});
@@ -168,8 +168,9 @@ public class ZipAlignWorkerTaskFactory
 			throw new SDKPathNotFoundException("zipalign executable not found in SDK: " + buildtoolssdk);
 		}
 
-		Path outputfilelocalpath = taskcontext
-				.mirror(outputdir, OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate.INSTANCE).resolve(fname);
+		//synchronize nothing to only create the directory
+		Path outputfilelocalpath = taskcontext.mirror(outputdir, DirectoryVisitPredicate.synchronizeNothing())
+				.resolve(fname);
 
 		ProcessBuilder pb = new ProcessBuilder(exepath.toString(), "-f", "4", inputfilelocalpath[0].toString(),
 				outputfilelocalpath.toString());

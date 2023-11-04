@@ -20,7 +20,6 @@ import saker.android.impl.aapt2.compile.Aapt2CompileWorkerTaskIdentifier;
 import saker.android.impl.aapt2.compile.Aapt2CompilerFlag;
 import saker.android.impl.aapt2.compile.option.Aapt2CompilerInputOption;
 import saker.android.impl.aapt2.compile.option.ResourceDirectoryAapt2CompilerInputOption;
-import saker.android.impl.classpath.LiteralStructuredTaskResult;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.sdk.AndroidPlatformSDKReference;
 import saker.android.main.TaskDocs;
@@ -168,7 +167,7 @@ public class Aapt2CompileTaskFactory extends FrontendTaskFactory<Aapt2CompileFro
 							if (FileUtils.hasExtensionIgnoreCase(SakerStandardUtils.getFileLocationFileName(file),
 									"aar")) {
 								aarCompilations.add(startAarCompilationTask(taskcontext, compilationconfig,
-										LiteralStructuredTaskResult.create(file)));
+										StructuredTaskResult.createLiteral(file)));
 							} else {
 								inputs.add(new ResourceDirectoryAapt2CompilerInputOption(file));
 							}

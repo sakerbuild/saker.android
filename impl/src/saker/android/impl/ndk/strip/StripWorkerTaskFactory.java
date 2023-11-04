@@ -11,9 +11,9 @@ import java.util.Set;
 import java.util.UUID;
 
 import saker.android.api.ndk.strip.StripWorkerTaskOutput;
-import saker.android.impl.aapt2.OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate;
 import saker.android.impl.sdk.AndroidNdkSDKReference;
 import saker.android.main.ndk.strip.StripTaskFactory;
+import saker.build.file.DirectoryVisitPredicate;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
 import saker.build.file.content.ContentDescriptor;
@@ -161,8 +161,9 @@ public class StripWorkerTaskFactory
 			throw new SDKPathNotFoundException("strip executable not found in Android NDK: " + ndksdk);
 		}
 
-		Path outputfilelocalpath = taskcontext
-				.mirror(outputdir, OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate.INSTANCE).resolve(fname);
+		//synchronize nothing to only create the directory
+		Path outputfilelocalpath = taskcontext.mirror(outputdir, DirectoryVisitPredicate.synchronizeNothing())
+				.resolve(fname);
 
 		ProcessBuilder pb = new ProcessBuilder(exepath.toString(), "-o", outputfilelocalpath.toString(),
 				inputfilelocalpath[0].toString());

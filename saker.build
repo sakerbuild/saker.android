@@ -16,7 +16,10 @@ global(saker.android.COMPILER_OPTIONS) = [
 				Package: sun.security.x509,
 			}
 		],
-		Parameters: [--release, 8],
+		# use JDK 8 to compile, as the sun.security.x509 export doesn't play well when we're compiling on newer versions
+		SDKs: {
+			Java: saker.java.sdk(8)
+		}
 	}
 ]
 
@@ -124,7 +127,7 @@ export(
 				Nest-Bundle-Format-Version: 1,
 				Nest-Bundle-Identifier: "saker.android-v{ global(VERSION_saker.android) }",
 				Nest-Bundle-Source: "saker.android-sources-v{ global(VERSION_saker.android) }",
-				Nest-ClassPath-Supported-Build-System-Versions: "[0.8.9)",
+				Nest-ClassPath-Supported-Build-System-Versions: "[0.8.12)",
 			},
 		},
 	)
@@ -145,7 +148,7 @@ export(
 				Nest-Bundle-Format-Version: 1,
 				Nest-Bundle-Identifier: "saker.android-api-v{ global(VERSION_saker.android) }",
 				Nest-Bundle-Source: "saker.android-sources-v{ global(VERSION_saker.android) }",
-				Nest-ClassPath-Supported-Build-System-Versions: "[0.8.9)",
+				Nest-ClassPath-Supported-Build-System-Versions: "[0.8.12)",
 			},
 		},
 	)
@@ -187,7 +190,7 @@ export(
 				Nest-Bundle-Format-Version: 1,
 				Nest-Bundle-Identifier: "saker.android-impl-v{ global(VERSION_saker.android) }",
 				Nest-Bundle-Source: "saker.android-sources-v{ global(VERSION_saker.android) }",
-				Nest-ClassPath-Supported-Build-System-Versions: "[0.8.9)",
+				Nest-ClassPath-Supported-Build-System-Versions: "[0.8.12)",
 			},
 		},
 	)
@@ -245,7 +248,7 @@ test() {
 		Identifier: saker.android-tests,
 	)
 	
-	$test = saker.java.test(
+	saker.java.test(
 		TestRunnerClassPath: [
 			saker.java.classpath.bundle("saker.build-test-runner-v{ static(VERSION_saker.build) }"),
 		],

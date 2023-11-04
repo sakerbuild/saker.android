@@ -11,10 +11,10 @@ import java.util.NavigableMap;
 import java.util.Set;
 
 import saker.android.api.apk.sign.SignApkWorkerTaskOutput;
-import saker.android.impl.aapt2.OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate;
 import saker.android.impl.sdk.AndroidBuildToolsSDKReference;
 import saker.android.impl.support.InstrumentingJarClassLoaderDataFinder;
 import saker.android.main.apk.sign.SignApkTaskFactory;
+import saker.build.file.DirectoryVisitPredicate;
 import saker.build.file.SakerDirectory;
 import saker.build.file.SakerFile;
 import saker.build.file.content.ContentDescriptor;
@@ -164,8 +164,8 @@ public class SignApkWorkerTaskFactory
 			sdkrefs = SDKSupportUtils.resolveSDKReferences(environment, this.sdkDescriptions);
 		}
 
-		Path outputfilelocalpath = taskcontext
-				.mirror(outputdir, OnlyDirectoryCreateSynchronizeDirectoryVisitPredicate.INSTANCE)
+		//synchronize nothing to only create the directory
+		Path outputfilelocalpath = taskcontext.mirror(outputdir, DirectoryVisitPredicate.synchronizeNothing())
 				.resolve(outputPath.getFileName());
 
 		executor.run(taskcontext, this, sdkrefs, inputfilelocalpath[0], outputfilelocalpath);

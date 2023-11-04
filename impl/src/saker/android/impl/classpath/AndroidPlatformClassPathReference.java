@@ -130,7 +130,7 @@ public class AndroidPlatformClassPathReference implements ClassPathReference, Ex
 			if (sourceAttachmentSDKPathReference == null) {
 				return null;
 			}
-			return LiteralStructuredTaskResult.create(ClassPathEntryInputFile.create(sourceAttachmentSDKPathReference));
+			return StructuredTaskResult.createLiteral(ClassPathEntryInputFile.create(sourceAttachmentSDKPathReference));
 		}
 
 		@Override
