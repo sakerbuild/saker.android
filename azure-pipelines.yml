@@ -27,11 +27,13 @@ steps:
     versionSpec: '11'
     jdkArchitectureOption: 'x64'
     jdkSourceOption: 'PreInstalled'
+  displayName: 'Setup JDK 11'
 - task: JavaToolInstaller@0
   inputs:
     versionSpec: '8'
     jdkArchitectureOption: 'x64'
     jdkSourceOption: 'PreInstalled'
+  displayName: 'Setup JDK 8'
 
 - script: java -jar saker.build.jar -bd build "-EUsaker.java.jre.install.locations=$(JAVA_HOME_8_X64);$(JAVA_HOME_11_X64)" -trace pwd://build/build_test.trace -trace-artifacts-embed test
   displayName: 'Test'
