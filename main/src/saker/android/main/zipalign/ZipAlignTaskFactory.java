@@ -55,6 +55,10 @@ import saker.std.api.file.location.FileLocation;
 		info = @NestInformation("Sets if the uncompressed .so files should be page aligned.\n"
 				+ "Page aligning uncompressed .so files makes them suitable for mmap(2).\n"
 				+ "The default value is true.\n" + "Corresponds to the -p flag of zipalign."))
+@NestParameterInformation(value = "Verbose",
+		type = @NestTypeUsage(boolean.class),
+		info = @NestInformation("Turns on verbose output of the zipalign process.\n" + "The default value is false.\n"
+				+ "Corresponds to the -v flag of zipalign."))
 public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
@@ -75,6 +79,9 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 			//default to true, as that makes sense
 			@SakerInput(value = { "PageAlignSharedObjects" })
 			public boolean pageAlignSharedObjects = true;
+
+			@SakerInput(value = { "Verbose" })
+			public boolean verbose;
 
 			@Override
 			public Object run(TaskContext taskcontext) throws Exception {
@@ -104,6 +111,7 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 				workertask.setInputFile(inputzipfile);
 				workertask.setOutputPath(SakerPath.valueOf(TASK_NAME).resolve(outputpath));
 				workertask.setPageAlignSharedObjectFile(pageAlignSharedObjects);
+				workertask.setVerbose(verbose);
 				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);
