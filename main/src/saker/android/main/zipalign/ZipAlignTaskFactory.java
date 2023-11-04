@@ -59,6 +59,10 @@ import saker.std.api.file.location.FileLocation;
 		type = @NestTypeUsage(boolean.class),
 		info = @NestInformation("Turns on verbose output of the zipalign process.\n" + "The default value is false.\n"
 				+ "Corresponds to the -v flag of zipalign."))
+@NestParameterInformation(value = "RecompressWithZopfli",
+		type = @NestTypeUsage(boolean.class),
+		info = @NestInformation("Recompresses the data with Zopfli.\n" + "The default value is false.\n"
+				+ "Corresponds to the -z flag of zipalign."))
 public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 	private static final long serialVersionUID = 1L;
 
@@ -82,6 +86,9 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 
 			@SakerInput(value = { "Verbose" })
 			public boolean verbose;
+
+			@SakerInput(value = { "RecompressWithZopfli" })
+			public boolean zopfli;
 
 			@Override
 			public Object run(TaskContext taskcontext) throws Exception {
@@ -112,6 +119,7 @@ public class ZipAlignTaskFactory extends FrontendTaskFactory<Object> {
 				workertask.setOutputPath(SakerPath.valueOf(TASK_NAME).resolve(outputpath));
 				workertask.setPageAlignSharedObjectFile(pageAlignSharedObjects);
 				workertask.setVerbose(verbose);
+				workertask.setZopfli(zopfli);
 				workertask.setSDKDescriptions(sdkdescriptions);
 
 				taskcontext.startTask(workertaskid, workertask, null);

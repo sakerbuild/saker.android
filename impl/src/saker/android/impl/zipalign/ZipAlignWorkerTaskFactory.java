@@ -60,6 +60,7 @@ public class ZipAlignWorkerTaskFactory
 
 	private boolean pageAlignSharedObjectFile;
 	private boolean verbose;
+	private boolean zopfli;
 
 	private NavigableMap<String, ? extends SDKDescription> sdkDescriptions;
 
@@ -85,6 +86,10 @@ public class ZipAlignWorkerTaskFactory
 
 	public void setVerbose(boolean verbose) {
 		this.verbose = verbose;
+	}
+
+	public void setZopfli(boolean zopfli) {
+		this.zopfli = zopfli;
 	}
 
 	public void setSDKDescriptions(NavigableMap<String, ? extends SDKDescription> sdkdescriptions) {
@@ -194,6 +199,9 @@ public class ZipAlignWorkerTaskFactory
 		if (verbose) {
 			processargslist.add("-v");
 		}
+		if (zopfli) {
+			processargslist.add("-z");
+		}
 		processargslist.add("-f");
 		processargslist.add("4");
 		processargslist.add(inputfilelocalpath[0].toString());
@@ -243,6 +251,7 @@ public class ZipAlignWorkerTaskFactory
 		out.writeObject(outputPath);
 		out.writeBoolean(pageAlignSharedObjectFile);
 		out.writeBoolean(verbose);
+		out.writeBoolean(zopfli);
 
 		SerialUtils.writeExternalMap(out, sdkDescriptions);
 		out.writeObject(remoteDispatchableEnvironmentSelector);
@@ -254,6 +263,7 @@ public class ZipAlignWorkerTaskFactory
 		outputPath = (SakerPath) in.readObject();
 		pageAlignSharedObjectFile = in.readBoolean();
 		verbose = in.readBoolean();
+		zopfli = in.readBoolean();
 
 		sdkDescriptions = SerialUtils.readExternalSortedImmutableNavigableMap(in,
 				SDKSupportUtils.getSDKNameComparator());
@@ -292,6 +302,8 @@ public class ZipAlignWorkerTaskFactory
 		} else if (!sdkDescriptions.equals(other.sdkDescriptions))
 			return false;
 		if (verbose != other.verbose)
+			return false;
+		if (zopfli != other.zopfli)
 			return false;
 		return true;
 	}
