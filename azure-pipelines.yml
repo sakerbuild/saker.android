@@ -20,7 +20,20 @@ steps:
 - script: powershell $ProgressPreference='silentlyContinue';Invoke-WebRequest "https://api.nest.saker.build/bundle/download/saker.build-v$((Invoke-WebRequest "https://mirror.nest.saker.build/badges/saker.build/latest.txt" -UseBasicParsing).Content)" -OutFile saker.build.jar
   displayName: 'Download saker.build'
   condition: eq( variables['Agent.OS'], 'Windows_NT' )
-- script: java -jar saker.build.jar -bd build -trace pwd://build/build_test.trace -trace-artifacts-embed test
+
+# setup Java 8 and 11 for the build
+- task: JavaToolInstaller@0
+  inputs:
+    versionSpec: '11'
+    jdkArchitectureOption: 'x64'
+    jdkSourceOption: 'PreInstalled'
+- task: JavaToolInstaller@0
+  inputs:
+    versionSpec: '8'
+    jdkArchitectureOption: 'x64'
+    jdkSourceOption: 'PreInstalled'
+
+- script: java -jar saker.build.jar -bd build "-EUsaker.java.jre.install.locations=$(JAVA_HOME_8_X64);$(JAVA_HOME_11_X64)" -trace pwd://build/build_test.trace -trace-artifacts-embed test
   displayName: 'Test'
 - task: PublishBuildArtifacts@1
   condition: always()
@@ -28,7 +41,8 @@ steps:
   inputs:
     pathtoPublish: build/build_test.trace
     artifactName: 'trace_$(imageName)'
-- script: java -jar saker.build.jar -bd build -trace pwd://build/build_export.trace -trace-artifacts-embed export
+
+- script: java -jar saker.build.jar -bd build "-EUsaker.java.jre.install.locations=$(JAVA_HOME_8_X64);$(JAVA_HOME_11_X64)" -trace pwd://build/build_export.trace -trace-artifacts-embed export
   displayName: 'Export library JAR'
 - task: PublishBuildArtifacts@1
   condition: always()
@@ -36,3 +50,10 @@ steps:
   inputs:
     pathtoPublish: build/build_export.trace
     artifactName: 'trace_$(imageName)'
+
+- script: cat hs_err* 2>/dev/null || echo "No hs_err files."
+  condition: or( eq( variables['Agent.OS'], 'Linux' ), eq( variables['Agent.OS'], 'Darwin' ) )
+  displayName: 'Display JVM crash logs (Linux)'
+- script: type hs_err* 2>nul || exit 0
+  condition: eq( variables['Agent.OS'], 'Windows_NT' )
+  displayName: 'Display JVM crash logs (Win)'
